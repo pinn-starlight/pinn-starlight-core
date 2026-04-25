@@ -101,7 +101,7 @@ PINN 模型
 
 ```
 
-pinn-starlight/
+pinn-starlight-core/
 ├── src/
 │   └── pinn_starlight/
 │       ├── __init__.py
