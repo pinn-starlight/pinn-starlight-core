@@ -179,5 +179,3 @@ uv run jupyter notebook
 ## 🌠 致谢
 
 > 感谢每一位仍抬头看星空的人。
-
-PR Test
