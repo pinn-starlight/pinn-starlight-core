@@ -28,11 +28,11 @@
   ▼
 PINN 模型
   输入：像素坐标 (x, y)
-  输出：该点光污染强度 I_skyglow(x, y)
+  输出：该点光污染强度 light_pollution_intensity(x, y)
   物理约束：∇²I - κI + S = 0（简化扩散方程）
   │
   ▼
-信号分离：I_starlight = I_observed - I_skyglow
+信号分离：starlight_intensity = observed_intensity - light_pollution_intensity
   │
   ▼
 输出：
@@ -68,15 +68,15 @@ PINN 模型
 | 比传统滤波保留更多真实细节 | 从严重过曝区域恢复信息     |
 | 输出可解释的光污染分布   | 凭空生成原始数据中不存在的天体 |
 
-受香农信息论约束：光污染远超星光强度时，恢复原则上不可能。本工具诚实承认这个上限。
+受**香农信息论**约束：光污染远超星光强度时，恢复原则上不可能。本工具诚实承认这个上限。
 
 ---
 
 ## 🛠 技术栈
 
 - **语言**：Python 3.12
-- **核心库**：PyTorch、rawpy、astropy、NumPy、Matplotlib
-- **开发**：Jupyter、pytest
+- **核心库**：PyTorch、rawpy、NumPy、*astropy、Matplotlib（待定）*
+- **测试**：Jupyter、pytest
 - **包管理**：uv
 - **版本控制**：Git
 
@@ -84,6 +84,7 @@ PINN 模型
 
 ## 📊 评估指标
 
+### 待定
 项目论文将报告以下指标：
 
 - PSNR / SSIM（通用图像质量）
@@ -96,7 +97,10 @@ PINN 模型
 
 ## 🗂 项目结构
 
+### 待定
+
 ```
+
 pinn-starlight/
 ├── src/
 │   └── pinn_starlight/
@@ -117,6 +121,8 @@ pinn-starlight/
 
 ## 🚀 快速开始
 
+### 待定
+
 ```bash
 # 克隆仓库
 git clone https://github.com/pinn-starlight/core.git
@@ -136,6 +142,8 @@ uv run jupyter notebook
 
 ## 👥 团队
 
+
+
 | 成员       | 职责                             |
 |----------|--------------------------------|
 | **主力开发** | 代码实现、数据管道、论文主笔、可视化             |
@@ -152,6 +160,8 @@ uv run jupyter notebook
 
 ## 📄 引用的关键先前工作
 
+### 待定
+
 - Raissi et al., "Physics-informed neural networks", *Journal of Computational Physics*, 2019
 - Falchi et al., "The new world atlas of artificial night sky brightness", *Science Advances*, 2016
 - （更多文献随项目进展补充）
@@ -160,7 +170,9 @@ uv run jupyter notebook
 
 ## 📝 开源协议
 
-MIT License
+### 待定
+
+*MIT License*
 
 ---
 
