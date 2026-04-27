@@ -1,3 +1,7 @@
 .venv
 .idea/
 data
+
+# jupyter
+notebooks/.ipynb_checkpoints
+notebooks/test.ipynb
