@@ -8,6 +8,7 @@ dependencies = [
     "jupyter>=1.1.1",
     "rawpy>=0.26.1",
     "torch>=2.11.0",
+    "torchvision>=0.26.0",
 ]
 
 [dependency-groups]
