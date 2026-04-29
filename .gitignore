@@ -5,6 +5,7 @@ data
 # jupyter
 notebooks/.ipynb_checkpoints
 notebooks/notebook_test.ipynb
+notebooks/backup
 
 #ai generated file
 notebooks/study/MNIST/mnist_ai_gen.ipynb
