@@ -1,11 +1,14 @@
-# This is a sample Python script.
-import numpy
+import numpy as np
 
-a = numpy.array([3,2])
-# Press the green button in the gutter to run the script.
+a = np.zeros((2,3))
+
+b = [[2, 4, 6], [1, 3, 5]]
+
 if __name__ == '__main__':
-    print(a)
-    a[numpy.arange(0), 0] = 1
-    print(a)
+    # print(a)
+    # a[np.arange(2), [0, 1]] = 2
+    # print(a)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    print(b)
+    # print(b)
+
