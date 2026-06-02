@@ -36,4 +36,5 @@ class MSEPhysics:
 
     def backward(self):
         f = laplacian(self.I_pred, self.coords) - self.alpha * self.I_pred + self.I_city
+
         return 2 * self.weight * (laplacian(f, self.coords) - self.alpha * f) / self.I_pred.size(0)
