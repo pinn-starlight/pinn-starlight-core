@@ -1,6 +1,7 @@
 .venv
 .idea/
 data
+docs
 
 # jupyter
 notebooks/.ipynb_checkpoints
