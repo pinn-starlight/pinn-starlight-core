@@ -1,5 +1,6 @@
 .venv
 /.idea
+.idea/pinn-starlight-core.iml
 docs
 
 # jupyter
