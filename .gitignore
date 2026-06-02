@@ -1,13 +1,12 @@
 .venv
-E:\Music\pinn-starlight\pinn-starlight-core\.idea
-.idea
-data
+/.idea
 docs
 
 # jupyter
 notebooks/.ipynb_checkpoints
 notebooks/notebook_test.ipynb
-notebooks/backup
+notebooks/backup/
+notebooks/study/data
 
 #ai generated file
 notebooks/backup/mnist_ai_gen.ipynb
