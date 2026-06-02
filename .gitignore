@@ -6,6 +6,9 @@ docs
 __pycache__/
 *.pyc
 
+# test data
+test_data/
+
 # jupyter
 notebooks/.ipynb_checkpoints
 notebooks/notebook_test.ipynb
