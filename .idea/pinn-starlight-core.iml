@@ -9,7 +9,6 @@
       <excludeFolder url="file://$MODULE_DIR$/docs" />
       <excludeFolder url="file://$MODULE_DIR$/notebooks/backup" />
       <excludeFolder url="file://$MODULE_DIR$/notebooks/study/MNIST/data" />
-      <excludeFolder url="file://$MODULE_DIR$/src/pinn_starlight_core/data" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.12 (pinn-starlight-core)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
