@@ -1,3 +1,16 @@
 .venv
-.idea/
-data
+/.idea
+docs
+
+# python
+__pycache__/
+*.pyc
+
+# jupyter
+notebooks/.ipynb_checkpoints
+notebooks/notebook_test.ipynb
+notebooks/backup/
+notebooks/study/MNIST/data
+
+#ai generated file
+notebooks/backup/mnist_ai_gen.ipynb
