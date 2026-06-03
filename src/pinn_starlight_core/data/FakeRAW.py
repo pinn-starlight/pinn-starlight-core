@@ -12,9 +12,9 @@ class FakeRaw:
         star_brightness = 0.7,
         seed = 114514
     ):
-        self.fake_raw = None
-        self.stars = None
-        self.background = None
+        self.fake_raw = torch.Tensor(H, W)
+        self.stars = torch.Tensor(H, W)
+        self.background = torch.Tensor(H, W)
         self.H = H
         self.W = W
         self.n_stars = n_stars
