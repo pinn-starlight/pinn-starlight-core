@@ -13,18 +13,18 @@ from pinn_starlight_core.utils.Laplacian import laplacian
 class TestFakeRaw:
     def test_output_shapes(self):
         fake = FakeRaw(H=64, W=64, n_stars=3, seed=0)
-        coords, values = fake.get_raw_data()
+        coords, values = fake.get_fake_raw()
         assert coords.shape == (64 * 64, 2)
         assert values.shape == (64 * 64,)
 
     def test_seed_reproducibility(self):
-        a = FakeRaw(H=32, W=32, seed=42).get_raw_data()[1]
-        b = FakeRaw(H=32, W=32, seed=42).get_raw_data()[1]
+        a = FakeRaw(H=32, W=32, seed=42).get_fake_raw()[1]
+        b = FakeRaw(H=32, W=32, seed=42).get_fake_raw()[1]
         assert torch.allclose(a, b)
 
     def test_diff_seeds_diff_stars(self):
-        a = FakeRaw(H=32, W=32, seed=0).get_raw_data()[1]
-        b = FakeRaw(H=32, W=32, seed=1).get_raw_data()[1]
+        a = FakeRaw(H=32, W=32, seed=0).get_fake_raw()[1]
+        b = FakeRaw(H=32, W=32, seed=1).get_fake_raw()[1]
         assert not torch.allclose(a, b)           # 不同 seed 星点不同
 
 
@@ -148,7 +148,7 @@ class TestLaplacian:
 def test_end_to_end_synthetic():
     torch.manual_seed(42)
     fake = FakeRaw(H=32, W=32, n_stars=3, seed=0)
-    coords, I_obs = fake.get_raw_data()
+    coords, I_obs = fake.get_fake_raw()
 
     bg = 0.3 * torch.cos(3.0 * coords[:, 0]) * torch.cos(3.0 * coords[:, 1])
     I_city = (18.0 + 9.0) * bg
