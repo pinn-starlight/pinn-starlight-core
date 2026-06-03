@@ -30,5 +30,6 @@ class MSEPhysics:
         self.coords = coords
 
         # Helmholtz: ∇²I + αI = I_city  (α = 1/D² > 0)
+        # 暂时用的屏蔽泊松
         f = laplacian(I_pred, coords) - alpha * I_pred + I_city
         return weight * (f ** 2).mean()
