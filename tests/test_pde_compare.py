@@ -3,7 +3,7 @@ import torch
 import os
 import numpy as np
 import pytest
-from pinn_starlight_core.data.PhotoLoader import ImageLoader
+from pinn_starlight_core.data.RAWLoader import ImageLoader
 from pinn_starlight_core.nn.Layers import SkyglowMLP
 from pinn_starlight_core.utils.Laplacian import laplacian
 
