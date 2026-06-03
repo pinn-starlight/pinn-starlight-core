@@ -9,6 +9,6 @@ def rasterize(data):
     xx, yy = torch.meshgrid(x, y, indexing='xy')
 
     coords = torch.stack([xx.flatten(), yy.flatten()], dim=1)
-    values = torch.from_numpy(data).flatten().float()
+    values = torch.as_tensor(data).flatten().float()
 
     return coords, values
