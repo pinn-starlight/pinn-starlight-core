@@ -11,7 +11,7 @@ class RAWLoader:
         self.W = None
         self.H = None
         self.path = None
-        
+
     def load(self, path):
         self.path = path
         ext = path.lower().rsplit('.', 1)[-1]
@@ -44,8 +44,8 @@ class RAWLoader:
 
         self.W, self.H = self.data.shape
 
-    def get_raw_data(self):
+    def get_raw_data(self, device = "cpu"):
         from pinn_starlight_core.utils.Rasterize import rasterize
-        coords, values = rasterize(self.data)
+        coords, values = rasterize(self.data, device)
 
         return coords, values, self.W, self.H

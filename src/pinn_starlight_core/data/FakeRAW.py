@@ -10,25 +10,27 @@ class FakeRaw:
         n_stars = 10,
         bg_amplitude = 0.3,
         star_brightness = 0.7,
-        seed = 114514
+        seed = 114514,
+        device = "cpu",
     ):
-        self.fake_raw = torch.Tensor(H, W)
-        self.stars = torch.Tensor(H, W)
-        self.background = torch.Tensor(H, W)
+        self.fake_raw = None
+        self.stars = None
+        self.background = None
         self.H = H
         self.W = W
         self.n_stars = n_stars
         self.bg_amplitude = bg_amplitude
         self.star_brightness = star_brightness
         self.seed = seed
+        self.device = device
 
     def get_fake_raw(self):
-        x = torch.linspace(0, 1, self.W)
-        y = torch.linspace(0, 1, self.H)
+        x = torch.linspace(0, 1, self.W).to(self.device)
+        y = torch.linspace(0, 1, self.H).to(self.device)
         xx, yy = torch.meshgrid(x, y, indexing='xy')
 
         rng = numpy.random.default_rng(self.seed)
-        stars = torch.zeros(self.H, self.W)
+        stars = torch.zeros(self.H, self.W).to(self.device)
         centers = rng.random((self.n_stars, 2))
         for cx, cy in centers:
             cx, cy = float(cx), float(cy)
