@@ -11,9 +11,6 @@ class MSEData:
         self.I_pred = I_pred
         return ((I_pred - I_obs) ** 2).mean()
 
-    def backward(self):
-        return 2 * (self.I_pred - self.I_obs) / self.I_obs.size(0)
-
 
 class MSEPhysics:
     def __init__(self) -> None:
@@ -32,8 +29,6 @@ class MSEPhysics:
         self.weight = weight
         self.coords = coords
 
-        return weight * ((laplacian(I_pred, coords) - alpha * I_pred + I_city) ** 2).mean()
-
-    def backward(self):
-        f = laplacian(self.I_pred, self.coords) - self.alpha * self.I_pred + self.I_city
-        return 2 * self.weight * (laplacian(f, self.coords) - self.alpha * f) / self.I_pred.size(0)
+        # Helmholtz: ∇²I + αI = I_city  (α = 1/D² > 0)
+        f = laplacian(I_pred, coords) + alpha * I_pred - I_city
+        return weight * (f ** 2).mean()
