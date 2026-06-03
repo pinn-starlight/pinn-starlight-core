@@ -5,8 +5,8 @@ import torch
 class FakeRaw:
     def __init__(
         self,
-        H = 512,
-        W = 512,
+        W = 1920,
+        H = 1080,
         n_stars = 10,
         bg_amplitude = 0.3,
         star_brightness = 0.7,
