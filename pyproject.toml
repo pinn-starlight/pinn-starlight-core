@@ -7,13 +7,22 @@ requires-python = ">=3.12"
 dependencies = [
     "jupyter>=1.1.1",
     "matplotlib>=3.10.9",
-    "rawpy>=0.26.1",
-    "torch>=2.11.0",
-    "torchvision>=0.26.0",
-    "tqdm>=4.67.3"
+    "rawpy==0.27.0",
+    "tqdm==4.66.5",
+    "torch==2.7.1",
+    "torchvision"
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+]
+
+[[tool.uv.index]]
+name = "torch"
+url = "https://download.pytorch.org/whl/cu128"
+
+[tool.uv.workspace]
+members = [
+    ".venv/Scripts",
 ]
