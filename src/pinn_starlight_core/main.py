@@ -1,33 +1,56 @@
-# TODO: 自己从头写这个文件
-#
-# 作用: 训练 PINN 分离光污染 → 输出对比图
-#
-# 流程:
-#   1. 数据加载
-#     - 合成数据: FakeRaw(H, W, n_stars, seed) → coords, I_obs
-#       或
-#     - 真实数据: ImageLoader().load(path) → coords, I_obs
-#
-#   2. 模型
-#     mlp = SkyglowMLP([2, 64, 32, 1])
-#     alpha_param = nn.Parameter(tensor([5.0]))  ← α 可学习
-#     optimizer = Adam(mlp.parameters() + [alpha_param], lr=0.001)
-#
-#   3. 训练循环
-#     for step in range(N_steps):
-#         idx = random N pixels
-#         xy = coords[idx].requires_grad_(True)   ← 物理损失要对坐标求导
-#         I_pred = mlp.forward(xy).squeeze()
-#         loss = MSEData(I_obs[idx], I_pred)
-#              + MSEPhysics(I_obs[idx], I_pred, I_city, alpha, weight, xy)
-#         loss.backward(); optimizer.step(); optimizer.zero_grad()
-#
-#   4. 推理 + 输出
-#     - 分块 (每 50000 像素) 跑全图 forward, 避免 OOM
-#     - I_pred 和残差 (I_obs - I_pred).clamp(0,1) 分别保存
-#     - 合成数据需要设 I_city = (18+α)*bg; 真实数据用 I_city=0.5 常数
-#
-# 注意:
-#   - batch_xy 需要 .clone().requires_grad_(True), 否则 autograd 找不到坐标依赖
-#   - 真实图片归一化到 [0,1] 后 I_city 也应在 [0,1] 量级
-#   - 大图推理时用分块循环, 不要一次性算全图
+import torch
+from torch import optim
+from tqdm.notebook import tqdm
+
+import pinn_starlight_core.nn.Layers as Layers
+import pinn_starlight_core.nn.Losses as Loss
+import pinn_starlight_core.data.RAWLoader as RAWLoader
+import pinn_starlight_core.data.FakeRAW as FakeRAW
+
+raw_loader = RAWLoader.RAWLoader()
+raw_loader.from_array(FakeRAW.FakeRaw().get_fake_raw())
+coords, values, W, H = raw_loader.get_raw_data()
+
+layers = [
+    Layers.SkyglowLinear(2, 512),
+    Layers.SkyglowActivation(),
+    Layers.SkyglowLinear(512, 64),
+    Layers.SkyglowActivation(),
+    Layers.SkyglowLinear(64, 1),
+]
+
+params = []
+for layer in layers:
+    if isinstance(layer, Layers.SkyglowLinear):
+        params += list(layer.parameters())
+
+optimizer = optim.Adam(params, lr=0.001)
+
+ld = Loss.MSEData()
+lp = Loss.MSEPhysics()
+
+alpha = 9.0
+bg = 0.3 * torch.cos(3.0 * coords[:, 0]) * torch.cos(3.0 * coords[:, 1])
+I_city = (alpha - 18.0) * bg
+phy_weight = 0.01
+
+for step in tqdm(range((coords.shape[0] / 240).interger())):
+    idx = torch.randint(0, coords.shape[0], (coords.shape[0] / 320,))
+    batch_xy = coords[idx].clone().requires_grad_(True)
+    batch_I = values[idx]
+
+    a = batch_xy
+    for layer in layers:
+        a = layer.forward(a)
+    I_pred = a.squeeze()
+
+    data_loss = ld.forward(batch_I, I_pred)
+    phys_loss = lp.forward(batch_I, I_pred, I_city[idx], alpha, phy_weight, batch_xy)
+    loss = data_loss + phys_loss
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    if step % 500 == 0:
+        print(f"Step {(step // 500) + 1}, data={data_loss.item() * 100:.6f}%, phys={phys_loss.item() * 100:.6f}%, total={loss.item() * 100:.6f}%")
