@@ -38,6 +38,13 @@ class SkyglowActivation:
 #   此时 ∂²/∂x² 的量纲不再是 1/normalized_unit²，而需要乘以 (实际尺度)⁻²。
 #   结论：归一化坐标下 autograd ∇² 可直接用；物理坐标下需要缩放因子。
 #   （夏，2026）
+#
+# TODO: 重写 SkyglowMLP — 删掉现在这个，自己从头写一个
+#   输入: layer_sizes = [2, 64, 32, 1]
+#   要求: __init__ 里存 Linear 和 Activation 交替排列
+#         forward 里 for 循环依次调用
+#         parameters() 遍历 layers 取出所有 SkyglowLinear 的参数
+#   提示: 输出层不加 Activation
 
 
 class SkyglowMLP:

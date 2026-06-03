@@ -7,7 +7,7 @@ __pycache__/
 *.pyc
 
 # test data
-test_data/
+data/
 
 # jupyter
 notebooks/.ipynb_checkpoints
