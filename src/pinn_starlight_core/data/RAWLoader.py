@@ -8,8 +8,10 @@ class RAWLoader:
         self.data = None
         self.coords = None
         self.values = None
-        self.path = str
-
+        self.W = None
+        self.H = None
+        self.path = None
+        
     def load(self, path):
         self.path = path
         ext = path.lower().rsplit('.', 1)[-1]
@@ -33,13 +35,17 @@ class RAWLoader:
         else:
             raise ValueError(f'Unsupported format: {ext}')
 
+        self.W, self.H = self.data.shape
+
     def from_array(self, fake_raw):
         if isinstance(fake_raw, torch.Tensor):
             fake_raw = fake_raw.numpy()
         self.data = torch.from_numpy(fake_raw.astype(np.float32))
 
+        self.W, self.H = self.data.shape
+
     def get_raw_data(self):
         from pinn_starlight_core.utils.Rasterize import rasterize
         coords, values = rasterize(self.data)
 
-        return coords, values
+        return coords, values, self.W, self.H
