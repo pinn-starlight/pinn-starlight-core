@@ -12,6 +12,10 @@ class MSEData:
         return ((I_pred - I_obs) ** 2).mean()
 
 
+def get111():
+    print("加权")
+
+
 class MSEPhysics:
     def __init__(self) -> None:
         self.I_obs = None
@@ -30,6 +34,6 @@ class MSEPhysics:
         self.coords = coords
 
         # Helmholtz: ∇²I + αI = I_city  (α = 1/D² > 0)
-        # 暂时用的屏蔽泊松
-        f = laplacian(I_pred, coords) - alpha * I_pred + I_city
+        f = laplacian(I_pred, coords) + alpha * I_pred - I_city
         return weight * (f ** 2).mean()
+
