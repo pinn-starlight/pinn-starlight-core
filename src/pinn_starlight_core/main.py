@@ -29,19 +29,6 @@
 # TODO[4]: 光穹顶 (light dome) 去除
 #   方向性散射碰巧满足 PDE → 物理损失不排斥
 #   短期: 裁天顶区域; 长期: 多虚拟光源 / 方向性 I_city
-#
-# === 待证明 / 待整理 (2026-06) ===
-#
-# TODO[5]: 手动证明 Helmholtz 解在小 FOV 的非振荡性
-#   核心: 验证 Bessel J₀(√α r) 在 r/D ≪ 1 时展成 1 − z²/4 + ...
-#   确认第一个零点 z≈2.4 在当前像素/角度域内不可达
-#   需: 手推 Helmholtz 齐次解的级数展开, 代入实际 D 和 FOV
-#   证明完才能写进论文 — 目前是实验观察, 缺数学闭环
-#
-# 实验观察 (待证明后提升为结论):
-#   cos(r/D) → cos'' = -α·cos → ∇²cos + α·cos = 0 (Helmholtz)
-#   实验中 Helmholtz 优于 SP, 猜测原因 = 上述非振荡性
-#
 # 路线图:
 #   Phase 1 (当前): 小 FOV, 固定 I_city → 出对比图
 #   Phase 2 (6/8~): 大 FOV, 可学习 I_city 网格 → 手机 45° 测试
@@ -83,31 +70,43 @@ ld = Loss.MSEData()
 lp = Loss.MSEPhysics()
 
 
-# TODO alpha调小
-alpha = 9.0
-bg = 0.3 * torch.cos(3.0 * coords[:, 0]) * torch.cos(3.0 * coords[:, 1]).to(device)
-I_city = (alpha - 18.0) * bg
+# === 可学习源点偏移 (夏 & Claude 合写) ===
+# 原来: r = sqrt(x² + y²), 源点固定在原点 → 只能处理图像中心对称光穹
+# 现在: r = sqrt((x-cx)² + (y-cy)²), cx,cy 随训练自动移到光穹方向
+from pinn_starlight_core.nn.Icity import LearnableSource
+
+source = LearnableSource(A=0.3, D=1.0, device=device)   # A,D 对应 Garstang 参数
+params += list(source.parameters())                       # cx,cy 加入优化器
+optimizer = optim.Adam(params, lr=0.001)
+
+alpha = 0.3
 phy_weight = 0.01
 
-# TODO 参数待调
-for step in tqdm(range((coords.shape[0] / 240).int())):
-    # TODO 参数待调
-    idx = torch.randint(0, coords.shape[0], (coords.shape[0] / 320,)).to(device)
-    batch_xy = coords[idx].to(device).clone().requires_grad_(True)
-    batch_I = values[idx].to(device)
+batch_size = max(1024, min(8192, coords.shape[0] // 200))
+steps = max(2000, coords.shape[0] // 100)
+
+for step in tqdm(range(steps)):
+    idx = torch.randint(0, coords.shape[0], (batch_size,), device=device)
+    batch_xy = coords[idx].clone().requires_grad_(True)
+    batch_I = values[idx]
 
     a = batch_xy
     for layer in layers:
         a = layer.forward(a)
-    I_pred = a.squeeze().to(device)
+    I_pred = a.squeeze()
 
-    data_loss = ld.forward(batch_I, I_pred).to(device)
-    phys_loss = lp.forward(batch_I, I_pred, I_city[idx], alpha, phy_weight, batch_xy).to(device)
+    # I_city 由可学习源点实时计算 (每次前向更新)
+    I_city_batch = source(batch_xy)
+
+    data_loss = ld.forward(batch_I, I_pred)
+    phys_loss = lp.forward(batch_I, I_pred, I_city_batch, alpha, phy_weight, batch_xy)
     loss = data_loss + phys_loss
 
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
+    source.clamp_center()   # 约束源点在 [-1,1] 内
 
     if step % 500 == 0:
-        print(f"Step {(step // 500) + 1}, data={data_loss.item() * 100:.6f}%, phys={phys_loss.item() * 100:.6f}%, total={loss.item() * 100:.6f}%")
+        print(f"Step {step}, cx={source.cx.item():.4f}, cy={source.cy.item():.4f}, "
+              f"data={data_loss.item():.6f}, phys={phys_loss.item():.6f}")
