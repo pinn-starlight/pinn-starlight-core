@@ -1,4 +1,5 @@
 import numpy
+import numpy as np
 import torch
 
 
@@ -38,7 +39,8 @@ class FakeRaw:
             stars += self.star_brightness * torch.exp(-dist2 / 0.0007)
         self.stars = stars
 
-        self.background = self.bg_amplitude * torch.cos(3.0 * xx) * torch.cos(3.0 * yy)
+        # 线性梯度背景: 对角线从亮到暗, ∇²=0 → 对 Helmholtz 和 SP 都公平
+        self.background = self.bg_amplitude * np.exp(-(xx + yy) / 0.7)
         self.fake_raw = self.background + stars
 
         return self.fake_raw
