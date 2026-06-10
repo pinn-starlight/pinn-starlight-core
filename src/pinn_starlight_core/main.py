@@ -70,13 +70,33 @@ ld = Loss.MSEData()
 lp = Loss.MSEPhysics()
 
 
-# === 线性背景: ∇²bg = 0 → I_city = α * bg ===
-# 公平测试 Helmholtz vs Screened Poisson（背景不再匹配任何一个方程）
-alpha = 2.0
-bg = 0.3 * (1.0 - (coords[:, 0] + coords[:, 1]) / 2.0)   # 跟 FakeRaw 后台一致
-I_city = alpha * bg.to(device)
-phy_weight = 0.01
+# === I_city: 三种模式任选 ===
+# A.固定: I_city = α·bg (线性背景 ∇²bg=0)
+# B.可学偏移: IcityLearnable(A=0.3, D=1.0), cx,cy 自动移向光穹
+# C.可学网格: IcityGrid(32), 完全不限制光源形状
+from pinn_starlight_core.nn.Icity import IcityFixed, IcityLearnable, IcityGrid
 
+# --- 当前: 模式 A (固定) ---
+alpha = 2.0
+bg = 0.3 * (1.0 - (coords[:, 0] + coords[:, 1]) / 2.0).to(device)
+ic = IcityFixed(alpha * bg)
+
+# --- 模式 B (可学偏移, 用单独 lr) ---
+# ic = IcityLearnable(A=0.3, D=1.0)
+# cx_cy_params = ic.extra_params()
+# optimizer = optim.Adam(params + cx_cy_params, lr=0.001)
+# # 给 cx,cy 单独设 lr:
+# optimizer = optim.Adam([
+#     {'params': params, 'lr': 0.001},
+#     {'params': cx_cy_params, 'lr': 0.05},   # 源点需要大 lr 才能移动
+# ])
+
+# --- 模式 C (可学网格) ---
+# ic = IcityGrid(32)
+# grid_params = ic.extra_params()
+# optimizer = optim.Adam(params + grid_params, lr=0.001)
+
+phy_weight = 0.01
 batch_size = max(1024, min(8192, coords.shape[0] // 200))
 steps = max(2000, coords.shape[0] // 100)
 
@@ -90,8 +110,14 @@ for step in tqdm(range(steps)):
         a = layer.forward(a)
     I_pred = a.squeeze()
 
+    # 模式A: I_city 已预计算，直接取 idx；模式B/C: 当场算 batch_xy
+    if isinstance(ic, IcityFixed):
+        I_city_b = ic.I_city[idx]
+    else:
+        I_city_b = ic(batch_xy)
+
     data_loss = ld.forward(batch_I, I_pred)
-    phys_loss = lp.forward(batch_I, I_pred, I_city[idx], alpha, phy_weight, batch_xy)
+    phys_loss = lp.forward(batch_I, I_pred, I_city_b, alpha, phy_weight, batch_xy)
     loss = data_loss + phys_loss
 
     optimizer.zero_grad()
