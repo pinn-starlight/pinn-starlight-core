@@ -70,16 +70,11 @@ ld = Loss.MSEData()
 lp = Loss.MSEPhysics()
 
 
-# === 可学习源点偏移 (夏 & Claude 合写) ===
-# 原来: r = sqrt(x² + y²), 源点固定在原点 → 只能处理图像中心对称光穹
-# 现在: r = sqrt((x-cx)² + (y-cy)²), cx,cy 随训练自动移到光穹方向
-from pinn_starlight_core.nn.Icity import LearnableSource
-
-source = LearnableSource(A=0.3, D=1.0, device=device)   # A,D 对应 Garstang 参数
-params += list(source.parameters())                       # cx,cy 加入优化器
-optimizer = optim.Adam(params, lr=0.001)
-
-alpha = 0.3
+# === 线性背景: ∇²bg = 0 → I_city = α * bg ===
+# 公平测试 Helmholtz vs Screened Poisson（背景不再匹配任何一个方程）
+alpha = 2.0
+bg = 0.3 * (1.0 - (coords[:, 0] + coords[:, 1]) / 2.0)   # 跟 FakeRaw 后台一致
+I_city = alpha * bg.to(device)
 phy_weight = 0.01
 
 batch_size = max(1024, min(8192, coords.shape[0] // 200))
@@ -95,18 +90,13 @@ for step in tqdm(range(steps)):
         a = layer.forward(a)
     I_pred = a.squeeze()
 
-    # I_city 由可学习源点实时计算 (每次前向更新)
-    I_city_batch = source(batch_xy)
-
     data_loss = ld.forward(batch_I, I_pred)
-    phys_loss = lp.forward(batch_I, I_pred, I_city_batch, alpha, phy_weight, batch_xy)
+    phys_loss = lp.forward(batch_I, I_pred, I_city[idx], alpha, phy_weight, batch_xy)
     loss = data_loss + phys_loss
 
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-    source.clamp_center()   # 约束源点在 [-1,1] 内
 
     if step % 500 == 0:
-        print(f"Step {step}, cx={source.cx.item():.4f}, cy={source.cy.item():.4f}, "
-              f"data={data_loss.item():.6f}, phys={phys_loss.item():.6f}")
+        print(f"Step {step}, data={data_loss.item():.6f}, phys={phys_loss.item():.6f}")
