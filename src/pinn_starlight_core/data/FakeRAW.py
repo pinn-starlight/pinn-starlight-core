@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import torch
 
 
@@ -25,12 +25,12 @@ class FakeRaw:
         self.device = device
 
     def get_fake_raw(self):
-        x = torch.linspace(0, 1, self.W).to(self.device)
-        y = torch.linspace(0, 1, self.H).to(self.device)
+        x = torch.linspace(0, 1, self.W, device=self.device)
+        y = torch.linspace(0, 1, self.H, device=self.device)
         xx, yy = torch.meshgrid(x, y, indexing='xy')
 
-        rng = numpy.random.default_rng(self.seed)
-        stars = torch.zeros(self.H, self.W).to(self.device)
+        rng = np.random.default_rng(self.seed)
+        stars = torch.zeros(self.H, self.W, device=self.device)
         centers = rng.random((self.n_stars, 2))
         for cx, cy in centers:
             cx, cy = float(cx), float(cy)
@@ -38,11 +38,12 @@ class FakeRaw:
             stars += self.star_brightness * torch.exp(-dist2 / 0.0007)
         self.stars = stars
 
-        self.background = self.bg_amplitude * torch.cos(3.0 * xx) * torch.cos(3.0 * yy)
+        # 指数衰减背景 (∇² ≠ 0, 公平测试所有 PDE)
+        self.background = self.bg_amplitude * torch.exp(-(xx + yy) / 0.7)
         self.fake_raw = self.background + stars
 
         return self.fake_raw
 
     def to_png(self, path="fake_sky.png"):
         import matplotlib.pyplot as plt
-        plt.imsave(path, self.fake_raw.numpy(), cmap='gray')
+        plt.imsave(path, self.fake_raw.cpu().numpy(), cmap='gray')

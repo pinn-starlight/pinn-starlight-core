@@ -39,7 +39,7 @@ class RAWLoader:
 
     def from_array(self, fake_raw):
         if isinstance(fake_raw, torch.Tensor):
-            fake_raw = fake_raw.numpy()
+            fake_raw = fake_raw.cpu().numpy()
         self.data = torch.from_numpy(fake_raw.astype(np.float32))
 
         self.W, self.H = self.data.shape

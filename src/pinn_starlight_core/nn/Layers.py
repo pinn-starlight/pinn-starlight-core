@@ -3,19 +3,9 @@ import torch.nn as nn
 import torch.nn.init as init
 from torch.nn.functional import tanh
 
-# TODO: 最终方程 ∇²I - αI + I_city = 0 中，拉普拉斯项是否需要乘以物理系数？
-#   autograd 对归一化坐标 [0,1] 求两次导，得到的 ∇² 是"单位域"的拉普拉斯。
-#   真实照片的坐标是像素尺度（如 4000×6000）或物理尺度（如 km），
-#   此时 ∂²/∂x² 的量纲不再是 1/normalized_unit²，而需要乘以 (实际尺度)⁻²。
-#   结论：归一化坐标下 autograd ∇² 可直接用；物理坐标下需要缩放因子。
-#   （夏，2026）
-#
-# TODO: 重写 SkyglowMLP — 删掉现在这个，自己从头写一个
-#   输入: layer_sizes = [2, 64, 32, 1]
-#   要求: __init__ 里存 Linear 和 Activation 交替排列
-#         forward 里 for 循环依次调用
-#         parameters() 遍历 layers 取出所有 SkyglowLinear 的参数
-#   提示: 输出层不加 Activation
+# Screened Poisson: ∇²I - αI + I_city = 0 (2026-06 最终形式)
+#   归一化坐标下 autograd ∇² = ∂²/∂x²+∂²/∂y² 直接可用。
+#   真图像素尺度在 rasterize 时归一化到 [0,1]，无需额外缩放。
 
 class SkyglowLinear(nn.Module):
     def __init__(self, in_dim, out_dim, lr = 0.001):
