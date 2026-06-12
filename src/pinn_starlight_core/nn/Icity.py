@@ -36,10 +36,10 @@ class LearnableIcity(nn.Module):
     def forward(self, coords):
         grid_coords = coords.unsqueeze(0).unsqueeze(0)
 
-        flipped_grid = torch.flip(self.grid, [2, 3])
+        grid_coords = 2 * grid_coords - 1
 
         values = F.grid_sample(
-            flipped_grid,
+            self.grid,
             grid_coords,
             mode='bilinear',
             padding_mode='border',
