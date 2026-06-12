@@ -5,6 +5,7 @@ import torch
 
 class RAWLoader:
     def __init__(self):
+        self.device = "cpu"
         self.data = None
         self.coords = None
         self.values = None
@@ -44,8 +45,10 @@ class RAWLoader:
 
         self.W, self.H = self.data.shape
 
-    def get_raw_data(self, device = "cpu"):
+    def get_raw_data(self, device):
+        self.device = device
+
         from pinn_starlight_core.utils.Rasterize import rasterize
-        coords, values = rasterize(self.data, device)
+        coords, values = rasterize(self.data, self.device)
 
         return coords, values, self.W, self.H

@@ -1,4 +1,4 @@
-"""PINN 光污染分离 — 主入口 (Screened Poisson, 2026-06 封存)"""
+"""PINN 光污染分离 — 主入口 (Screened Poisson, v2.0)"""
 import torch
 from torch import optim
 from tqdm.notebook import tqdm
@@ -7,8 +7,6 @@ import pinn_starlight_core.nn.Layers as Layers
 import pinn_starlight_core.nn.Losses as Loss
 import pinn_starlight_core.data.RAWLoader as RAWLoader
 import pinn_starlight_core.data.FakeRAW as FakeRAW
-from pinn_starlight_core.nn.Icity import IcityFixed, IcityLearnable, IcityGrid
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # --- 数据 ---
@@ -30,7 +28,7 @@ ld, lp = Loss.MSEData(), Loss.MSEPhysics()
 # Screened Poisson: ∇²I - αI + I_city = 0  →  I_city = (α - 2/D²)*bg
 alpha, D_bg = 4.0, 0.7
 bg = 0.3 * torch.exp(-(coords[:, 0] + coords[:, 1]) / D_bg).to(device)
-ic = IcityFixed((alpha - 2.0 / D_bg**2) * bg)
+I_city = (alpha - 2.0 / D_bg**2) * bg
 
 phy_weight = 0.01
 batch_size = max(1024, min(8192, coords.shape[0] // 200))
@@ -46,7 +44,7 @@ for step in tqdm(range(steps)):
         a = layer.forward(a)
     I_pred = a.squeeze()
 
-    I_city_b = ic.I_city[idx] if isinstance(ic, IcityFixed) else ic(batch_xy)
+    I_city_b = I_city[idx]
 
     data_loss = ld.forward(batch_I, I_pred)
     phys_loss = lp.forward(batch_I, I_pred, I_city_b, alpha, phy_weight, batch_xy)
