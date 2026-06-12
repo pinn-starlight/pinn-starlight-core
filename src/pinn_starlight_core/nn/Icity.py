@@ -36,14 +36,16 @@ class LearnableIcity(nn.Module):
     def forward(self, coords):
         grid_coords = coords.unsqueeze(0).unsqueeze(0)
 
+        flipped_grid = torch.flip(self.grid, [2, 3])
+
         values = F.grid_sample(
-            self.grid,
+            flipped_grid,
             grid_coords,
             mode='bilinear',
             padding_mode='border',
             align_corners=True,
         )
-        return values.squeeze(0).squeeze(0).T
+        return values.squeeze()
 
 
 class GarstangIcity(nn.Module):
