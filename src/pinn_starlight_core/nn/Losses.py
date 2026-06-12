@@ -26,17 +26,15 @@ class MSEPhysics:
         self.I_pred = None
         self.I_city = None
         self.alpha = None
-        self.weight = None
         self.coords = None
 
-    def forward(self, I_obs, I_pred, I_city, alpha, weight, coords):
+    def forward(self, I_obs, I_pred, I_city, alpha,coords):
         self.I_obs = I_obs
         self.I_pred = I_pred
         self.I_city = I_city
         self.alpha = alpha
-        self.weight = weight
         self.coords = coords
 
         f = laplacian(I_pred, coords) - alpha * I_pred + I_city
-        return weight * (f ** 2).mean()
+        return (f ** 2).mean()
 
