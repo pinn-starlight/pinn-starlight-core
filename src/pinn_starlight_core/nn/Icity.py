@@ -32,7 +32,6 @@ class LearnableIcity(nn.Module):
         self.values = values.mean().item()
         self.grid = nn.Parameter(torch.full((1, 1, grid_size, grid_size), self.values)).to(self.device)
 
-
     def forward(self, coords):
         grid_coords = coords.unsqueeze(0).unsqueeze(0)
 
