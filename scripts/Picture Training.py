@@ -1,0 +1,94 @@
+from pinn_starlight_core.nn import Icity
+import os
+import torch
+from torch import optim
+from tqdm.notebook import tqdm
+import matplotlib.pyplot as plt
+
+import pinn_starlight_core.nn.Layers as Layers
+import pinn_starlight_core.nn.Losses as Loss
+import pinn_starlight_core.data.RAWLoader as RAWLoader
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+input_dir  = '../../data/real_raw/origin'
+output_dir = '../../data/real_raw/trained'
+os.makedirs(output_dir, exist_ok=True)
+
+for file in sorted(os.listdir(input_dir)):
+    path = os.path.join(input_dir, file)
+    base = file.rsplit('.', 1)[0]
+    print(f'Processing {file}...')
+
+    loader = RAWLoader.RAWLoader()
+    loader.load(path)
+    coords, values, W, H = loader.get_raw_data(device)
+
+    layers = [
+        Layers.SkyglowLinear(2, 512).to(device),
+        Layers.SkyglowActivation(),
+        Layers.SkyglowLinear(512, 64).to(device),
+        Layers.SkyglowActivation(),
+        Layers.SkyglowLinear(64, 1).to(device),
+    ]
+
+    params = []
+    for layer in layers:
+        if isinstance(layer, Layers.SkyglowLinear):
+            params += list(layer.parameters())
+
+    ld = Loss.MSEData()
+    lp = Loss.MSEPhysics()
+
+    alpha = torch.nn.Parameter(torch.tensor(1.0, device=device))
+    I_city = Icity.LearnableIcity(values=values, device=device)
+    phy_weight = 0.1
+    tv_weight = 0.01
+
+    optimizer = optim.Adam(
+        params +
+        list(I_city.parameters()) +
+        [alpha],
+        lr = 0.001
+    )
+
+    for step in tqdm(range(int(coords.shape[0] / 330))):
+        idx = torch.randint(0, coords.shape[0], (int(coords.shape[0] / 420),))
+        batch_xy = coords[idx].to(device).clone().requires_grad_(True)
+        batch_I = values[idx].to(device)
+
+        a = batch_xy
+        for layer in layers:
+            a = layer.forward(a)
+        I_pred = a.squeeze().to(device)
+
+        I_city_vals = I_city(batch_xy)
+
+        data_loss = ld.forward(batch_I, I_pred)
+        phys_loss = lp.forward(batch_I, I_pred, I_city_vals, alpha, batch_xy)
+        tv_loss = Icity.tv_loss(I_city.grid)
+        loss = data_loss + phy_weight * phys_loss + tv_weight * tv_loss
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    with torch.no_grad():
+        I_pred = torch.empty(coords.shape[0])
+        for start in range(0, coords.shape[0], 50000):
+            end = min(start + 50000, coords.shape[0])
+            a = coords[start:end]
+            for layer in layers:
+                a = layer.forward(a)
+            I_pred[start:end] = a.squeeze()
+
+    obs = values.reshape(H, W).cpu().numpy()
+    pred = I_pred.reshape(H, W).cpu().numpy()
+    res = (obs - pred).clip(0, 1)
+
+    print(f'alpha:{alpha},')
+    plt.imsave(f'{output_dir}/{base}_observed.png', obs, cmap='gray')
+    plt.imsave(f'{output_dir}/{base}_predicted.png', pred, cmap='gray')
+    plt.imsave(f'{output_dir}/{base}_residual.png', res, cmap='gray')
+
+print('Done.')
