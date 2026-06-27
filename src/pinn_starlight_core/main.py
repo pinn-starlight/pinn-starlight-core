@@ -47,7 +47,7 @@ for step in tqdm(range(steps)):
     I_city_b = I_city[idx]
 
     data_loss = ld.forward(batch_I, I_pred)
-    phys_loss = lp.forward(batch_I, I_pred, I_city_b, alpha, phy_weight, batch_xy)
+    phys_loss = lp.forward(batch_I, I_pred, I_city_b, alpha, batch_xy)
     loss = data_loss + phys_loss
 
     optimizer.zero_grad()
