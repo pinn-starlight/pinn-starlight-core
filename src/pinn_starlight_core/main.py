@@ -12,7 +12,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # --- 数据 ---
 raw_loader = RAWLoader.RAWLoader()
 raw_loader.from_array(FakeRAW.FakeRaw().get_fake_raw())
-coords, values, W, H = raw_loader.get_raw_data(device=device)
+coords, values, W, H = raw_loader.get_gray_data(device=device)
 
 # --- 模型 ---
 layers = [
