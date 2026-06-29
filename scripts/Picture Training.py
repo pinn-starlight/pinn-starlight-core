@@ -22,7 +22,7 @@ for file in sorted(os.listdir(input_dir)):
 
     loader = RAWLoader.RAWLoader()
     loader.load(path)
-    coords, values, W, H = loader.get_raw_data(device)
+    coords, values, W, H = loader.get_gray_data(device)
 
     layers = [
         Layers.SkyglowLinear(2, 512).to(device),
