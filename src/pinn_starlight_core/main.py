@@ -5,7 +5,7 @@ from tqdm.notebook import tqdm
 
 import pinn_starlight_core.nn.Layers as Layers
 import pinn_starlight_core.nn.Losses as Loss
-import pinn_starlight_core.data.RAWLoader as RAWLoader
+import pinn_starlight_core.data.PhotoLoader as RAWLoader
 import pinn_starlight_core.data.FakeRAW as FakeRAW
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

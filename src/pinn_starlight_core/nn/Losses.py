@@ -1,6 +1,4 @@
-"""损失函数 — Screened Poisson (实验优选, 2026-06)"""
-import torch
-from pinn_starlight_core.utils.Laplacian import laplacian
+from pinn_starlight_core.utils.PINLaplacian import laplacian
 
 
 class MSEData:
