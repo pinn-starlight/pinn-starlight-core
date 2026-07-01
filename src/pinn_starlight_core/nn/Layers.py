@@ -3,9 +3,6 @@ import torch.nn as nn
 import torch.nn.init as init
 from torch.nn.functional import tanh
 
-# Screened Poisson: ∇²I - αI + I_city = 0 (2026-06 最终形式)
-#   归一化坐标下 autograd ∇² = ∂²/∂x²+∂²/∂y² 直接可用。
-#   真图像素尺度在 rasterize 时归一化到 [0,1]，无需额外缩放。
 
 class SkyglowLinear(nn.Module):
     def __init__(self, in_dim, out_dim, lr = 0.001):

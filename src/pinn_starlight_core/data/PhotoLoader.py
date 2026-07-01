@@ -10,7 +10,7 @@ class RAWLoader:
         self.brightness = None
         self.W = None
         self.H = None
-        self.path = None
+        self.path = "none"
 
     def load(self, path):
         self.path = path
@@ -46,14 +46,15 @@ class RAWLoader:
         self.rgb_data = array.astype(np.float32)
         if self.rgb_data.max() > 1.0:
             self.rgb_data /= self.rgb_data.max()
+
         self.H, self.W = self.rgb_data.shape[:2]
 
 
-    def get_gray_data(self, device):
+    def get_gray_data(self, device="cpu"):
         gray = np.mean(self.rgb_data, axis=2)
 
-        y = np.linspace(-1, 1, self.H)
         x = np.linspace(-1, 1, self.W)
+        y = np.linspace(-1, 1, self.H)
         xx, yy = np.meshgrid(x, y)
 
         coords = torch.tensor(
