@@ -42,12 +42,11 @@ for file in sorted(os.listdir(input_dir)):
 
     alpha = 0.5
 
-    I_city_field = Icity.Icity(path, device).get_icity()   # (H, W) 常数张量
-    I_city_flat = I_city_field.flatten()                   # (H*W,) 跟 coords/values 对齐
+    I_city_module = Icity.Icity(path, device).to(device)
     phy_weight = 0.1
 
     optimizer = optim.Adam(
-        params,
+        params + list(I_city_module.parameters()),
         lr = 0.001
     )
 
@@ -61,7 +60,7 @@ for file in sorted(os.listdir(input_dir)):
             a = layer.forward(a)
         I_pred = a.squeeze().to(device)
 
-        I_city_vals = I_city_flat[idx]
+        I_city_vals = I_city_module(batch_xy)
 
         data_loss = ld.forward(batch_I, I_pred)
         phys_loss = lp.forward(batch_I, I_pred, I_city_vals, alpha, batch_xy)
