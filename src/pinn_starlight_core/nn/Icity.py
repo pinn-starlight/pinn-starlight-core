@@ -1,28 +1,49 @@
-# TODO: 自己从头写 I_city — 粗卷积法
-#
-# 思路:
-#   粗卷积求粗光污染梯度 → 梯度指向源点方向 → 源点自然定位
-#   不需要显式参数 cx,cy, 也不需要 Garstang 解析式
-#
-# 当前问题: 星云和光污染在灰度上无法区分 (都亮+大尺度)
-#
-# 解法 A (分通道):
-#   光污染偏橙/黄 (钠灯 589nm), 星云偏红 (Hα 656nm) 或蓝绿 (OIII 500nm)
-#   R/G/B 分别算 I_city → 星云信号在某个通道明显弱
-#   通道间差异 = 区分星云 vs 光污染的钥匙
-#   前提: RAWLoader 已支持 RGB, get_raw_data 返三通道
-#
-# 解法 B (物理矫正):
-#   粗卷积 I_city 作为初值, LearnableIcity 在 PINN 训练中自调整
-#   PDE Screened Poisson 约束会反压误判: 星云不符合源项分布
-#   类似: 先用模糊图当"先验", 再让物理方程做"纠错"
-#
-# 参考:
-#   Screened Poisson: ∇²I - αI + I_city = 0
-#   I_city 容纳所有无法被拉普拉斯+αI吸收的贡献
-from torch import nn
+import numpy as np
+import torch
+import torchvision.transforms.functional as F
+import torch.nn.functional as F_conv
+
+import pinn_starlight_core.data.PhotoLoader as Loader
 
 
-class LearnableIcity(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class Icity:
+    def __init__(self, path, device, kernel_size = 21):
+        loader = Loader.RAWLoader()
+        loader.load(path)
+
+        self.gray_image = np.mean(loader.rgb_data, axis=2).astype(np.float32)
+        H, W = self.gray_image.shape
+        img_tensor = torch.from_numpy(self.gray_image).unsqueeze(0).unsqueeze(0)
+
+        self.kernel_size = kernel_size
+        sigma = self.kernel_size / 3.0
+        blurred_img = F.gaussian_blur(img_tensor,
+                                      kernel_size=[self.kernel_size, self.kernel_size],
+                                      sigma=[sigma, sigma],
+                                      ).squeeze()
+
+        laplacian_kernel = torch.tensor([[0., 1., 0.],
+                                         [1., -4., 1.],
+                                         [0., 1., 0.]])
+        laplacian_img = F_conv.conv2d(blurred_img.unsqueeze(0).unsqueeze(0),
+                                      weight=laplacian_kernel.unsqueeze(0).unsqueeze(0),
+                                      padding=1).squeeze()
+
+        bright_mask = (blurred_img > blurred_img.quantile(0.70)).float()
+        y_axis = torch.linspace(0, 1, H)
+        vertical_decay = (1 - torch.exp(-y_axis * 6))[:, None]
+
+        gy, gx = torch.gradient(blurred_img)
+        gradient_magnitude = torch.sqrt(gx**2 + gy**2)
+        edge_mask = (gradient_magnitude < gradient_magnitude.quantile(0.95)).float()
+
+        self.icity = (laplacian_img * edge_mask * vertical_decay * bright_mask).to(device)
+
+    def get_icity(self):
+        return self.icity
+
+
+
+
+
+

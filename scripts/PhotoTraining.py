@@ -11,8 +11,8 @@ import pinn_starlight_core.data.PhotoLoader as RAWLoader
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-input_dir  = '../../data/real_raw/origin'
-output_dir = '../../data/real_raw/trained'
+input_dir  = '../data/real_raw/origin'
+output_dir = '../data/real_raw/trained'
 os.makedirs(output_dir, exist_ok=True)
 
 for file in sorted(os.listdir(input_dir)):
@@ -40,15 +40,14 @@ for file in sorted(os.listdir(input_dir)):
     ld = Loss.MSEData()
     lp = Loss.MSEPhysics()
 
-    alpha = torch.nn.Parameter(torch.tensor(1.0, device=device))
-    I_city = Icity.LearnableIcity(values=values, device=device)
+    alpha = 0.5
+
+    I_city_field = Icity.Icity(path, device).get_icity()   # (H, W) 常数张量
+    I_city_flat = I_city_field.flatten()                   # (H*W,) 跟 coords/values 对齐
     phy_weight = 0.1
-    tv_weight = 0.01
 
     optimizer = optim.Adam(
-        params +
-        list(I_city.parameters()) +
-        [alpha],
+        params,
         lr = 0.001
     )
 
@@ -62,19 +61,18 @@ for file in sorted(os.listdir(input_dir)):
             a = layer.forward(a)
         I_pred = a.squeeze().to(device)
 
-        I_city_vals = I_city(batch_xy)
+        I_city_vals = I_city_flat[idx]
 
         data_loss = ld.forward(batch_I, I_pred)
         phys_loss = lp.forward(batch_I, I_pred, I_city_vals, alpha, batch_xy)
-        tv_loss = Icity.tv_loss(I_city.grid)
-        loss = data_loss + phy_weight * phys_loss + tv_weight * tv_loss
+        loss = data_loss + phy_weight * phys_loss
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
     with torch.no_grad():
-        I_pred = torch.empty(coords.shape[0])
+        I_pred = torch.empty(coords.shape[0], device=device)
         for start in range(0, coords.shape[0], 50000):
             end = min(start + 50000, coords.shape[0])
             a = coords[start:end]
