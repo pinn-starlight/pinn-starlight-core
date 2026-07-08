@@ -1,3 +1,5 @@
+from torch.onnx._internal.fx.passes import decomp
+
 from pinn_starlight_core.nn import Icity
 import os
 import torch
@@ -9,7 +11,7 @@ import pinn_starlight_core.nn.Losses as Loss
 import pinn_starlight_core.data.PhotoLoader as RAWLoader
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+print(device)
 input_dir  = '/workspace/data/origin'
 
 for file in sorted(os.listdir(input_dir)):
