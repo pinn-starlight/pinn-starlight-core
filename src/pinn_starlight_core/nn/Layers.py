@@ -19,10 +19,9 @@ class SkyglowLinear(nn.Module):
         self.a_l = a_l
         return a_l @ self.W_l + self.b_l
 
-class SkyglowActivation:
+class SkyglowActivation(nn.Module):
     def __init__(self) -> None :
-        self.Z_l = None
+        super().__init__()
 
     def forward(self, Z_l):
-        self.Z_l = Z_l
         return tanh(Z_l)
