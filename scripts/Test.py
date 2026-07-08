@@ -2,7 +2,7 @@ from pinn_starlight_core.nn import Icity
 import os
 import torch
 from torch import optim
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 import pinn_starlight_core.nn.Layers as Layers
 import pinn_starlight_core.nn.Losses as Loss
@@ -65,6 +65,7 @@ for file in sorted(os.listdir(input_dir)):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        print(f"loss:{loss}")
+        if step % 500 == 0:
+            print(f"loss:{loss}")
 
 print('Done.')
