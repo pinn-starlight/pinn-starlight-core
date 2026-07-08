@@ -46,8 +46,8 @@ for file in sorted(os.listdir(input_dir)):
         lr = 0.001
     )
 
-    for step in tqdm(range(int(coords.shape[0] / 330))):
-        idx = torch.randint(0, coords.shape[0], (int(coords.shape[0] / 420),))
+    for step in tqdm(range(int(coords.shape[0] * 0.618))):
+        idx = torch.randint(0, coords.shape[0], (int(coords.shape[0] * 0.618 * 0.75),))
         batch_xy = coords[idx].to(device).clone().requires_grad_(True)
         batch_I = values[idx].to(device)
 
