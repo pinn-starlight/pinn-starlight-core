@@ -10,6 +10,11 @@ import pinn_starlight_core.nn.Losses as Loss
 import pinn_starlight_core.data.PhotoLoader as RAWLoader
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f'Using device: {device}')
+if torch.cuda.is_available():
+    print(f'GPU count: {torch.cuda.device_count()}')
+    for i in range(torch.cuda.device_count()):
+        print(f'GPU {i}: {torch.cuda.get_device_name(i)}')
 
 input_dir  = '/workspace/data/origin'
 output_dir = '/workspace/data/trained'
@@ -24,18 +29,17 @@ for file in sorted(os.listdir(input_dir)):
     loader.load(path)
     coords, values, W, H = loader.get_gray_data(device)
 
-    layers = [
-        Layers.SkyglowLinear(2, 512).to(device),
+    model = torch.nn.Sequential(
+        Layers.SkyglowLinear(2, 512),
         Layers.SkyglowActivation(),
-        Layers.SkyglowLinear(512, 64).to(device),
+        Layers.SkyglowLinear(512, 64),
         Layers.SkyglowActivation(),
-        Layers.SkyglowLinear(64, 1).to(device),
-    ]
+        Layers.SkyglowLinear(64, 1),
+    ).to(device)
 
-    params = []
-    for layer in layers:
-        if isinstance(layer, Layers.SkyglowLinear):
-            params += list(layer.parameters())
+    if torch.cuda.device_count() > 1:
+        print(f'Using {torch.cuda.device_count()} GPUs with DataParallel')
+        model = torch.nn.DataParallel(model)
 
     ld = Loss.MSEData()
     lp = Loss.MSEPhysics()
@@ -46,7 +50,7 @@ for file in sorted(os.listdir(input_dir)):
     phy_weight = 0.1
 
     optimizer = optim.Adam(
-        params + list(I_city_module.parameters()),
+        list(model.parameters()) + list(I_city_module.parameters()),
         lr = 0.001
     )
 
@@ -55,10 +59,7 @@ for file in sorted(os.listdir(input_dir)):
         batch_xy = coords[idx].to(device).clone().requires_grad_(True)
         batch_I = values[idx].to(device)
 
-        a = batch_xy
-        for layer in layers:
-            a = layer.forward(a)
-        I_pred = a.squeeze().to(device)
+        I_pred = model(batch_xy).squeeze().to(device)
 
         I_city_vals = I_city_module(batch_xy)
 
@@ -74,10 +75,7 @@ for file in sorted(os.listdir(input_dir)):
         I_pred = torch.empty(coords.shape[0], device=device)
         for start in range(0, coords.shape[0], 50000):
             end = min(start + 50000, coords.shape[0])
-            a = coords[start:end]
-            for layer in layers:
-                a = layer.forward(a)
-            I_pred[start:end] = a.squeeze()
+            I_pred[start:end] = model(coords[start:end]).squeeze()
 
     obs = values.reshape(H, W).cpu().numpy()
     pred = I_pred.reshape(H, W).cpu().numpy()
