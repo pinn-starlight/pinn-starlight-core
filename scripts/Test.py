@@ -66,6 +66,6 @@ for file in sorted(os.listdir(input_dir)):
         loss.backward()
         optimizer.step()
         if step % 500 == 0:
-            print(f"loss:{loss}")
+            print(f"loss:{loss.item():.6f}")
 
 print('Done.')
