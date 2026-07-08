@@ -11,7 +11,7 @@ dependencies = [
     "tqdm==4.66.5",
     "torch==2.7.1",
     "torchvision"
-]x
+]
 
 [dependency-groups]
 dev = [
