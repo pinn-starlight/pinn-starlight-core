@@ -11,8 +11,8 @@ import pinn_starlight_core.data.PhotoLoader as RAWLoader
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-input_dir  = '../data/real_raw/origin'
-output_dir = '../data/real_raw/trained'
+input_dir  = '/workspace/data/origin'
+output_dir = '/workspace/data/trained'
 os.makedirs(output_dir, exist_ok=True)
 
 for file in sorted(os.listdir(input_dir)):
