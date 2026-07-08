@@ -47,7 +47,7 @@ for file in sorted(os.listdir(input_dir)):
     alpha = 0.5
 
     I_city_module = Icity.Icity(path, device).to(device)
-    phy_weight = 0.1
+    phy_weight = 0.3
 
     optimizer = optim.Adam(
         list(model.parameters()) + list(I_city_module.parameters()),
