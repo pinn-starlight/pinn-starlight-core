@@ -1,5 +1,3 @@
-from torch.onnx._internal.fx.passes import decomp
-
 from pinn_starlight_core.nn import Icity
 import os
 import torch
