@@ -15,7 +15,6 @@ input_dir  = '/workspace/data/origin'
 for file in sorted(os.listdir(input_dir)):
     path = os.path.join(input_dir, file)
     base = file.rsplit('.', 1)[0]
-    print(f'Processing {file}...')
 
     loader = RAWLoader.RAWLoader()
     loader.load(path)
