@@ -1,5 +1,3 @@
-from torch.onnx._internal.fx.passes import decomp
-
 from pinn_starlight_core.nn import Icity
 import os
 import torch
@@ -48,8 +46,8 @@ for file in sorted(os.listdir(input_dir)):
         lr = 0.001
     )
 
-    for step in tqdm(range(int(coords.shape[0] * 0.000618))):
-        idx = torch.randint(0, coords.shape[0], (int(coords.shape[0] * 0.00618 * 0.75),))
+    for step in tqdm(range(int(coords.shape[0] * 0.000618 * 0.7))):
+        idx = torch.randint(0, coords.shape[0], (int(coords.shape[0] * 0.00618 * 0.2),))
         batch_xy = coords[idx].to(device).clone().requires_grad_(True)
         batch_I = values[idx].to(device)
 
@@ -68,6 +66,6 @@ for file in sorted(os.listdir(input_dir)):
         loss.backward()
         optimizer.step()
         if step % 500 == 0:
-            print(f"loss:{loss.item():.6f}")
+            print(f"loss:{loss.item()*100:.6f}")
 
 print('Done.')
