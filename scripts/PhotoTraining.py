@@ -44,16 +44,16 @@ for file in sorted(os.listdir(input_dir)):
 
     ld = Loss.MSEData()
     lp = Loss.MSEPhysics()
-
-    alpha = LossAlpha.Alpha(0.5)
+    alpha_module = LossAlpha.Alpha(0.5).to(device)
     kernel_size = 21
 
-    I_city = Icity.Icity(path, device, kernel_size, alpha).to(device)
+    I_city = Icity.Icity(path, device, kernel_size).to(device)
     phy_weight = 0.5
 
     optimizer = optim.Adam(
         list(model.parameters()) +
-        list(I_city.parameters()),
+        list(I_city.parameters()) +
+        list(alpha_module.parameters()),
         lr = 0.001
     )
 
@@ -61,13 +61,14 @@ for file in sorted(os.listdir(input_dir)):
         sampler = torch.randint(0, coords.shape[0], (int(coords.shape[0] * 0.00618 * 0.1),))
         batch_xy = coords[sampler].to(device).clone().requires_grad_(True)
         batch_I = values[sampler].to(device)
+        alpha_val = alpha_module()
 
         I_pred = model(batch_xy).squeeze().to(device)
 
-        I_city_vals = I_city(batch_xy)
+        I_city_vals = I_city(batch_xy, alpha_val)
 
         data_loss = ld.forward(batch_I, I_pred)
-        phys_loss = lp.forward(batch_I, I_pred, I_city_vals, alpha, batch_xy)
+        phys_loss = lp.forward(batch_I, I_pred, I_city_vals, alpha_val, batch_xy)
         loss = data_loss + phy_weight * phys_loss
 
         optimizer.zero_grad()
@@ -84,7 +85,7 @@ for file in sorted(os.listdir(input_dir)):
     pred = I_pred.reshape(H, W).cpu().numpy()
     res = (obs - pred).clip(0, 1)
 
-    print(f'alpha:{alpha.forward().view()},')
+    print(f'alpha:{alpha_module().item()},')
     plt.imsave(f'{output_dir}/{base}_observed.png', obs, cmap='gray')
     plt.imsave(f'{output_dir}/{base}_predicted.png', pred, cmap='gray')
     plt.imsave(f'{output_dir}/{base}_residual.png', res, cmap='gray')

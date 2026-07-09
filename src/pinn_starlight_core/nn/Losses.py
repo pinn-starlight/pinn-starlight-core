@@ -31,7 +31,6 @@ class MSEPhysics:
         self.I_obs = I_obs
         self.I_pred = I_pred
         self.I_city = I_city
-        alpha = alpha()
         self.coords = coords
 
         f = laplacian(I_pred, coords) - alpha * I_pred + I_city
