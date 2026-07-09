@@ -46,22 +46,22 @@ for file in sorted(os.listdir(input_dir)):
 
     alpha = 0.5
 
-    I_city_module = Icity.Icity(path, device).to(device)
+    I_city = Icity.Icity(path, device).to(device)
     phy_weight = 0.5
 
     optimizer = optim.Adam(
-        list(model.parameters()) + list(I_city_module.parameters()),
+        list(model.parameters()) + list(I_city.parameters()),
         lr = 0.001
     )
 
     for step in tqdm(range(int(coords.shape[0] * 0.00618 * 0.25))):
-        idx = torch.randint(0, coords.shape[0], (int(coords.shape[0]  * 0.00618 * 0.1),))
-        batch_xy = coords[idx].to(device).clone().requires_grad_(True)
-        batch_I = values[idx].to(device)
+        sampler = torch.randint(0, coords.shape[0], (int(coords.shape[0] * 0.00618 * 0.1),))
+        batch_xy = coords[sampler].to(device).clone().requires_grad_(True)
+        batch_I = values[sampler].to(device)
 
         I_pred = model(batch_xy).squeeze().to(device)
 
-        I_city_vals = I_city_module(batch_xy)
+        I_city_vals = I_city(batch_xy)
 
         data_loss = ld.forward(batch_I, I_pred)
         phys_loss = lp.forward(batch_I, I_pred, I_city_vals, alpha, batch_xy)
