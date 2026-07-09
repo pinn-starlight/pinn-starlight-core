@@ -45,8 +45,9 @@ for file in sorted(os.listdir(input_dir)):
     lp = Loss.MSEPhysics()
 
     alpha = 0.5
+    kernel_size = 21
 
-    I_city = Icity.Icity(path, device).to(device)
+    I_city = Icity.Icity(path, device, kernel_size, alpha).to(device)
     phy_weight = 0.5
 
     optimizer = optim.Adam(
