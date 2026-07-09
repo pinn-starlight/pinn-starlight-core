@@ -13,7 +13,7 @@ class Icity(nn.Module):
     def __init__(self, path, device, kernel_size=31, alpha=0.5):
         super().__init__()
         self.device = device
-        self.alpha = torch.as_tensor(alpha)
+        self.alpha = torch.as_tensor(alpha).to(device)
 
         loader = Loader.RAWLoader()
         loader.load(path)
@@ -28,11 +28,13 @@ class Icity(nn.Module):
 
         bright_mask = blurred > blurred.quantile(0.95)
         ys, xs = torch.where(bright_mask)
-        x_init = xs.float().mean().item() / W
-        y_init = ys.float().mean().item() / H
+        x_axis = torch.linspace(-1, 1, W)
+        y_axis = torch.linspace(-1, 1, H)
+        x_init = x_axis[xs].mean()
+        y_init = y_axis[ys].mean()
 
-        self.x = nn.Parameter(torch.tensor([x_init], device=device))
-        self.y = nn.Parameter(torch.tensor([y_init], device=device))
+        self.x = nn.Parameter(x_init.to(device).unsqueeze(0))
+        self.y = nn.Parameter(y_init.to(device).unsqueeze(0))
 
     def forward(self, coords):
         x = coords[:, 0]
