@@ -7,6 +7,8 @@ import pinn_starlight_core.data.PhotoLoader as Loader
 
 
 # Fixed A,B (A,B = 1)
+# 当前版本使用以可学习 (x, y) 为中心的单源解析 I_city。
+# TODO: 将点源式 I_city 扩展为可学习范围/边界的版本，用源区尺度或轮廓来表达光污染覆盖范围。
 class Icity(nn.Module):
     def __init__(self, path, device, kernel_size=31, alpha=0.5):
         super().__init__()

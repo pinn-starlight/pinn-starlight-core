@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.init as init
 from torch.nn.functional import tanh
 
-
 class SkyglowLinear(nn.Module):
     def __init__(self, in_dim, out_dim, lr = 0.001):
         super(SkyglowLinear, self).__init__()
