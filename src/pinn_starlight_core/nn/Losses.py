@@ -1,5 +1,7 @@
 from pinn_starlight_core.utils.PINLaplacian import laplacian
 
+# TODO: 若改为 RGB 训练，优先在 data loss 中比较三通道观测与预测。
+# TODO: 物理损失可先只约束亮度/灰度分量，再评估是否需要扩展到逐通道 PDE。
 
 class MSEData:
     def __init__(self):
