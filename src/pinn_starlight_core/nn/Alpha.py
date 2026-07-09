@@ -1,4 +1,17 @@
-# 可学习 alpha 说明
-# alpha = 1 / D**2，其中 D 表示等效散射尺度。
-# TODO: 通过学习正值 D（或 log_D）来得到 alpha，而不是直接学习裸 alpha。
-# TODO: 为消融实验保留 alpha 与 I_city 的解耦设置，避免两者互相补偿。
+import torch
+from torch import nn
+
+
+class Alpha(nn.Module):
+    def __init__(self, alpha_init=0.5, alpha_min=0.3, alpha_max=2.0):
+        super().__init__()
+        self.alpha_min = alpha_min
+        self.alpha_max = alpha_max
+
+        p = (alpha_init - alpha_min) / (alpha_max - alpha_min)
+        p = torch.tensor(p, dtype=torch.float32).clamp(1e-6, 1 - 1e-6)
+
+        self.raw_alpha = nn.Parameter(torch.logit(p))
+
+    def forward(self):
+        return self.alpha_min + (self.alpha_max - self.alpha_min) * torch.sigmoid(self.raw_alpha)

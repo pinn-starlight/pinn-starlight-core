@@ -25,14 +25,13 @@ class MSEPhysics:
         self.I_obs = None
         self.I_pred = None
         self.I_city = None
-        self.alpha = None
         self.coords = None
 
-    def forward(self, I_obs, I_pred, I_city, alpha,coords):
+    def forward(self, I_obs, I_pred, I_city, alpha, coords):
         self.I_obs = I_obs
         self.I_pred = I_pred
         self.I_city = I_city
-        self.alpha = alpha
+        alpha = alpha()
         self.coords = coords
 
         f = laplacian(I_pred, coords) - alpha * I_pred + I_city

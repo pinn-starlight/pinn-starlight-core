@@ -10,10 +10,12 @@ import pinn_starlight_core.data.PhotoLoader as Loader
 # 当前版本使用以可学习 (x, y) 为中心的单源解析 I_city。
 # TODO: 将点源式 I_city 扩展为可学习范围/边界的版本，用源区尺度或轮廓来表达光污染覆盖范围。
 class Icity(nn.Module):
-    def __init__(self, path, device, kernel_size=31, alpha=0.5):
+    def __init__(self, path, device, kernel_size=31, alpha=None):
         super().__init__()
         self.device = device
-        self.alpha = torch.as_tensor(alpha).to(device)
+        self.alpha = alpha
+        if alpha is None:
+            raise ValueError("alpha must be a tensor")
 
         loader = Loader.RAWLoader()
         loader.load(path)
@@ -39,6 +41,7 @@ class Icity(nn.Module):
     def forward(self, coords):
         x = coords[:, 0]
         y = coords[:, 1]
+        alpha = self.alpha()
         r = torch.sqrt((x - self.x) ** 2 + (y - self.y) ** 2 + 1e-8)
-        f = 2 * self.alpha * torch.cos(r * torch.sqrt(self.alpha)) + (torch.sqrt(self.alpha) / r) * torch.sin(r * torch.sqrt(self.alpha)) - 16 * (r**2) * (self.alpha**2) + (r**4) * (self.alpha ** 3)
+        f = 2 * alpha * torch.cos(r * torch.sqrt(alpha)) + (torch.sqrt(alpha) / r) * torch.sin(r * torch.sqrt(alpha)) - 16 * (r**2) * (alpha**2) + (r**4) * (alpha ** 3)
         return f

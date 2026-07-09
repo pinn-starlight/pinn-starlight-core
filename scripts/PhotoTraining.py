@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import pinn_starlight_core.nn.Layers as Layers
 import pinn_starlight_core.nn.Losses as Loss
 import pinn_starlight_core.data.PhotoLoader as RAWLoader
+import pinn_starlight_core.nn.Alpha as LossAlpha
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
@@ -44,14 +45,15 @@ for file in sorted(os.listdir(input_dir)):
     ld = Loss.MSEData()
     lp = Loss.MSEPhysics()
 
-    alpha = 0.5
+    alpha = LossAlpha.Alpha(0.5)
     kernel_size = 21
 
     I_city = Icity.Icity(path, device, kernel_size, alpha).to(device)
     phy_weight = 0.5
 
     optimizer = optim.Adam(
-        list(model.parameters()) + list(I_city.parameters()),
+        list(model.parameters()) +
+        list(I_city.parameters()),
         lr = 0.001
     )
 
@@ -82,7 +84,7 @@ for file in sorted(os.listdir(input_dir)):
     pred = I_pred.reshape(H, W).cpu().numpy()
     res = (obs - pred).clip(0, 1)
 
-    print(f'alpha:{alpha},')
+    print(f'alpha:{alpha.forward().view()},')
     plt.imsave(f'{output_dir}/{base}_observed.png', obs, cmap='gray')
     plt.imsave(f'{output_dir}/{base}_predicted.png', pred, cmap='gray')
     plt.imsave(f'{output_dir}/{base}_residual.png', res, cmap='gray')
