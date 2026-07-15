@@ -34,10 +34,12 @@ class Icity(nn.Module):
 
         self.x = nn.Parameter(x_init.to(device).unsqueeze(0))
         self.y = nn.Parameter(y_init.to(device).unsqueeze(0))
+        self.raw_sigma = nn.Parameter(torch.tensor([0.0], device=self.device))
 
     def forward(self, coords, alpha):
         x = coords[:, 0]
         y = coords[:, 1]
         r = torch.sqrt((x - self.x) ** 2 + (y - self.y) ** 2 + 1e-8)
         f = 2 * alpha * torch.cos(r * torch.sqrt(alpha)) + (torch.sqrt(alpha) / r) * torch.sin(r * torch.sqrt(alpha)) - 16 * (r**2) * (alpha**2) + (r**4) * (alpha ** 3)
-        return f
+        sigma = 0.05 + 0.75 * torch.sigmoid(self.raw_sigma)
+        return f + sigma
