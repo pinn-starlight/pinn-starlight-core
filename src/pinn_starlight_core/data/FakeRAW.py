@@ -38,7 +38,6 @@ class FakeRaw:
             stars += self.star_brightness * torch.exp(-dist2 / 0.0007)
         self.stars = stars
 
-        # 指数衰减背景 (∇² ≠ 0, 公平测试所有 PDE)
         self.background = self.bg_amplitude * torch.exp(-(xx + yy) / 0.7)
         self.fake_raw = self.background + stars
 

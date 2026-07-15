@@ -1,7 +1,8 @@
-"""损失函数 — Screened Poisson (实验优选, 2026-06)"""
-import torch
-from pinn_starlight_core.utils.Laplacian import laplacian
+from pinn_starlight_core.utils.PINLaplacian import laplacian
 
+# TODO: 若改为 RGB 训练，优先在 data loss 中比较三通道观测与预测。
+# TODO: 物理损失可先只约束亮度/灰度分量，再评估是否需要扩展到逐通道 PDE。
+# TODO：避开建筑物
 
 class MSEData:
     def __init__(self):
@@ -25,18 +26,14 @@ class MSEPhysics:
         self.I_obs = None
         self.I_pred = None
         self.I_city = None
-        self.alpha = None
-        self.weight = None
         self.coords = None
 
-    def forward(self, I_obs, I_pred, I_city, alpha, weight, coords):
+    def forward(self, I_obs, I_pred, I_city, alpha, coords):
         self.I_obs = I_obs
         self.I_pred = I_pred
         self.I_city = I_city
-        self.alpha = alpha
-        self.weight = weight
         self.coords = coords
 
         f = laplacian(I_pred, coords) - alpha * I_pred + I_city
-        return weight * (f ** 2).mean()
+        return (f ** 2).mean()
 
