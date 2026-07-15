@@ -1,86 +1,43 @@
-"""可学习 I_city — 全重写 (2026-06)
-
-支持三种模式:
-  A. 固定解析公式: I_city = (α - 18)*bg (cos背景) 或 α*bg (线性背景)
-  B. 单源可学习偏移: I_city = A*cos(r/D) + B*(r/D)^4, cx,cy 可学
-  C. 低分辨率网格: 32×32 参数 I_city 场, 双线性插值到全分辨率
-
-用法:
-  ic = IcityFixed(alpha=2.0, bg_func=bg)        # 模式A
-  ic = IcityLearnable(A=0.3, D=1.0, lr_c=0.01) # 模式B
-  ic = IcityGrid(size=32, device='cpu')         # 模式C
-  I_city = ic(coords)                           # (N,)
-  params += ic.parameters()                     # 可学参数加入 Adam
-"""
-
+import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+import torchvision.transforms.functional as F
+
+import pinn_starlight_core.data.PhotoLoader as Loader
 
 
-# ============================================================
-# 模式 A: 固定 I_city
-# ============================================================
-class IcityFixed:
-    """已知背景下的固定 I_city。不产生任何可学习参数。"""
-    def __init__(self, I_city_tensor):
-        self.I_city = I_city_tensor
-
-    def __call__(self, coords):
-        return self.I_city
-
-    def parameters(self):
-        return []
-
-
-# ============================================================
-# 模式 B: 单源可学习偏移
-# ============================================================
-class IcityLearnable(nn.Module):
-    """Garstang 形式 r = sqrt((x-cx)²+(y-cy)²), cx,cy 可学。
-
-    cx,cy 初始化为图像中心 (0.5, 0.5)，用单独的学习率驱动。
-    """
-    def __init__(self, A=0.3, B=0.02, D=1.0):
+# Fixed A,B (A,B = 1)
+# 当前版本使用以可学习 (x, y) 为中心的单源解析 I_city。
+# TODO: 将点源式 I_city 扩展为可学习范围/边界的版本，用源区尺度或轮廓来表达光污染覆盖范围。
+class Icity(nn.Module):
+    def __init__(self, path, device, kernel_size=31):
         super().__init__()
-        self.A = A
-        self.B = B
-        self.D = D
-        # 从图像中心出发（不是 0），梯度信号更强
-        self.cx = nn.Parameter(torch.tensor([0.5]))
-        self.cy = nn.Parameter(torch.tensor([0.5]))
+        self.device = device
 
-    def forward(self, coords):
-        dx = coords[:, 0] - self.cx
-        dy = coords[:, 1] - self.cy
-        r = torch.sqrt(dx ** 2 + dy ** 2 + 1e-8)
-        r_D = r / self.D
-        return self.A * torch.cos(r_D) + self.B * (r_D ** 4)
+        loader = Loader.RAWLoader()
+        loader.load(path)
+        gray_img = np.mean(loader.rgb_data, axis=2).astype(np.float32)
+        H, W = gray_img.shape
 
-    def extra_params(self):
-        """返回 (cx, cy) 给独立优化器（学习率可以调得比主网络大）"""
-        return [self.cx, self.cy]
+        img_tensor = torch.from_numpy(gray_img).unsqueeze(0).unsqueeze(0)
+        sigma = kernel_size / 3.0
+        blurred = F.gaussian_blur(img_tensor,
+                                   kernel_size=[kernel_size, kernel_size],
+                                   sigma=[sigma, sigma]).squeeze()
 
+        bright_mask = blurred > blurred.quantile(0.95)
+        ys, xs = torch.where(bright_mask)
+        x_axis = torch.linspace(-1, 1, W)
+        y_axis = torch.linspace(-1, 1, H)
+        x_init = x_axis[xs].mean()
+        y_init = y_axis[ys].mean()
 
-# ============================================================
-# 模式 C: 低分辨率可学习网格
-# ============================================================
-class IcityGrid(nn.Module):
-    """32×32 可学习 I_city 场，双线性插值到任意坐标。
+        self.x = nn.Parameter(x_init.to(device).unsqueeze(0))
+        self.y = nn.Parameter(y_init.to(device).unsqueeze(0))
 
-    没有光源形状假设——完全让网络从数据里学。
-    """
-    def __init__(self, grid_size=32):
-        super().__init__()
-        self.grid_size = grid_size
-        self.grid = nn.Parameter(torch.zeros(1, 1, grid_size, grid_size))
-
-    def forward(self, coords):
-        # coords: (N, 2), 归一化到 [0,1] 映射到 [-1,1]
-        xy = coords[:, :2].unsqueeze(0).unsqueeze(0) * 2.0 - 1.0   # (1, N, 1, 2)
-        sampled = F.grid_sample(self.grid, xy, align_corners=True,
-                                padding_mode='border')               # (1, 1, 1, N)
-        return sampled.squeeze()                                     # (N,)
-
-    def extra_params(self):
-        return [self.grid]
+    def forward(self, coords, alpha):
+        x = coords[:, 0]
+        y = coords[:, 1]
+        r = torch.sqrt((x - self.x) ** 2 + (y - self.y) ** 2 + 1e-8)
+        f = 2 * alpha * torch.cos(r * torch.sqrt(alpha)) + (torch.sqrt(alpha) / r) * torch.sin(r * torch.sqrt(alpha)) - 16 * (r**2) * (alpha**2) + (r**4) * (alpha ** 3)
+        return f

@@ -3,10 +3,6 @@ import torch.nn as nn
 import torch.nn.init as init
 from torch.nn.functional import tanh
 
-# Screened Poisson: ∇²I - αI + I_city = 0 (2026-06 最终形式)
-#   归一化坐标下 autograd ∇² = ∂²/∂x²+∂²/∂y² 直接可用。
-#   真图像素尺度在 rasterize 时归一化到 [0,1]，无需额外缩放。
-
 class SkyglowLinear(nn.Module):
     def __init__(self, in_dim, out_dim, lr = 0.001):
         super(SkyglowLinear, self).__init__()
@@ -22,10 +18,9 @@ class SkyglowLinear(nn.Module):
         self.a_l = a_l
         return a_l @ self.W_l + self.b_l
 
-class SkyglowActivation:
+class SkyglowActivation(nn.Module):
     def __init__(self) -> None :
-        self.Z_l = None
+        super().__init__()
 
     def forward(self, Z_l):
-        self.Z_l = Z_l
         return tanh(Z_l)
