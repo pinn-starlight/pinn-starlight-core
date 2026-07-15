@@ -1,106 +1,81 @@
 # PINN Starlight
 
-> 基于物理信息神经网络的城市光穹反演与深空信号恢复
+> 基于物理约束的低噪声星空图像光污染背景建模与天体信号分离
 
-面向业余天文摄影师的星空光污染去除工具。输入城市近郊拍摄的星空照片（RAW/PNG/JPG），通过物理信息神经网络（PINN）估算光污染的空间分布并从原图中分离，恢复被光穹淹没的暗弱天体信号。
+PINN Starlight 是一个面向低噪声星空图像的研究型原型项目。它使用物理信息神经网络（PINN）对光污染背景进行建模，并尝试将其与真实天体信号分离。
 
-**信号分离，不是信号生成** — 不脑补、不伪造，所有输出可溯源到原始像素。
+当前版本聚焦于三件事：
 
----
-
-## v2.0 精简版本（2026-06）
-
-> v1.0 已验证核心管线。v2.0 做减法——删掉实验脚本和 AI 生成代码，只保留自己写的核心模块。可学习组件（I_city, α）清空为 TODO，下一步自己实现。
-
-### v2.0 改动
-
-| 操作 | 内容 |
-| --- | --- |
-| 删除 | `test_mc_dropout.py`, `test_limiting_mag.py`（实验脚本） |
-| 清空 | `nn/Icity.py` → TODO（之前是 AI 写的） |
-| 新建 | `nn/Alpha.py` → TODO（可学习 α 的设计文档） |
-| 精简 | `main.py` 去掉 Icity 依赖，直接手算 I_city |
-| 简化 | Notebook 从 7 个 cell 缩到 4 个有效 cell |
-
-- [x] Screened Poisson PDE 推导（∇²I − αI + I_city = 0，K₀族指数衰减）
-- [x] 合成数据生成器（指数梯度背景 + 高斯星点 + 随机暗星）
-- [x] 全连接 MLP（Tanh 激活，Xavier 初始化）
-- [x] 物理损失 + 数据损失联合训练
-- [x] `autograd` 自动二阶微分计算拉普拉斯
-- [x] 三种 `I_city` 模式：固定公式 / 可学习源点偏移 / 低分辨率可学习网格
-- [x] 真实照片加载（RAW/CR2/PNG/JPG，自动归一化）
-- [x] 光污染分离对比图输出（观测 / 预测 / 残差）
-- [x] 极限星等提升评估框架（合成暗星 SNR 对比）
-- [x] GPU 支持（`torch.device` 透传）
-- [x] MNIST 手写 numpy 反向传播（96.55% 准确率）
-
-### 关键实验结论
-
-| 实验 | 结论 |
-| --- | --- |
-| Screened Poisson vs Helmholtz | SP 的指数衰减解与光穹物理一致，优于 Helmholtz 的 Bessel 振荡解 |
-| 可学习源点偏移 | 梯度信号弱，需单独设 lr，效果待提升 |
-| 可学习 I_city 网格 | 架构已通，真实数据测试待 Phase 2 |
-| 极暗星探测 | PINN 分离后残差中暗星的 SNR 提升可测量 |
+1. 基础 PINN 光污染分离主链路
+2. 可学习的 `I_city` 光污染源项
+3. 有界可学习的 `alpha` PDE 系数
 
 ---
 
-## 工作原理
+## 当前版本：V3
 
+V3 的重点是把原先固定的 PDE 系数 `alpha` 改成**受约束的可学习参数**，并让它在训练中同时作用于：
+
+- 物理损失 `∇²I - αI + I_city`
+- `I_city` 的解析公式
+
+当前代码已经具备：
+
+- 基于坐标输入的 MLP 背景建模
+- 数据损失 + 物理损失联合训练
+- `autograd` 二阶微分拉普拉斯
+- 基于模糊亮区初始化的可学习 `I_city`
+- 有界可学习 `alpha` 模块
+- 真实图像加载（RAW / PNG / JPG / TIFF）
+- 训练后输出观测图、预测图、残差图
+
+---
+
+## 方法概览
+
+输入为低噪声星空图像，输出为每个像素位置上的光污染背景估计值。
+
+```text
+输入图像
+  ↓
+坐标网格 (x, y) + 像素亮度 I_obs
+  ↓
+MLP 预测背景 I_pred(x, y)
+  ↓
+物理约束：∇²I_pred - αI_pred + I_city = 0
+  ↓
+残差：I_star = I_obs - I_pred
 ```
-输入：星空照片 (W×H 像素)
-  │
-  ├─ RAWLoader / FakeRaw → 归一化像素值 + 坐标网格
-  │
-  ▼
-PINN 模型
-  输入：像素坐标 (x, y)  [2 维]
-  网络：2 → 512 → 64 → 1（Tanh 激活）
-  输出：该点光污染强度 I_pred(x, y)
-  物理约束：∇²I − αI + I_city = 0（Screened Poisson）
-  │
-  ▼
-信号分离：residual = I_obs − I_pred
-  │
-  ▼
-输出：
-  - predicted.png   — 光污染背景
-  - residual.png    — 恢复的星空（含暗星）
-```
 
-### 为什么 PINN 适合这个问题
+其中：
 
-| 方法 | 如何区分光污染与星光 |
-| --- | --- |
-| 传统滤波 | 按频域特征（易把暗星当背景） |
-| CNN 去噪 | 凭训练数据经验（可能误判暗星） |
-| **PINN** | **光污染必须符合物理传播规律（平滑、单调衰减），星光不符合（点状、尖锐）— 物理方程是天然过滤器** |
+- `I_pred`：网络预测的光污染背景
+- `I_city`：结构化光污染源项
+- `alpha`：受约束可学习 PDE 系数
+- `I_star`：从原图中分离出的残差信号
 
 ---
 
 ## 项目结构
 
-```
+```text
 pinn-starlight-core/
 ├── src/pinn_starlight_core/
 │   ├── data/
-│   │   ├── FakeRAW.py          # 合成星空数据生成
-│   │   └── RAWLoader.py        # 真实照片加载 (RAW/PNG/JPG)
+│   │   ├── FakeRAW.py
+│   │   └── PhotoLoader.py
 │   ├── nn/
-│   │   ├── Layers.py           # SkyglowLinear, Tanh 激活, MLP
-│   │   ├── Losses.py           # MSEData + MSEPhysics (Screened Poisson)
-│   │   └── Icity.py            # I_city: 固定/可学偏移/可学网格
+│   │   ├── Alpha.py
+│   │   ├── Icity.py
+│   │   ├── Layers.py
+│   │   └── Losses.py
 │   ├── utils/
-│   │   ├── Laplacian.py        # autograd 二阶自动微分
-│   │   └── Rasterize.py        # 图像矩阵 → 坐标流
-│   ├── main.py                 # 训练入口
-│   └── test_limiting_mag.py    # 极限星等评估
-├── notebooks/
-│   ├── test/PINNExample.ipynb  # 训练 + 推理 + 出图
-│   └── study/MNIST/            # numpy 手写反向传播 (96.5%)
-├── docs/                       # PINN 数学原理推导
-├── tests/                      # pytest (封存时清空，重构后恢复)
-├── data/                       # 测试图片 (.gitignore)
+│   │   └── PINLaplacian.py
+│   └── main.py
+├── scripts/
+│   ├── PhotoTraining.py
+│   └── Test.py
+├── docs/
 ├── pyproject.toml
 └── README.md
 ```
@@ -110,73 +85,83 @@ pinn-starlight-core/
 ## 快速开始
 
 ```bash
-git clone https://github.com/pinn-starlight/core.git
-cd pinn-starlight-core
 uv sync
-uv run python src/pinn_starlight_core/main.py
+uv run python scripts/PhotoTraining.py
 ```
 
----
+训练脚本默认会：
 
-## 技术栈
-
-| | |
-| --- | --- |
-| 语言 | Python 3.12 |
-| 深度学习 | PyTorch 2.7 |
-| RAW 解析 | rawpy |
-| 科学计算 | NumPy, SciPy |
-| 可视化 | Matplotlib |
-| 环境管理 | uv |
-| 实验 | Jupyter Notebook |
+- 读取输入目录中的图像
+- 训练 PINN 背景模型
+- 输出：
+  - `*_observed.png`
+  - `*_predicted.png`
+  - `*_residual.png`
 
 ---
 
-## 数学背景
+## 数学形式
 
-### Screened Poisson 方程
+当前采用的物理约束形式为：
 
-$$\nabla^2 I - \alpha I + I_{city} = 0$$
+$$
+\nabla^2 I - \alpha I + I_{city} = 0
+$$
 
-- 齐次解为修正 Bessel K₀ 族（二维 Yukawa 势），对应远场指数衰减 — 与光污染远离光源后单调衰减的物理直觉一致
-- α = 1/D²，D 为气溶胶散射层等效高度
-- 在小视场下（FOV < 10°），α ∈ [1, 10]；大视场下（20–90°），α → 0.01–0.3，退化为纯平滑约束
-- I_city 可用 Garstang 解析形式（小 FOV）或可学习网格表示（大 FOV）
-- PDE 残差通过 autograd 自动二阶微分显式计算，不引入离散误差
+训练损失为：
 
-### 损失函数
+$$
+\mathcal{L} = \mathcal{L}_{data} + \lambda \mathcal{L}_{physics}
+$$
 
-$$\mathcal{L} = \underbrace{\frac{1}{N}\sum(I_{pred} - I_{obs})^2}_{\text{数据保真}} + \lambda \cdot \underbrace{\frac{1}{N}\sum\left(\nabla^2 I_{pred} - \alpha I_{pred} + I_{city}\right)^2}_{\text{物理约束}}$$
+其中：
 
----
+$$
+\mathcal{L}_{data} = \frac{1}{N}\sum (I_{pred} - I_{obs})^2
+$$
 
-## 团队
-
-| 成员 | 职责 |
-| --- | --- |
-| 主力开发 | 代码实现、数据管道、论文主笔、可视化 |
-| 算法实现 | PINN 架构实现、算法优化、论文代码部分 |
-| 学术顾问 | 物理方程把关、论文终审、方向纠偏 |
+$$
+\mathcal{L}_{physics} = \frac{1}{N}\sum (\nabla^2 I_{pred} - \alpha I_{pred} + I_{city})^2
+$$
 
 ---
 
-## 项目背景
+## 当前版本的研究定位
 
-本项目为 **2026 年丘成桐中学科学奖（计算机领域）** 参赛作品，由中学天文爱好者发起。核心思路来自业余天文摄影中的真实痛点：城市近郊拍摄的星空即使短曝光也笼罩在光穹中，传统滤镜靠"猜"，我们在探索靠"物理"。
+本项目当前并不把“极限星等提升”或“星表输出”作为核心任务，而把它们视为后续评估指标。
+
+V3 的核心目标是：
+
+- 让 `alpha` 成为可学习、但不完全放飞的 PDE 系数
+- 让 `I_city` 成为可学习的结构化源项
+- 建立一个适用于低噪声星空图像的物理约束分离原型
+
+---
+
+## 下一步
+
+后续版本将继续推进：
+
+1. `I_city` 范围学习
+2. RGB-aware 训练与损失
+3. 天空区域 mask 与真实场景适配
+4. 预训练与 checkpoint 保存
+5. 系统实验与消融
+
+详见：
+
+- `docs/版本路线图.md`
+- `docs/项目题目.md`
 
 ---
 
 ## 参考文献
 
-- Garstang, R. H. (1986). Model for artificial night-sky illumination. *Publications of the Astronomical Society of the Pacific*, 98(601), 364.
-- Raissi, M., Perdikaris, P., & Karniadakis, G. E. (2019). Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. *Journal of Computational Physics*, 378, 686–707.
+- Garstang, R. H. (1986). Model for artificial night-sky illumination.
+- Raissi, M., Perdikaris, P., & Karniadakis, G. E. (2019). Physics-informed neural networks.
 
 ---
 
 ## 开源协议
 
 MIT License
-
----
-
-> 感谢每一位仍抬头看星空的人。
