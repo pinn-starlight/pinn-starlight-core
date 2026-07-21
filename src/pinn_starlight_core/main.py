@@ -1,58 +1,95 @@
-"""PINN 光污染分离 — 主入口 (Screened Poisson, v2.0)"""
+from pinn_starlight_core.nn import Icity
+import os
 import torch
+import torch.nn as nn
 from torch import optim
-from tqdm.notebook import tqdm
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 import pinn_starlight_core.nn.Layers as Layers
 import pinn_starlight_core.nn.Losses as Loss
-import pinn_starlight_core.data.PhotoLoader as RAWLoader
-import pinn_starlight_core.data.FakeRAW as FakeRAW
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+import pinn_starlight_core.data.PhotoLoader as Loader
+import pinn_starlight_core.nn.Alpha as Alpha
 
-# --- 数据 ---
-raw_loader = RAWLoader.RAWLoader()
-raw_loader.from_array(FakeRAW.FakeRaw().get_fake_raw())
-coords, values, W, H = raw_loader.get_gray_data(device=device)
 
-# --- 模型 ---
-layers = [
-    Layers.SkyglowLinear(2, 512).to(device), Layers.SkyglowActivation(),
-    Layers.SkyglowLinear(512, 64).to(device), Layers.SkyglowActivation(),
-    Layers.SkyglowLinear(64, 1).to(device),
-]
-params = [p for l in layers if isinstance(l, Layers.SkyglowLinear) for p in l.parameters()]
-optimizer = optim.Adam(params, lr=0.001)
-ld, lp = Loss.MSEData(), Loss.MSEPhysics()
+def build_layers(device):
+    models = nn.Sequential(
+        Layers.SkyglowLinear(2, 512),
+        nn.Tanh(),
+        Layers.SkyglowLinear(512, 64),
+        nn.Tanh(),
+        Layers.SkyglowLinear(64, 1),
+    ).to(device)
 
-# --- I_city: 指数背景 bg=A*exp(-(x+y)/D), ∇²bg=2bg/D² ---
-# Screened Poisson: ∇²I - αI + I_city = 0  →  I_city = (α - 2/D²)*bg
-alpha, D_bg = 4.0, 0.7
-bg = 0.3 * torch.exp(-(coords[:, 0] + coords[:, 1]) / D_bg).to(device)
-I_city = (alpha - 2.0 / D_bg**2) * bg
+    return models
 
-phy_weight = 0.01
-batch_size = max(1024, min(8192, coords.shape[0] // 200))
-steps = max(2000, coords.shape[0] // 100)
 
-for step in tqdm(range(steps)):
-    idx = torch.randint(0, coords.shape[0], (batch_size,), device=device)
-    batch_xy = coords[idx].clone().requires_grad_(True)
-    batch_I = values[idx]
+def train_one(input_file: str, dir_output: str) -> None:
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(device)
 
-    a = batch_xy
-    for layer in layers:
-        a = layer.forward(a)
-    I_pred = a.squeeze()
+    loader = Loader.RAWLoader(input_file)
+    coords, values, _, _ = loader.get_gray_data(device)
 
-    I_city_b = I_city[idx]
+    models = build_layers(device)
+    data_loss_fn = Loss.MSEData()
+    physics_loss_fn = Loss.MSEPhysics()
+    alpha_module = Alpha.Alpha().to(device)
+    kernel_size = 31
+    i_city_module = Icity.Icity(input_file, device, kernel_size).to(device)
+    phy_weight = 0.4
 
-    data_loss = ld.forward(batch_I, I_pred)
-    phys_loss = lp.forward(batch_I, I_pred, I_city_b, alpha, batch_xy)
-    loss = data_loss + phys_loss
+    optimizer = optim.Adam(
+        list(models.parameters()) +
+        list(i_city_module.parameters()) +
+        list(alpha_module.parameters()),
+        lr=0.001,
+    )
 
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+    loss_history = []
+    physics_loss_history = []
 
-    if step % 500 == 0:
-        print(f"Step {step}, data={data_loss.item():.6f}, phys={phys_loss.item():.6f}")
+    for step in tqdm(range(30000)):
+        index = torch.randint(0, coords.shape[0], (216300,))
+        batch_xy = coords[index].to(device).clone().requires_grad_(True)
+        batch_I = values[index].to(device)
+        alpha = alpha_module()
+
+        predicted = models(batch_xy).squeeze().to(device)
+        i_city = i_city_module(batch_xy, alpha)
+
+        data_loss = data_loss_fn.forward(batch_I, predicted)
+        physics_loss = physics_loss_fn.forward(batch_I, predicted, i_city, alpha, batch_xy)
+        loss = data_loss + phy_weight * physics_loss
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        loss_history.append(loss.item())
+        physics_loss_history.append(physics_loss.item())
+
+        if step % 1000 == 0:
+            print(f"loss:{loss.item() * 1000:.6f}")
+            print(f"physics_loss:{physics_loss.item() * 1000:.6f}")
+            print(f"alpha:{alpha.item() * 1000:.6f}")
+
+    base = os.path.splitext(os.path.basename(input_file))[0]
+    fig, ax = plt.subplots()
+    ax.plot(loss_history, label='total loss')
+    ax.plot(physics_loss_history, label='physics loss')
+    ax.set_xlabel('step')
+    ax.set_ylabel('loss')
+    ax.legend()
+    fig.savefig(f'{dir_output}/{base}_loss.png')
+    plt.close(fig)
+
+    print('Done.')
+
+
+if __name__ == '__main__':
+    input_dir = '/workspace/data/origin'
+    output_dir = '/workspace/data/trained'
+    os.makedirs(output_dir, exist_ok=True)
+    for file in os.listdir(input_dir):
+        train_one(os.path.join(input_dir, file), output_dir)
