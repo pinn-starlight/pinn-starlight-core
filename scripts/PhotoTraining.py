@@ -12,13 +12,14 @@ import pinn_starlight_core.data.PhotoLoader as Loader
 import pinn_starlight_core.nn.Alpha as Alpha
 
 
+# 出图的
 def build_model(input_device: torch.device):
     model = nn.Sequential(
-        Layers.SkyglowLinear(2, 512),
+        Layers.SkyglowLinear(2, 128),
         nn.Tanh(),
-        Layers.SkyglowLinear(512, 64),
+        Layers.SkyglowLinear(128, 128),
         nn.Tanh(),
-        Layers.SkyglowLinear(64, 1),
+        Layers.SkyglowLinear(128, 1),
     ).to(input_device)
 
     if torch.cuda.device_count() > 1:
@@ -35,7 +36,7 @@ def train_one(path: str, output_direct: str, input_device: torch.device):
     loader = Loader.RAWLoader(path)
     coords, values, W, H = loader.get_gray_data(input_device)
 
-    model = build_model(input_device)
+    models = build_model(input_device)
     data_loss_fn = Loss.MSEData()
     physics_loss_fn = Loss.MSEPhysics()
     alpha_module = Alpha.Alpha(0.5).to(input_device)
@@ -44,22 +45,20 @@ def train_one(path: str, output_direct: str, input_device: torch.device):
     phy_weight = 0.5
 
     optimizer = optim.Adam(
-        list(model.parameters()) +
-        list(i_city_module.parameters()) +
-        list(alpha_module.parameters()),
-        lr=0.001,
+        [
+            {'params': models.parameters(), 'lr': 1e-3},
+            {'params': i_city_module.parameters(), 'lr': 1e-3},
+            {'params': alpha_module.parameters(), 'lr': 1e-3}
+        ]
     )
 
-    num_steps = int(coords.shape[0] * 0.00618 * 0.25)
-    batch_size = int(coords.shape[0] * 0.00618 * 0.1)
-
-    for _ in tqdm(range(num_steps)):
-        idx = torch.randint(0, coords.shape[0], (batch_size,))
-        batch_xy = coords[idx].to(input_device).clone().requires_grad_(True)
-        batch_I = values[idx].to(input_device)
+    for _ in tqdm(range(60000)):
+        idx = torch.randint(0, coords.shape[0], (10240,))
+        batch_xy = coords[idx].clone().requires_grad_(True)
+        batch_I = values[idx]
         alpha = alpha_module()
 
-        predicted = model(batch_xy).squeeze().to(input_device)
+        predicted = models(batch_xy).squeeze()
         i_city = i_city_module(batch_xy, alpha)
 
         data_loss = data_loss_fn.forward(batch_I, predicted)
@@ -74,7 +73,7 @@ def train_one(path: str, output_direct: str, input_device: torch.device):
         full_pred = torch.empty(coords.shape[0], device=input_device)
         for start in range(0, coords.shape[0], 50000):
             end = min(start + 50000, coords.shape[0])
-            full_pred[start:end] = model(coords[start:end]).squeeze()
+            full_pred[start:end] = models(coords[start:end]).squeeze()
 
     obs = values.reshape(H, W).cpu().numpy()
     pred = full_pred.reshape(H, W).cpu().numpy()

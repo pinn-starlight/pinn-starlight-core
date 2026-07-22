@@ -43,12 +43,15 @@ class Icity(nn.Module):
     def __init__(self, path, device, kernel_size=31):
         super().__init__()
         self.device = device
+        self.sigma_min = 0.05
+        self.sigma_scale = 0.75
 
         gray_img = _load_gray_image(path)
         bright_mask = _bright_mask(gray_img, kernel_size)
         self.H, self.W = gray_img.shape
         self.x, self.y = self._init_center(bright_mask)
-        self.raw_sigma = nn.Parameter(torch.tensor([0.0], device=self.device))
+        self.raw_sigma_x = nn.Parameter(torch.tensor([0.0], device=self.device))
+        self.raw_sigma_y = nn.Parameter(torch.tensor([0.0], device=self.device))
 
     def _init_center(self, bright_mask):
         ys, xs = torch.where(bright_mask)
@@ -61,13 +64,20 @@ class Icity(nn.Module):
         y = nn.Parameter(y_init.to(self.device).unsqueeze(0))
         return x, y
 
+    def get_sigma(self):
+        sigma_x = self.sigma_min + self.sigma_scale * torch.sigmoid(self.raw_sigma_x)
+        sigma_y = self.sigma_min + self.sigma_scale * torch.sigmoid(self.raw_sigma_y)
+        return sigma_x, sigma_y
+
     def forward(self, coords, alpha):
         x = coords[:, 0]
         y = coords[:, 1]
-        r = torch.sqrt((x - self.x) ** 2 + (y - self.y) ** 2 + 1e-8)
+        dx = x - self.x
+        dy = y - self.y
+        r = torch.sqrt(dx ** 2 + dy ** 2 + 1e-8)
 
-        sigma = 0.05 + 0.75 * torch.sigmoid(self.raw_sigma)
+        sigma_x, sigma_y = self.get_sigma()
         point_source = point_source_term(r, alpha)
-        envelope = torch.exp(-(r ** 2) / (2 * sigma ** 2))
+        envelope = torch.exp(-0.5 * ((dx / sigma_x) ** 2 + (dy / sigma_y) ** 2))
 
         return point_source * envelope
