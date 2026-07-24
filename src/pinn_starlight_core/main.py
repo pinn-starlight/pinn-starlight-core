@@ -12,7 +12,6 @@ import pinn_starlight_core.data.PhotoLoader as Loader
 import pinn_starlight_core.nn.Alpha as A
 
 
-# 测试loss的
 def build_layers(device):
     models = nn.Sequential(
         Layers.SkyglowLinear(2, 128),
@@ -35,10 +34,9 @@ def train_one(input_file: str, dir_output: str) -> None:
 
     loader = Loader.RAWLoader(input_file)
     coords, values, _, _ = loader.get_gray_data(device)
+    losses = Loss
 
     models = build_layers(device)
-    data_loss_fn = Loss.MSEData()
-    physics_loss_fn = Loss.MSEPhysics()
     alpha_module = A.Alpha(init=0.55, alpha_min=0.4, alpha_max=0.6).to(device)
     kernel_size = 31
     i_city_module = Icity.Icity(device, kernel_size, loader).to(device)
@@ -67,8 +65,8 @@ def train_one(input_file: str, dir_output: str) -> None:
         predicted = models(batch_xy).squeeze()
         i_city = i_city_module(batch_xy, alpha)
 
-        data_loss = data_loss_fn.forward(batch_I, predicted)
-        physics_loss = physics_loss_fn.forward(batch_I, predicted, i_city, alpha, batch_xy)
+        data_loss = losses.mse_data(batch_I, predicted)
+        physics_loss = losses.mse_physics(batch_I, predicted, i_city, alpha, batch_xy)
         loss = data_loss + phy_weight * physics_loss
 
         optimizer.zero_grad()
