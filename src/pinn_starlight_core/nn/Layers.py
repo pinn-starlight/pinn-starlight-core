@@ -4,11 +4,10 @@ import torch.nn.init as init
 
 
 class SkyglowLinear(nn.Module):
-    def __init__(self, in_dim, out_dim, lr=0.001):
+    def __init__(self, in_dim, out_dim):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
-        self.lr = lr
 
         self.W_l = nn.Parameter(torch.empty(in_dim, out_dim))
         init.xavier_uniform_(self.W_l)

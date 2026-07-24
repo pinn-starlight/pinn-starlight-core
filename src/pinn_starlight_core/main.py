@@ -41,14 +41,14 @@ def train_one(input_file: str, dir_output: str) -> None:
     physics_loss_fn = Loss.MSEPhysics()
     alpha_module = A.Alpha(init=0.55, alpha_min=0.4, alpha_max=0.6).to(device)
     kernel_size = 31
-    i_city_module = Icity.Icity(input_file, device, kernel_size).to(device)
+    i_city_module = Icity.Icity(device, kernel_size, loader).to(device)
     phy_weight = 0.4
 
     optimizer = optim.Adam(
         [
             {'params': models.parameters(), 'lr': 1e-3},
             {'params': i_city_module.parameters(), 'lr': 1e-3},
-            {'params': alpha_module.parameters(), 'lr': 1e-3}
+            {'params': alpha_module.parameters(), 'lr': 1e-4}
         ]
     )
 
