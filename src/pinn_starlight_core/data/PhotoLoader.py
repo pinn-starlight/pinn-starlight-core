@@ -4,19 +4,16 @@ import torch
 from pathlib import Path
 from matplotlib import pyplot as plt
 
+_RASTER_SCALE = {'png': 1.0, 'tiff': 1.0, 'tif': 1.0, 'jpg': 255.0, 'jpeg': 255.0}
+_RAW_EXTS = {'cr2', 'nef', 'dng', 'arw'}
+
 
 # 暂时使用灰度图训练
 class RAWLoader:
     def __init__(self, path: str):
         ext = Path(path).suffix.lower().lstrip('.')
 
-        if ext in ('png', 'jpg', 'jpeg', 'tiff', 'tif'):
-            data = plt.imread(path)
-            if data.ndim == 3 and data.shape[-1] == 4:
-                data = data[:, :, :3]
-            self.rgb_data = data
-            scale = 255.0
-        elif ext in ('cr2', 'nef', 'dng', 'arw'):
+        if ext in _RAW_EXTS:
             with rawpy.imread(path) as raw:
                 self.rgb_data = raw.postprocess(
                     use_camera_wb=True,
@@ -25,6 +22,14 @@ class RAWLoader:
                     gamma=(1, 1)
                 )
             scale = 65535.0
+        elif ext in _RASTER_SCALE:
+            data = plt.imread(path)
+            if data.ndim == 3 and data.shape[-1] == 4:
+                data = data[:, :, :3]
+            if data.ndim == 2:
+                data = np.stack([data] * 3, axis=-1)
+            self.rgb_data = data
+            scale = _RASTER_SCALE[ext]
         else:
             raise ValueError(f'Unsupported format: .{ext}')
 

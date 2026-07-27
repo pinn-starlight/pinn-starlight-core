@@ -45,7 +45,7 @@ def _load_gray_image(loader:RAWLoader):
 
 
 class Icity(nn.Module):
-    def __init__(self, device, kernel_size=31, loader:RAWLoader | None=None):
+    def __init__(self, device, kernel_size=31, loader: RAWLoader | None=None):
         super().__init__()
         self.device = device
         self.sigma_min = 0.05

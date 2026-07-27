@@ -32,7 +32,7 @@ def train_one(input_file: str, dir_output: str) -> None:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
-    loader = Loader.RAWLoader(input_file)
+    loader = Loader.PhotoLoader(input_file)
     coords, values, _, _ = loader.get_gray_data(device)
     losses = Loss
 

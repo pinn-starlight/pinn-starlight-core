@@ -33,7 +33,7 @@ def train_one(path: str, output_direct: str, input_device: torch.device):
     base = os.path.splitext(os.path.basename(path))[0]
     print(f'Processing {os.path.basename(path)}...')
 
-    loader = Loader.RAWLoader(path)
+    loader = Loader.PhotoLoader(path)
     coords, values, W, H = loader.get_gray_data(input_device)
 
     models = build_model(input_device)
