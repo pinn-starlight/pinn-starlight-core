@@ -1,4 +1,4 @@
-from pinn_starlight_core.nn import Icity
+from pinn_starlight_core.nn import physics_model
 import os
 import torch
 import torch.nn as nn
@@ -6,20 +6,20 @@ from torch import optim
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-import pinn_starlight_core.nn.Layers as Layers
-import pinn_starlight_core.nn.Losses as Loss
-import pinn_starlight_core.data.PhotoLoader as Loader
+import pinn_starlight_core.nn.pinn_layers as Layers
+import pinn_starlight_core.nn.pinn_loss as Loss
+import pinn_starlight_core.data.image_loader as Loader
 import pinn_starlight_core.nn.Alpha as Alpha
 
 
 # 出图的
 def build_model(input_device: torch.device):
     model = nn.Sequential(
-        Layers.SkyglowLinear(2, 128),
+        Layers.skyglow_linear(2, 128),
         nn.Tanh(),
-        Layers.SkyglowLinear(128, 128),
+        Layers.skyglow_linear(128, 128),
         nn.Tanh(),
-        Layers.SkyglowLinear(128, 1),
+        Layers.skyglow_linear(128, 1),
     ).to(input_device)
 
     if torch.cuda.device_count() > 1:
@@ -39,7 +39,7 @@ def train_one(path: str, output_direct: str, input_device: torch.device):
     models = build_model(input_device)
     alpha_module = Alpha.Alpha(0.5).to(input_device)
     kernel_size = 21
-    i_city_module = Icity.Icity(path, input_device, kernel_size).to(input_device)
+    i_city_module = physics_model.Icity(path, input_device, kernel_size).to(input_device)
     phy_weight = 0.5
 
     optimizer = optim.Adam(
