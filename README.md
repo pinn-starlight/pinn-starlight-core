@@ -61,20 +61,12 @@ MLP 预测背景 I_pred(x, y)
 ```text
 pinn-starlight-core/
 ├── src/pinn_starlight_core/
-│   ├── data/
-│   │   ├── FakeRAW.py
-│   │   └── PhotoLoader.py
-│   ├── nn/
-│   │   ├── Alpha.py
-│   │   ├── Icity.py
-│   │   ├── Layers.py
-│   │   └── Losses.py
-│   ├── utils/
-│   │   └── PINLaplacian.py
-│   └── main.py
-├── scripts/
-│   ├── PhotoTraining.py
-│   └── Test.py
+│   ├── image.py                 # RAW 和常见图片加载
+│   ├── model.py                 # 网络、光源项和物理损失
+│   └── main.py                  # 训练入口
+├── experiments/scripts/
+│   ├── PhotoTraining.py         # 批量训练与结果图
+│   └── run_e1.py                # 实验配置入口
 ├── docs/
 ├── pyproject.toml
 └── README.md
@@ -86,17 +78,16 @@ pinn-starlight-core/
 
 ```bash
 uv sync
-uv run python scripts/PhotoTraining.py
+$env:PYTHONPATH="src"
+uv run python -m pinn_starlight_core.main
 ```
 
-训练脚本默认会：
+当前实验原型的主要训练逻辑位于 `src/pinn_starlight_core/main.py`，包括：
 
-- 读取输入目录中的图像
-- 训练 PINN 背景模型
-- 输出：
-  - `*_observed.png`
-  - `*_predicted.png`
-  - `*_residual.png`
+- 读取输入图像并生成坐标数据
+- 训练坐标 MLP 背景模型
+- 联合计算数据损失和物理损失
+- 保存训练曲线和结果图
 
 ---
 

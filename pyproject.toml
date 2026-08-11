@@ -10,7 +10,9 @@ dependencies = [
     "rawpy==0.27.0",
     "tqdm==4.66.5",
     "torch",
-    "torchvision"
+    "torchvision",
+    "lightning>=2.6.5",
+    "jsonargparse[signatures]>=4.50.0",
 ]
 
 [dependency-groups]
