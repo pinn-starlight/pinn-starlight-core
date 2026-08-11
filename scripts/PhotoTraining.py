@@ -37,8 +37,6 @@ def train_one(path: str, output_direct: str, input_device: torch.device):
     coords, values, W, H = loader.get_gray_data(input_device)
 
     models = build_model(input_device)
-    data_loss_fn = Loss.MSEData()
-    physics_loss_fn = Loss.MSEPhysics()
     alpha_module = Alpha.Alpha(0.5).to(input_device)
     kernel_size = 21
     i_city_module = Icity.Icity(path, input_device, kernel_size).to(input_device)
@@ -61,8 +59,8 @@ def train_one(path: str, output_direct: str, input_device: torch.device):
         predicted = models(batch_xy).squeeze()
         i_city = i_city_module(batch_xy, alpha)
 
-        data_loss = data_loss_fn.forward(batch_I, predicted)
-        physics_loss = physics_loss_fn.forward(batch_I, predicted, i_city, alpha, batch_xy)
+        data_loss = Loss.mse_data(batch_I, predicted)
+        physics_loss = Loss.mse_physics(batch_I, predicted, i_city, alpha, batch_xy)
         loss = data_loss + phy_weight * physics_loss
 
         optimizer.zero_grad()
