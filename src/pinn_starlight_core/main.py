@@ -1,4 +1,4 @@
-from pinn_starlight_core.nn import Icity
+from pinn_starlight_core.nn import physics_model
 import os
 import torch
 import torch.nn as nn
@@ -6,26 +6,9 @@ from torch import optim
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-import pinn_starlight_core.nn.Layers as Layers
-import pinn_starlight_core.nn.Losses as Loss
-import pinn_starlight_core.data.PhotoLoader as Loader
-import pinn_starlight_core.nn.Alpha as A
-
-
-def build_layers(device):
-    models = nn.Sequential(
-        Layers.SkyglowLinear(2, 128),
-        nn.Tanh(),
-        Layers.SkyglowLinear(128, 128),
-        nn.Tanh(),
-        Layers.SkyglowLinear(128, 1),
-    ).to(device)
-
-    if device.type == 'cuda' and torch.cuda.device_count() > 1:
-        print(f'Using {torch.cuda.device_count()} GPUs with DataParallel')
-        models = nn.DataParallel(models)
-
-    return models
+import pinn_starlight_core.nn.pinn_layers as Layers
+import pinn_starlight_core.nn.pinn_loss as Loss
+import pinn_starlight_core.data.image_loader as Loader
 
 
 def train_one(input_file: str, dir_output: str) -> None:
@@ -36,10 +19,14 @@ def train_one(input_file: str, dir_output: str) -> None:
     coords, values, _, _ = loader.get_gray_data(device)
     losses = Loss
 
-    models = build_layers(device)
-    alpha_module = A.Alpha(init=0.55, alpha_min=0.4, alpha_max=0.6).to(device)
+    models = Layers.SkyglowMLP().to(device)
+    if device.type == 'cuda' and torch.cuda.device_count() > 1:
+        print(f'Using {torch.cuda.device_count()} GPUs with DataParallel')
+        models = nn.DataParallel(models)
+
+    alpha_module = physics_model.Alpha(init=0.55, alpha_min=0.4, alpha_max=0.6).to(device)
     kernel_size = 31
-    i_city_module = Icity.Icity(device, kernel_size, loader).to(device)
+    i_city_module = physics_model.Icity(device, kernel_size, loader).to(device)
     phy_weight = 0.4
 
     optimizer = optim.Adam(

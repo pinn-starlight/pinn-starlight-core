@@ -3,12 +3,32 @@ import torch
 from torch import nn
 import torchvision.transforms.functional as F
 
-from pinn_starlight_core.data.PhotoLoader import RAWLoader
+from pinn_starlight_core.data.image_loader import RAWLoader
+
+
+class Alpha(nn.Module):
+    def __init__(self, init=1, alpha_min=0.5, alpha_max=1.5):
+        super().__init__()
+        self.alpha_min = alpha_min
+        self.alpha_max = alpha_max
+        self.init = init
+
+        ratio = (init - alpha_min) / (alpha_max - alpha_min)
+        ratio = torch.tensor(ratio, dtype=torch.float32).clamp(1e-6, 1 - 1e-6)
+        self.raw_alpha = nn.Parameter(torch.logit(ratio))
+
+    def forward(self):
+        length = self.alpha_max - self.alpha_min
+        ratio = torch.sigmoid(self.raw_alpha)
+        return self.alpha_min + length * ratio
+
+    def get_str(self):
+        return f"[min:{self.alpha_min},max:{self.alpha_max},init:{self.init}]"
 
 
 # Fixed A,B (A,B = 1)
 # 当前版本使用以可学习 (x, y) 为中心的单源解析 I_city。
-# TODO: 将点源式 I_city 扩展为可学习范围/边界的版本，用源区尺度或轮廓来表达光污染覆盖范围。
+# 将点源式 I_city 扩展为可学习范围/边界的版本，用源区尺度或轮廓来表达光污染覆盖范围。
 def _point_source_term(r : torch.Tensor, alpha : torch.Tensor):
     sqrt_alpha = torch.sqrt(alpha)
 
@@ -20,7 +40,7 @@ def _point_source_term(r : torch.Tensor, alpha : torch.Tensor):
     return cos_term + sin_term + quad_term + quartic_term
 
 
-def _bright_mask(gray_img: np.ndarray, kernel_size: int):
+def _estimate_bright_center(gray_img: np.ndarray, kernel_size: int):
     img_tensor = torch.from_numpy(gray_img).unsqueeze(0).unsqueeze(0)
     sigma = kernel_size / 3.0
     blurred = F.gaussian_blur(
@@ -31,7 +51,12 @@ def _bright_mask(gray_img: np.ndarray, kernel_size: int):
 
     blurred_small = blurred[::4, ::4]
     threshold = np.quantile(blurred_small.cpu().numpy(), 0.95)
-    return blurred > threshold
+    ys, xs = torch.where(blurred > threshold)
+
+    height, width = gray_img.shape
+    x_axis = torch.linspace(-1, 1, width)
+    y_axis = torch.linspace(-1, 1, height)
+    return x_axis[xs].mean(), y_axis[ys].mean()
 
 
 def _load_gray_image(loader:RAWLoader):
@@ -56,23 +81,13 @@ class Icity(nn.Module):
             raise ValueError("loader is None")
 
         gray_img = _load_gray_image(loader)
-        bright_mask = _bright_mask(gray_img, kernel_size)
         self.H, self.W = gray_img.shape
-        self.x, self.y = self._init_center(bright_mask)
+        x_init, y_init = _estimate_bright_center(gray_img, kernel_size)
+        self.x = nn.Parameter(x_init.to(self.device).unsqueeze(0))
+        self.y = nn.Parameter(y_init.to(self.device).unsqueeze(0))
         self.raw_sigma_x = nn.Parameter(torch.tensor([0.0], device=self.device))
         self.raw_sigma_y = nn.Parameter(torch.tensor([0.0], device=self.device))
         self.raw_theta = nn.Parameter(torch.tensor([0.0], device=self.device))
-
-    def _init_center(self, bright_mask):
-        ys, xs = torch.where(bright_mask)
-        x_axis = torch.linspace(-1, 1, self.W)
-        y_axis = torch.linspace(-1, 1, self.H)
-        x_init = x_axis[xs].mean()
-        y_init = y_axis[ys].mean()
-
-        x = nn.Parameter(x_init.to(self.device).unsqueeze(0))
-        y = nn.Parameter(y_init.to(self.device).unsqueeze(0))
-        return x, y
 
     def get_sigma(self):
         sigma_x = self.sigma_min + self.sigma_scale * torch.sigmoid(self.raw_sigma_x)
