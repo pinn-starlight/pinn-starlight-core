@@ -1,7 +1,7 @@
 """E4：固定真实图像对比。运行入口：本文件。
 
 使用已锁定的 FFT 参数、U-Net checkpoint 和 PINN 配置。主图固定为
-data/image/f7.5.tif；如需补充图，必须在运行前写入清单。
+data/image/native_test.tif；如需补充图，必须在运行前写入清单。
 
 输出布局：
 observed | FFT background | U-Net background | PINN background
@@ -13,7 +13,7 @@ observed | FFT residual   | U-Net residual   | PINN residual
 from __future__ import annotations
 
 
-REAL_IMAGES = ("data/image/f7.5.tif",)
+REAL_IMAGES = ("data/image/native_test.tif",)
 
 
 def main() -> None:
