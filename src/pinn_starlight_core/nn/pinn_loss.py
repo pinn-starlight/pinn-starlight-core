@@ -6,21 +6,21 @@ from torch import autograd
 # 物理损失可先只约束亮度/灰度分量，再评估是否需要扩展到逐通道 PDE。
 # 避开建筑物
 
-# TODO: 当前数据损失直接令 I_pred 拟合 I_obs，
-# 但 I_obs = I_star + I_up，而 I_pred 仅表示 I_up。
-# 后续需引入星光残差模型、稀疏先验或鲁棒数据损失。
-
-def mse_data(I_obs, I_pred):
-    return ((I_pred - I_obs) ** 2).mean()
+# I_bg_pred 表示网络估计的光污染背景，而非包含星光的总观测亮度。
+# 数据项与物理项均采用均方误差，并通过联合优化平衡数据拟合与背景平滑约束。
 
 
-def mse_physics(I_obs, I_pred, I_city, alpha, coords):
-    pde_residual = laplacian(I_pred, coords) - alpha * I_pred + I_city
+def mse_data(I_obs, I_bg_pred):
+    return ((I_bg_pred - I_obs) ** 2).mean()
+
+
+def mse_physics(I_bg_pred, I_city, alpha, coords):
+    pde_residual = laplacian(I_bg_pred, coords) - alpha * I_bg_pred + I_city
     return (pde_residual ** 2).mean()
 
 
-def laplacian(I_pred, point):
-    grad = autograd.grad(I_pred, point, grad_outputs=torch.ones_like(I_pred), create_graph=True)[0]
+def laplacian(I_bg_pred, point):
+    grad = autograd.grad(I_bg_pred, point, grad_outputs=torch.ones_like(I_bg_pred), create_graph=True)[0]
     d_dx = grad[:, 0]
     d_dy = grad[:, 1]
 

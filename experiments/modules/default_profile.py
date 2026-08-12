@@ -1,6 +1,6 @@
 class DefaultProfile:
     def __init__(self):
-        IMAGE_PATH = "data/image/f7.5.tif"
+        IMAGE_PATH = "data/image/"
         OUTPUT_DIR = "experiments/outputs/e1_learnable_alpha"
         HIDDEN_DIMS = [128, 128]
         KERNEL_SIZE = 31

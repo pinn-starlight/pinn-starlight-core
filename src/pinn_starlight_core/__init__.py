@@ -1,1 +1,1 @@
-"""core"""
+"""pinn starlight core"""

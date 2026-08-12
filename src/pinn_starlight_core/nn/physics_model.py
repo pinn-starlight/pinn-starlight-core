@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import torchvision.transforms.functional as F
 
-from pinn_starlight_core.data.image_loader import RAWLoader
+from pinn_starlight_core.data.image_loader import ImageLoader
 
 
 class Alpha(nn.Module):
@@ -59,7 +59,7 @@ def _estimate_bright_center(gray_img: np.ndarray, kernel_size: int):
     return x_axis[xs].mean(), y_axis[ys].mean()
 
 
-def _load_gray_image(loader:RAWLoader):
+def _load_gray_image(loader:ImageLoader):
     rgb = loader.rgb_data
     gray = (
             0.2126 * rgb[:, :, 0] +
@@ -70,7 +70,7 @@ def _load_gray_image(loader:RAWLoader):
 
 
 class Icity(nn.Module):
-    def __init__(self, device, kernel_size=31, loader: RAWLoader | None=None):
+    def __init__(self, device, kernel_size=31, loader: ImageLoader | None=None):
         super().__init__()
         self.device = device
         self.sigma_min = 0.05
