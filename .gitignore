@@ -5,8 +5,7 @@
 tmp
 
 #docs
-docs
-!docs/论文准备资料
+docs/pdf
 
 # python
 __pycache__/
