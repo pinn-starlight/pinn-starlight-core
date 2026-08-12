@@ -1,8 +1,12 @@
 .venv
 /.idea
-docs
 .agents
 .vscode
+tmp
+
+#docs
+docs
+!docs/论文准备资料
 
 # python
 __pycache__/
