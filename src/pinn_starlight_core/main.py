@@ -1,113 +1,112 @@
-from pinn_starlight_core.nn import physics_model
-import os
+from __future__ import annotations
+
+from pathlib import Path
+
 import torch
-import torch.nn as nn
 from torch import optim
-from tqdm import tqdm
-import matplotlib.pyplot as plt
 
-import pinn_starlight_core.nn.pinn_layers as Layers
-import pinn_starlight_core.nn.pinn_loss as Loss
-import pinn_starlight_core.data.image_loader as Loader
+from pinn_starlight_core.data.image_loader import ImageLoader
+from pinn_starlight_core.nn import physics_model
+from pinn_starlight_core.nn import pinn_layers as layers
+from pinn_starlight_core.nn import pinn_loss as losses
 
 
-def train_one(input_file: str, dir_output: str) -> None:
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(device)
+INPUT_DIR = Path("/workspace/data/origin")
+STEPS = 50_000
+BATCH_SIZE = 10_240
+PHYSICS_WEIGHT = 0.4
+MODEL_LR = 1e-3
+ICITY_LR = 1e-3
+ALPHA = 0.5
+KERNEL_SIZE = 31
 
-    loader = Loader.PhotoLoader(input_file)
+
+def train_one(input_file: Path, device: torch.device) -> dict[str, float]:
+    loader = ImageLoader(str(input_file))
     coords, values, _, _ = loader.get_gray_data(device)
-    losses = Loss
 
-    models = Layers.SkyglowMLP().to(device)
-    if device.type == 'cuda' and torch.cuda.device_count() > 1:
-        print(f'Using {torch.cuda.device_count()} GPUs with DataParallel')
-        models = nn.DataParallel(models)
-
-    alpha_module = physics_model.Alpha(init=0.55, alpha_min=0.4, alpha_max=0.6).to(device)
-    kernel_size = 31
-    i_city_module = physics_model.Icity(device, kernel_size, loader).to(device)
-    phy_weight = 0.4
-
+    model = layers.SkyglowMLP().to(device)
+    city_source = physics_model.Icity(device, KERNEL_SIZE, loader).to(device)
+    alpha = torch.tensor(ALPHA, dtype=torch.float32, device=device)
     optimizer = optim.Adam(
         [
-            {'params': models.parameters(), 'lr': 1e-3},
-            {'params': i_city_module.parameters(), 'lr': 1e-3},
-            {'params': alpha_module.parameters(), 'lr': 1e-4}
+            {"params": model.parameters(), "lr": MODEL_LR},
+            {"params": city_source.parameters(), "lr": ICITY_LR},
         ]
     )
 
-    loss_history = []
-    physics_loss_history = []
-    alpha_history = []
-    sigma_x_history = []
-    sigma_y_history = []
+    final_total_loss = 0.0
+    final_data_loss = 0.0
+    final_physics_loss = 0.0
 
-    for step in tqdm(range(50000)):
-        index = torch.randint(0, coords.shape[0], (10240,), device=device)
+    for _ in range(STEPS):
+        index = torch.randint(0, coords.shape[0], (BATCH_SIZE,), device=device)
         batch_xy = coords[index].clone().requires_grad_(True)
-        batch_I = values[index]
-        alpha = alpha_module()
+        batch_observed = values[index]
 
-        i_bg_pred = models(batch_xy).squeeze()
-        i_city = i_city_module(batch_xy, alpha)
+        background_pred = model(batch_xy).squeeze(-1)
+        city_pred = city_source(batch_xy, alpha)
+        data_loss = losses.mse_data(batch_observed, background_pred)
+        physics_loss = losses.mse_physics(
+            background_pred,
+            city_pred,
+            alpha,
+            batch_xy,
+        )
+        total_loss = data_loss + PHYSICS_WEIGHT * physics_loss
 
-        data_loss = losses.mse_data(batch_I, i_bg_pred)
-        physics_loss = losses.mse_physics(i_bg_pred, i_city, alpha, batch_xy)
-        loss = data_loss + phy_weight * physics_loss
-
-        optimizer.zero_grad()
-        loss.backward()
+        optimizer.zero_grad(set_to_none=True)
+        total_loss.backward()
         optimizer.step()
 
-        sigma_x, sigma_y = i_city_module.get_sigma()
+        final_total_loss = total_loss.detach().item()
+        final_data_loss = data_loss.detach().item()
+        final_physics_loss = physics_loss.detach().item()
 
-        loss_history.append(loss.item())
-        physics_loss_history.append(physics_loss.item())
-        alpha_history.append(alpha.item())
-        sigma_x_history.append(sigma_x.item())
-        sigma_y_history.append(sigma_y.item())
-
-        if step % 1000 == 0:
-            print(f"loss:{loss.item() * 1000:.6f}")
-            print(f"physics_loss:{physics_loss.item() * 1000:.6f}")
-            print(f"alpha:{alpha.item():.6f}")
-
-    base = os.path.splitext(os.path.basename(input_file))[0]
-
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
-
-    ax1.plot(loss_history, label='total loss')
-    ax1.plot(physics_loss_history, label='physics loss')
-    ax1.set_xlabel('step')
-    ax1.set_ylabel('loss')
-    ax1.legend()
-
-    ax2.plot(alpha_history, color='green')
-    ax2.set_xlabel('step')
-    ax2.set_ylabel('alpha')
-
-    ax3.plot(sigma_x_history, label='sigma_x')
-    ax3.plot(sigma_y_history, label='sigma_y')
-    ax3.set_xlabel('step')
-    ax3.set_ylabel('sigma')
-    ax3.legend()
-
-    fig.tight_layout()
-    fig.savefig(f'{dir_output}/{base}_{alpha_module.get_str()}.png')
-    plt.close(fig)
-
-    print('Done.')
+    sigma_x, sigma_y = city_source.get_sigma()
+    return {
+        "total_loss": final_total_loss,
+        "data_loss": final_data_loss,
+        "physics_loss": final_physics_loss,
+        "alpha": ALPHA,
+        "center_x": city_source.x.detach().item(),
+        "center_y": city_source.y.detach().item(),
+        "sigma_x": sigma_x.detach().item(),
+        "sigma_y": sigma_y.detach().item(),
+        "theta": city_source.get_theta().detach().item(),
+    }
 
 
-if __name__ == '__main__':
-    if torch.cuda.is_available():
-        print(f'GPU count: {torch.cuda.device_count()}')
-        for i in range(torch.cuda.device_count()):
-            print(f'GPU {i}: {torch.cuda.get_device_name(i)}')
+def print_summary(input_file: Path, result: dict[str, float]) -> None:
+    print(f"\n{input_file.name} | step {STEPS}")
+    print(
+        f"loss={result['total_loss']:.8f} | "
+        f"data={result['data_loss']:.8f} | "
+        f"physics={result['physics_loss']:.8f}"
+    )
+    print(
+        f"alpha={result['alpha']:.4f} | "
+        f"center=({result['center_x']:.4f}, {result['center_y']:.4f}) | "
+        f"sigma=({result['sigma_x']:.4f}, {result['sigma_y']:.4f}) | "
+        f"theta={result['theta']:.4f}"
+    )
 
-    input_dir = '/workspace/data/origin'
-    output_dir = '/workspace/data/trained'
-    os.makedirs(output_dir, exist_ok=True)
-    for file in os.listdir(input_dir):
-        train_one(os.path.join(input_dir, file), output_dir)
+
+def main() -> None:
+    print("Hello PINN-Starlight-core")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if not INPUT_DIR.is_dir():
+        raise FileNotFoundError(f"Input directory does not exist: {INPUT_DIR}")
+
+    input_files = sorted(path for path in INPUT_DIR.iterdir() if path.is_file())
+    if not input_files:
+        raise FileNotFoundError(f"No input images found in: {INPUT_DIR}")
+
+    for input_file in input_files:
+        result = train_one(input_file, device)
+        print_summary(input_file, result)
+
+
+if __name__ == "__main__":
+    main()
