@@ -1,6 +1,7 @@
 .venv
 /.idea
 docs
+.agents
 
 # python
 __pycache__/
