@@ -4,7 +4,7 @@ import torch
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-_RASTER_SCALE = {'png': 1.0, 'tiff': 1.0, 'tif': 1.0, 'jpg': 255.0, 'jpeg': 255.0}
+_RASTER_EXTS = {'png', 'tiff', 'tif', 'jpg', 'jpeg'}
 _RAW_EXTS = {'cr2', 'nef', 'dng', 'arw'}
 
 
@@ -22,14 +22,14 @@ class ImageLoader:
                     gamma=(1, 1)
                 )
             scale = 65535.0
-        elif ext in _RASTER_SCALE:
+        elif ext in _RASTER_EXTS:
             data = plt.imread(path)
             if data.ndim == 3 and data.shape[-1] == 4:
                 data = data[:, :, :3]
             if data.ndim == 2:
                 data = np.stack([data] * 3, axis=-1)
             self.rgb_data = data
-            scale = _RASTER_SCALE[ext]
+            scale = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
         else:
             raise ValueError(f'Unsupported format: .{ext}')
 
