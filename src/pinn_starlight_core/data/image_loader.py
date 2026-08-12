@@ -9,7 +9,7 @@ _RAW_EXTS = {'cr2', 'nef', 'dng', 'arw'}
 
 
 # 暂时使用灰度图训练
-class RAWLoader:
+class ImageLoader:
     def __init__(self, path: str):
         ext = Path(path).suffix.lower().lstrip('.')
 

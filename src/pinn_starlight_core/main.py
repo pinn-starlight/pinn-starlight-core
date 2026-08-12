@@ -49,11 +49,11 @@ def train_one(input_file: str, dir_output: str) -> None:
         batch_I = values[index]
         alpha = alpha_module()
 
-        predicted = models(batch_xy).squeeze()
+        i_bg_pred = models(batch_xy).squeeze()
         i_city = i_city_module(batch_xy, alpha)
 
-        data_loss = losses.mse_data(batch_I, predicted)
-        physics_loss = losses.mse_physics(batch_I, predicted, i_city, alpha, batch_xy)
+        data_loss = losses.mse_data(batch_I, i_bg_pred)
+        physics_loss = losses.mse_physics(i_bg_pred, i_city, alpha, batch_xy)
         loss = data_loss + phy_weight * physics_loss
 
         optimizer.zero_grad()
