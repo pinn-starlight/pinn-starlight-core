@@ -3,6 +3,8 @@
 .agents
 .vscode
 tmp
+experiments/scripts/legacy
+experiments/outputs
 
 #docs
 docs/pdf
