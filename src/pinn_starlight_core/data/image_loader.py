@@ -10,7 +10,12 @@ _RAW_EXTS = {'cr2', 'nef', 'dng', 'arw'}
 
 # 暂时使用灰度图训练
 class ImageLoader:
-    def __init__(self, path: str):
+    def __init__(self, path: str, device="cpu"):
+        """
+            此path为文件的路径而非文件夹
+        """
+
+        self.device = device
         ext = Path(path).suffix.lower().lstrip('.')
 
         if ext in _RAW_EXTS:
@@ -38,7 +43,7 @@ class ImageLoader:
         self.rgb_data = rgb_data[::2, ::2, :]
         self.H, self.W = self.rgb_data.shape[:2]
 
-    def get_gray_data(self, device = "cpu"):
+    def get_gray_data(self):
         rgb = self.rgb_data
         gray = (
             0.2126 * rgb[:, :, 0] +
@@ -52,10 +57,10 @@ class ImageLoader:
 
         coords = torch.tensor(
             np.stack([xx.ravel(), yy.ravel()], axis=-1),
-            dtype=torch.float32, device=device
+            dtype=torch.float32, device=self.device
         )
         brightness = torch.tensor(
-            gray.ravel(), dtype=torch.float32, device=device
+            gray.ravel(), dtype=torch.float32, device=self.device
         )
 
         return coords, brightness, self.W, self.H
