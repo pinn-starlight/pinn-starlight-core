@@ -13,6 +13,9 @@ dependencies = [
     "torchvision",
     "lightning>=2.6.5",
     "jsonargparse[signatures]>=4.50.0",
+    "numpy>=2.4.4",
+    "pillow>=12.2.0",
+    "tifffile>=2026.3.3",
 ]
 
 [dependency-groups]

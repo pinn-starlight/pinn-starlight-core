@@ -1,11 +1,13 @@
 import numpy as np
 import rawpy
 import torch
+import tifffile as tif
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-_RASTER_EXTS = {'png', 'tiff', 'tif', 'jpg', 'jpeg'}
+_RASTER_EXTS = {'png', 'jpg', 'jpeg'}
 _RAW_EXTS = {'cr2', 'nef', 'dng', 'arw'}
+_TIFF_EXTS = {'tif', 'tiff'}
 
 
 # 暂时使用灰度图训练
@@ -14,9 +16,9 @@ class ImageLoader:
         """
             此path为文件的路径而非文件夹
         """
-
         self.device = device
         ext = Path(path).suffix.lower().lstrip('.')
+        scale = None
 
         if ext in _RAW_EXTS:
             with rawpy.imread(path) as raw:
@@ -35,8 +37,14 @@ class ImageLoader:
                 data = np.stack([data] * 3, axis=-1)
             self.rgb_data = data
             scale = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
+        elif ext in _TIFF_EXTS:
+            self.rgb_data = tif.imread(path).astype(np.float32)
+            scale = self.rgb_data.max()
         else:
             raise ValueError(f'Unsupported format: .{ext}')
+
+        if scale is None:
+            raise ValueError('scale is None')
 
         rgb_data = self.rgb_data.astype(np.float32) / np.float32(scale)
 

@@ -4,7 +4,7 @@
 .vscode
 tmp
 experiments/scripts/legacy
-experiments/outputs
+experiments/output
 
 #docs
 docs/pdf
