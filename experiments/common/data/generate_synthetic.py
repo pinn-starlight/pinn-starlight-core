@@ -2,13 +2,15 @@
 
 observed = clean_true + background_true + noise
 """
+# TODO:自己审核一次，这些全是Codex帮忙的，尤其是kocifaj
 
 import json
 from pathlib import Path
 
 import numpy as np
-from numpy.typing import NDArray
 from PIL import Image
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 from pinn_starlight_core.data.image_loader import ImageLoader
 
@@ -16,7 +18,7 @@ from pinn_starlight_core.data.image_loader import ImageLoader
 def kocifaj_background(
     height,
     width,
-    intensity=0.35,
+    intensity=0.15,
     source_x=1.15,
     source_y=0.20,
     sigma_x=0.85,
@@ -70,29 +72,43 @@ def kocifaj_background(
     return np.clip(background, 0.0, 1.0).astype(np.float32)
 
 
-def _generate_sample(
-    input_file, noise_std=0.0, seed=20260728
-) -> tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.float32]]:
+def _generate_sample(input_file: str | Path, noise_std=0.0, seed=1919810):
     """读取干净图片，再加入背景和噪声。"""
-    loader = ImageLoader(input_file)
+    loader = ImageLoader(str(input_file))
     _, brightness, width, height = loader.get_gray_data()
 
     clean_true = brightness.reshape(height, width).detach().cpu().numpy()
     clean_true = np.asarray(np.clip(clean_true, 0.0, 1.0), dtype=np.float32)
-    background_true = kocifaj_background(height, width)
 
     rng = np.random.default_rng(seed)
+
+    source_x = float(rng.uniform(-1.0, 1.0))
+    source_y = float(rng.uniform(-1.0, 1.0))
+    intensity = float(rng.uniform(0.05, 0.2))
+
     noise = rng.normal(0.0, noise_std, clean_true.shape).astype(np.float32)
+    background_true = kocifaj_background(
+        height,
+        width,
+        source_x=source_x,
+        source_y=source_y,
+        intensity=intensity
+    )
+    background_params = {
+        "source_x": source_x,
+        "source_y": source_y,
+        "intensity": intensity
+    }
     observed = np.add(clean_true, background_true)
     observed = np.add(observed, noise)
     observed = np.asarray(np.clip(observed, 0.0, 1.0), dtype=np.float32)
 
-    return clean_true, background_true, observed
+    return clean_true, background_true, observed, background_params
 
 
-def _save_sample(input_file, output_dir, noise_std=0.0, seed=20260728):
+def _save_sample(input_file, output_dir, noise_std=0.0, seed=114514):
     """把三张图片和生成参数保存下来。"""
-    clean_true, background_true, observed = _generate_sample(
+    clean_true, background_true, observed, background_params = _generate_sample(
         input_file, noise_std, seed
     )
     sample_name = Path(input_file).stem
@@ -114,6 +130,7 @@ def _save_sample(input_file, output_dir, noise_std=0.0, seed=20260728):
         "source_file": str(Path(input_file).resolve()),
         "noise_std": noise_std,
         "seed": seed,
+        "background_params": background_params
     }
     metadata_file = output_dir / f"metadata_{sample_name}.json"
     metadata_file.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
@@ -121,15 +138,14 @@ def _save_sample(input_file, output_dir, noise_std=0.0, seed=20260728):
 
 def main():
     # 在这里换成你的干净图片和输出文件夹。
-    input_file = ""
-    output_dir = "experiments/output/synthetic"
+    input_dir = Path(f"{PROJECT_ROOT}/data/collections/clean_candidates/stacked")
+    output_dir = Path(f"{PROJECT_ROOT}/data/collections/synthetic")
 
-    if input_file == "":
-        print("请先在 main() 中填写 input_file")
-        return
+    for input_file in input_dir.glob("*.tif"):
+        seed = 11451 + int(np.random.uniform(0, 7210721))
+        _save_sample(input_file, output_dir / input_file.name, noise_std=0.01, seed=seed)
+        print("生成完成：", output_dir / input_file.name)
 
-    _save_sample(input_file, output_dir, noise_std=0.01)
-    print("生成完成：", output_dir)
 
 
 if __name__ == "__main__":
