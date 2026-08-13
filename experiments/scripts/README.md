@@ -15,7 +15,11 @@ scripts/
   legacy/         # 历史原型，不作为正式实验入口
 ```
 
-开工顺序建议：`data -> common -> baselines -> e0 -> e1 -> e2 -> e3 -> e4`。
+开工顺序建议：`data -> FFT baseline -> e0 -> e1 -> U-Net -> e2 -> e3 -> e4`。
+
+第一步先运行 `common/data/generate_synthetic.py`，从一张低光害基础图生成
+`clean_true.tif`、`background_true.tif`、`observed.tif` 和 `metadata.json`。
+有了这道带标准答案的合成题，再继续写 FFT 和 E0。
 
 E0 说白了就是每种方法少跑几步，能打印 loss、输出背景图和残差图，确认代码没断。它不比较效果，也不进入论文结果。
 

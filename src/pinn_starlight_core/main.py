@@ -21,9 +21,9 @@ ALPHA = 0.5
 KERNEL_SIZE = 31
 
 
-def train_one(input_file: Path, device: torch.device) -> dict[str, float]:
-    loader = ImageLoader(str(input_file))
-    coords, values, _, _ = loader.get_gray_data(device)
+def train_one(input_file, device):
+    loader = ImageLoader(str(input_file), device)
+    coords, values, _, _ = loader.get_gray_data()
 
     model = layers.SkyglowMLP().to(device)
     city_source = physics_model.Icity(device, KERNEL_SIZE, loader).to(device)
