@@ -22,7 +22,7 @@ class ImageLoader:
 
         if ext in _RAW_EXTS:
             with rawpy.imread(path) as raw:
-                self.rgb_data = raw.postprocess(
+                data = raw.postprocess(
                     use_camera_wb=True,
                     no_auto_bright=True,
                     output_bps=16,
@@ -31,22 +31,24 @@ class ImageLoader:
             scale = 65535.0
         elif ext in _RASTER_EXTS:
             data = plt.imread(path)
-            if data.ndim == 3 and data.shape[-1] == 4:
-                data = data[:, :, :3]
-            if data.ndim == 2:
-                data = np.stack([data] * 3, axis=-1)
-            self.rgb_data = data
             scale = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
         elif ext in _TIFF_EXTS:
-            self.rgb_data = tif.imread(path).astype(np.float32)
-            scale = self.rgb_data.max()
+            data = tif.imread(path)
+            scale = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
         else:
             raise ValueError(f'Unsupported format: .{ext}')
 
         if scale is None:
             raise ValueError('scale is None')
 
-        rgb_data = self.rgb_data.astype(np.float32) / np.float32(scale)
+        if data.ndim == 3 and data.shape[-1] == 4:
+            data = data[:, :, :3]
+        if data.ndim == 2:
+            data = np.stack([data] * 3, axis=-1)
+        if data.ndim != 3 or data.shape[-1] != 3:
+            raise ValueError(f'Unsupported image shape: {data.shape}')
+
+        rgb_data = data.astype(np.float32) / np.float32(scale)
 
         self.rgb_data = rgb_data[::2, ::2, :]
         self.H, self.W = self.rgb_data.shape[:2]
