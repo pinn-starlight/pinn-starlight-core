@@ -11,6 +11,7 @@ def skyglow_linear(in_dim, out_dim):
 
 class SkyglowMLP(nn.Sequential):
     def __init__(self):
+        """默认是2 -> 128 -> 128 -> 1"""
         super().__init__()
         self.extend(
             [

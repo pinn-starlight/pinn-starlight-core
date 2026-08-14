@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-OUTPUT_ROOT = PROJECT_ROOT / "experiments" / "outputs"
+OUTPUT_ROOT = PROJECT_ROOT / "experiments/output"
 SEEDS = (20260728, 20260729, 20260730)
 
 
