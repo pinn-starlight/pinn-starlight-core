@@ -1,5 +1,7 @@
-import torch.nn as nn
-import torch.nn.init as init
+from itertools import pairwise
+
+from torch import nn
+from torch.nn import init
 
 
 def skyglow_linear(in_dim, out_dim):
@@ -10,18 +12,20 @@ def skyglow_linear(in_dim, out_dim):
 
 
 class SkyglowMLP(nn.Sequential):
-    def __init__(self):
-        """默认是2 -> 128 -> 128 -> 1"""
+    def __init__(self, hidden_dims=(128, 128)):
+        """坐标 MLP；默认结构为 2 -> 128 -> 128 -> 1。"""
         super().__init__()
-        self.extend(
-            [
-                nn.Linear(2, 128),
-                nn.Tanh(),
-                nn.Linear(128, 128),
-                nn.Tanh(),
-                nn.Linear(128, 1),
-            ]
-        )
+        hidden_dims = tuple(int(width) for width in hidden_dims)
+        if not hidden_dims or any(width <= 0 for width in hidden_dims):
+            raise ValueError("hidden_dims 必须包含正整数")
+
+        dimensions = (2, *hidden_dims, 1)
+        modules = []
+        for index, (in_dim, out_dim) in enumerate(pairwise(dimensions)):
+            modules.append(nn.Linear(in_dim, out_dim))
+            if index < len(dimensions) - 2:
+                modules.append(nn.Tanh())
+        self.extend(modules)
         self.apply(self._init_linear)
 
     @staticmethod

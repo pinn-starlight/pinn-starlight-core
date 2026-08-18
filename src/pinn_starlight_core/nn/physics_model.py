@@ -1,13 +1,13 @@
 import numpy as np
 import torch
-from torch import nn
 import torchvision.transforms.functional as F
+from torch import nn
 
 from pinn_starlight_core.data.image_loader import ImageLoader
 
 
 class Alpha(nn.Module):
-    def __init__(self, init=1, alpha_min=0.5, alpha_max=1.5):
+    def __init__(self, init: float = 1.0, alpha_min: float = 0.5, alpha_max: float = 1.5):
         super().__init__()
         self.alpha_min = alpha_min
         self.alpha_max = alpha_max
@@ -51,7 +51,11 @@ def _estimate_bright_center(gray_img: np.ndarray, kernel_size: int):
 
     blurred_small = blurred[::4, ::4]
     threshold = np.quantile(blurred_small.cpu().numpy(), 0.95)
-    ys, xs = torch.where(blurred > threshold)
+    ys, xs = torch.where(blurred >= threshold)
+    if xs.numel() == 0:
+        flat_index = int(torch.argmax(blurred).item())
+        ys = torch.tensor([flat_index // blurred.shape[1]])
+        xs = torch.tensor([flat_index % blurred.shape[1]])
 
     height, width = gray_img.shape
     x_axis = torch.linspace(-1, 1, width)
@@ -70,21 +74,44 @@ def _load_gray_image(loader:ImageLoader):
 
 
 class Icity(nn.Module):
-    def __init__(self, device, kernel_size=31, loader: ImageLoader | None=None):
+    def __init__(
+        self,
+        device,
+        kernel_size=31,
+        loader: ImageLoader | None = None,
+        gray_img: np.ndarray | None = None,
+        center_mode="bright_init_learnable",
+    ):
         super().__init__()
         self.device = device
         self.sigma_min = 0.05
         self.sigma_scale = 0.75
         self.theta_scale = 0.5 * torch.pi
 
-        if loader is None:
-            raise ValueError("loader is None")
+        if gray_img is None:
+            if loader is None:
+                raise ValueError("loader 和 gray_img 不能同时为空")
+            gray_img = _load_gray_image(loader)
+        gray_array = np.asarray(gray_img, dtype=np.float32)
+        self.H, self.W = gray_array.shape
+        if center_mode == "origin_fixed":
+            x_init = torch.tensor(0.0)
+            y_init = torch.tensor(0.0)
+            center_learnable = False
+        elif center_mode in {"bright_init_fixed", "bright_init_learnable"}:
+            x_init, y_init = _estimate_bright_center(gray_array, kernel_size)
+            center_learnable = center_mode == "bright_init_learnable"
+        else:
+            raise ValueError(f"未知 center_mode：{center_mode}")
 
-        gray_img = _load_gray_image(loader)
-        self.H, self.W = gray_img.shape
-        x_init, y_init = _estimate_bright_center(gray_img, kernel_size)
-        self.x = nn.Parameter(x_init.to(self.device).unsqueeze(0))
-        self.y = nn.Parameter(y_init.to(self.device).unsqueeze(0))
+        self.x = nn.Parameter(
+            x_init.to(self.device).reshape(1),
+            requires_grad=center_learnable,
+        )
+        self.y = nn.Parameter(
+            y_init.to(self.device).reshape(1),
+            requires_grad=center_learnable,
+        )
         self.raw_sigma_x = nn.Parameter(torch.tensor([0.0], device=self.device))
         self.raw_sigma_y = nn.Parameter(torch.tensor([0.0], device=self.device))
         self.raw_theta = nn.Parameter(torch.tensor([0.0], device=self.device))
