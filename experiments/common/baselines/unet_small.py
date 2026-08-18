@@ -18,7 +18,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from pinn_starlight_core.data.image_loader import ImageLoader
+from experiments.common.utils import experiment_utils as utils
 
 
 class _ConvBlock(nn.Sequential):
@@ -203,17 +203,38 @@ def predict(
 ):
     """返回与 observed 同尺寸的 background_pred。"""
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    checkpoint_data = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    model = build_model(checkpoint_data["base_channels"])
-    model.load_state_dict(checkpoint_data["model_state"])
-    model.to(device)
+    model, _ = load_checkpoint_model(checkpoint, device)
 
     observed_array = (
         _load_gray(observed)
         if isinstance(observed, (str, Path))
         else np.asarray(observed, dtype=np.float32)
     )
-    return _predict_background(model, observed_array, device, tile_size, overlap)
+    return predict_with_model(model, observed_array, device, tile_size, overlap)
+
+
+def load_checkpoint_model(checkpoint, device=None):
+    """加载一次 checkpoint，供 E2/E4 对多张图重复推理。"""
+    device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    checkpoint_data = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    model = build_model(checkpoint_data["base_channels"])
+    model.load_state_dict(checkpoint_data["model_state"])
+    model.to(device)
+    model.eval()
+    return model, checkpoint_data
+
+
+def predict_with_model(
+    model,
+    observed,
+    device=None,
+    tile_size: int = 256,
+    overlap: int = 32,
+):
+    """使用已加载模型预测一张二维 observed。"""
+    device = device or next(model.parameters()).device
+    observed = np.asarray(observed, dtype=np.float32)
+    return _predict_background(model, observed, device, tile_size, overlap)
 
 
 def single_predict(
@@ -243,9 +264,7 @@ def _set_seed(seed: int) -> None:
 
 
 def _load_gray(path) -> np.ndarray:
-    loader = ImageLoader(str(path), device="cpu")
-    _, brightness, width, height = loader.get_gray_data()
-    return brightness.reshape(height, width).numpy()
+    return utils.load_gray_image(path)
 
 
 def _load_pairs(manifest):

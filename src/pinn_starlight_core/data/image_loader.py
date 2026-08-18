@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import numpy as np
 import rawpy
-import torch
 import tifffile as tif
-from pathlib import Path
+import torch
 from matplotlib import pyplot as plt
 
 _RASTER_EXTS = {'png', 'jpg', 'jpeg'}
@@ -12,10 +13,12 @@ _TIFF_EXTS = {'tif', 'tiff'}
 
 # 暂时使用灰度图训练
 class ImageLoader:
-    def __init__(self, path: str, device="cpu"):
+    def __init__(self, path: str, device="cpu", downsample=2):
         """
             此path为文件的路径而非文件夹
         """
+        if downsample <= 0:
+            raise ValueError("downsample must be positive")
         self.device = device
         ext = Path(path).suffix.lower().lstrip('.')
         scale = None
@@ -50,7 +53,7 @@ class ImageLoader:
 
         rgb_data = data.astype(np.float32) / np.float32(scale)
 
-        self.rgb_data = rgb_data[::2, ::2, :]
+        self.rgb_data = rgb_data[::downsample, ::downsample, :]
         self.H, self.W = self.rgb_data.shape[:2]
 
     def get_gray_data(self):

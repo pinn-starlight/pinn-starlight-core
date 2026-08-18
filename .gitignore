@@ -5,6 +5,7 @@
 tmp
 experiments/scripts/legacy
 experiments/output
+experiments/outputs/
 
 #docs
 docs/pdf

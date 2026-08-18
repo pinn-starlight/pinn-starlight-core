@@ -15,7 +15,6 @@ import numpy as np
 
 from pinn_starlight_core.data.image_loader import ImageLoader
 
-
 SIGMA_CANDIDATES = (0.02, 0.04, 0.08, 0.16)
 
 
@@ -91,4 +90,4 @@ def select_sigma(
 
         scores[float(candidate)] = float(np.mean(sample_losses))
 
-    return min(scores, key=scores.get)
+    return min(scores, key=lambda candidate: scores[candidate])

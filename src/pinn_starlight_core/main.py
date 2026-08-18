@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 
 import torch
-from tqdm import tqdm
 from torch import optim
+from tqdm import tqdm
 
 from pinn_starlight_core.data.image_loader import ImageLoader
 from pinn_starlight_core.nn import physics_model

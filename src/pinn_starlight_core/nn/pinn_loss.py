@@ -1,7 +1,6 @@
 import torch
 from torch import autograd
 
-
 # 若改为 RGB 训练，优先在 data loss 中比较三通道观测与预测。
 # 物理损失可先只约束亮度/灰度分量，再评估是否需要扩展到逐通道 PDE。
 # 避开建筑物

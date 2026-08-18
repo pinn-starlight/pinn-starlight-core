@@ -8,7 +8,7 @@ U-Net-small 和 PINN 都完成一次最短运行。这里只检查整条流程�
 - 输入、background_pred、residual_pred 尺寸和数值范围正确；
 - loss、指标和参数无 NaN/Inf；
 - 至少能打印 loss，并保存一张背景图和一张残差图；
-- 当前 PINN 加载器接口已修正，alpha 使用受范围约束的可学习参数。
+- 当前 PINN 加载器接口已修正，正式实验 alpha 固定为 0.5。
 """
 from pathlib import Path
 
