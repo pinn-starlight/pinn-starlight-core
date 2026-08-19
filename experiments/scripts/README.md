@@ -32,12 +32,13 @@ uv run python -m experiments.scripts.e4.run
 
 PINN 的正式默认源点模式为 `bright_init_fixed`：先用平滑亮区估计源点，再在训练中固定该物理位置。`bright_init_learnable` 仍可通过 E1 的 `--center-mode` 或 E3 消融显式运行，但在当前 PDE 辅助项较弱且没有源点标注的目标下，它只代表“允许漂移”的对照，不应默认解释为更优的定位方法。
 
-实验入口只接受空的输出目录，避免覆盖已有结果。需要重跑时，请通过 `--output-root` 指定新目录，例如：
+实验入口默认拒绝非空输出目录，避免覆盖已有结果。确认要重跑时，可以显式加入 `--force`；它只清空 `experiments/outputs` 下指定的那个实验目录，不会清理其他目录。例如：
 
 ```powershell
-uv run python -m experiments.scripts.e2.run --output-root experiments/outputs/e2_synthetic_fixed
+uv run python -m experiments.scripts.e2.run --force --output-root experiments/outputs/e2_synthetic_fixed
 uv run python -m experiments.scripts.e4.run `
   --e2-config experiments/outputs/e2_synthetic_fixed/locked_e2_config.json `
+  --force `
   --output-root experiments/outputs/e4_real_fixed
 ```
 

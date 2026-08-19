@@ -71,7 +71,7 @@ def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict
 
 def main():
     args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root)
+    output_root = utils.prepare_output_root(args.output_root, force=args.force)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seeds = tuple(args.seeds)
 
@@ -412,6 +412,11 @@ def _parse_args():
         default=str(utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"),
     )
     parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e2_synthetic"))
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="清空指定的 experiments/outputs 子目录后重跑",
+    )
     parser.add_argument("--seeds", type=int, nargs="+", default=list(utils.SEEDS))
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--steps-per-epoch", type=int, default=100)

@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import random
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -51,17 +52,36 @@ def project_relative(path) -> str:
         return str(path)
 
 
-def prepare_output_root(path) -> Path:
-    """Create an empty output root and reject accidental result overwrites."""
+def prepare_output_root(path, force: bool = False) -> Path:
+    """Create an output root, optionally replacing an existing run explicitly.
+
+    ``force`` is intentionally restricted to descendants of the project's
+    ``experiments/outputs`` directory.  This keeps a typo such as ``--force .``
+    from deleting an arbitrary working directory.
+    """
     path = Path(path)
     if path.exists():
         if not path.is_dir():
             raise NotADirectoryError(f"输出路径不是目录：{path}")
         if any(path.iterdir()):
-            raise FileExistsError(
-                f"输出目录非空，不会覆盖已有结果：{path}。"
-                "请通过 --output-root 指定一个新的目录。"
-            )
+            if not force:
+                raise FileExistsError(
+                    f"输出目录非空，不会覆盖已有结果：{path}。"
+                    "如确认要重跑，请添加 --force，或指定新的 --output-root。"
+                )
+            if path.is_symlink():
+                raise ValueError("--force 不允许清理符号链接输出目录")
+            resolved_path = path.resolve()
+            resolved_output_root = OUTPUT_ROOT.resolve()
+            if (
+                resolved_path == resolved_output_root
+                or resolved_output_root not in resolved_path.parents
+            ):
+                raise ValueError(
+                    "--force 只允许清理 experiments/outputs 下的输出目录："
+                    f"{resolved_path}"
+                )
+            shutil.rmtree(resolved_path)
     path.mkdir(parents=True, exist_ok=True)
     return path
 

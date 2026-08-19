@@ -26,7 +26,7 @@ METHODS = ("fft_gaussian", "unet_small", "pinn")
 
 def main():
     args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root)
+    output_root = utils.prepare_output_root(args.output_root, force=args.force)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pinn_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
     e2_config = json.loads(Path(args.e2_config).read_text(encoding="utf-8"))
@@ -236,6 +236,11 @@ def _parse_args():
         default=str(utils.OUTPUT_ROOT / "e2_synthetic/locked_e2_config.json"),
     )
     parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e4_real"))
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="清空指定的 experiments/outputs 子目录后重跑",
+    )
     parser.add_argument("--seed", type=int, default=utils.SEEDS[0])
     parser.add_argument("--downsample", type=int, default=2)
     parser.add_argument("--crop-size", type=int, default=1024)
