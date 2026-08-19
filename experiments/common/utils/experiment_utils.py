@@ -51,6 +51,21 @@ def project_relative(path) -> str:
         return str(path)
 
 
+def prepare_output_root(path) -> Path:
+    """Create an empty output root and reject accidental result overwrites."""
+    path = Path(path)
+    if path.exists():
+        if not path.is_dir():
+            raise NotADirectoryError(f"输出路径不是目录：{path}")
+        if any(path.iterdir()):
+            raise FileExistsError(
+                f"输出目录非空，不会覆盖已有结果：{path}。"
+                "请通过 --output-root 指定一个新的目录。"
+            )
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def load_gray_image(path, downsample: int = 1) -> np.ndarray:
     """读取一张线性灰度图，返回范围为 [0, 1] 的 float32 数组。"""
     path = resolve_path(path)
@@ -59,7 +74,7 @@ def load_gray_image(path, downsample: int = 1) -> np.ndarray:
     if not path.is_file():
         raise FileNotFoundError(f"图像不存在：{path}")
 
-    if path.suffix.lower() in _RAW_EXTENSIONS:
+    if path.suffix.lower() in _RAW_EXTENSIONS | {".tif", ".tiff"}:
         loader = ImageLoader(str(path), device="cpu", downsample=downsample)
         rgb = loader.rgb_data
         gray = (
@@ -86,7 +101,7 @@ def load_gray_image(path, downsample: int = 1) -> np.ndarray:
             gray = gray.astype(np.float32) / float(np.iinfo(data.dtype).max)
 
     gray = np.asarray(gray, dtype=np.float32)
-    if path.suffix.lower() not in _RAW_EXTENSIONS:
+    if path.suffix.lower() not in _RAW_EXTENSIONS | {".tif", ".tiff"}:
         gray = gray[::downsample, ::downsample]
     return np.clip(gray, 0.0, 1.0)
 

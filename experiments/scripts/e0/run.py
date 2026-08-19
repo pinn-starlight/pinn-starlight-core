@@ -10,6 +10,7 @@ U-Net-small 和 PINN 都完成一次最短运行。这里只检查整条流程�
 - 至少能打印 loss，并保存一张背景图和一张残差图；
 - 当前 PINN 加载器接口已修正，正式实验 alpha 固定为 0.5。
 """
+import argparse
 from pathlib import Path
 
 import torch
@@ -28,80 +29,125 @@ UNET_STEPS_PER_EPOCH = 10
 UNET_BATCH_SIZE = 1
 UNET_PATCH_SIZE = 256
 UNET_BASE_CHANNELS = 8
+E0_DOWNSAMPLE = 2
 TEST_IMG_DIR = utils.PROJECT_ROOT / "data/test"
 SYNTHETIC_DIR = utils.PROJECT_ROOT / "data/collections/synthetic"
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "e0"
-OUTPUT_ROOT.mkdir(exist_ok=True, parents=True)
+
 
 def main():
+    args = _parse_args()
+    output_root = utils.prepare_output_root(args.output_root)
+    device = _device()
+    test_images = _test_images(Path(args.test_image_dir))
+
     print("Hello PINN-Starlight-core!")
-    _fft_test()
-    _pinn_test()
-    _unet_test()
+    _fft_test(output_root, test_images, args.downsample, args.fft_sigma)
+    _pinn_test(
+        output_root,
+        test_images,
+        device,
+        args.downsample,
+        args.pinn_steps,
+        args.pinn_batch_size,
+    )
+    _unet_test(
+        output_root,
+        test_images,
+        Path(args.synthetic_dir),
+        device,
+        args.downsample,
+        args.unet_epochs,
+        args.unet_steps_per_epoch,
+        args.unet_batch_size,
+        args.unet_patch_size,
+        args.unet_base_channels,
+    )
 
 
 def _device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def _pinn_test():
-    for img in TEST_IMG_DIR.glob("*.tif"):
+def _pinn_test(output_root, test_images, device, downsample, steps, batch_size):
+    for img in test_images:
         img_name = _sample_name(img)
-        observed, predicted, residual = pinn.single_train(img, _device(), STEP, BATCH_SIZE)
-        _save_images("coordinate_pinn", img_name, observed, predicted, residual)
+        observed = _load_e0_observed(img, downsample)
+        observed, predicted, residual = pinn.single_train(
+            observed,
+            device,
+            steps,
+            batch_size,
+        )
+        _save_images(output_root, "coordinate_pinn", img_name, observed, predicted, residual)
 
     print("PINN Done!")
 
 
-def _fft_test():
-    for img in TEST_IMG_DIR.glob("*.tif"):
+def _fft_test(output_root, test_images, downsample, sigma):
+    for img in test_images:
         img_name = _sample_name(img)
-        observed, predicted, residual = fft.single_estimate(img, FFT_SIGMA)
-        _save_images("fft_gaussian", img_name, observed, predicted, residual)
+        observed = _load_e0_observed(img, downsample)
+        predicted = fft.estimate_background(observed, sigma)
+        residual = observed - predicted
+        _save_images(output_root, "fft_gaussian", img_name, observed, predicted, residual)
 
     print("FFT-Gaussian Done!")
 
 
-def _unet_test():
-    pairs = _synthetic_pairs()
+def _unet_test(
+    output_root,
+    test_images,
+    synthetic_dir,
+    device,
+    downsample,
+    epochs,
+    steps_per_epoch,
+    batch_size,
+    patch_size,
+    base_channels,
+):
+    pairs = _synthetic_pairs(synthetic_dir)
     if not pairs:
-        raise FileNotFoundError(f"No synthetic samples found in: {SYNTHETIC_DIR}")
+        raise FileNotFoundError(f"No synthetic samples found in: {synthetic_dir}")
 
     train_pairs = [pairs[0]]
     validation_pairs = [pairs[1] if len(pairs) > 1 else pairs[0]]
-    method_output = OUTPUT_ROOT / "unet_small"
+    method_output = output_root / "unet_small"
     checkpoint = unet.train(
         train_pairs,
         validation_pairs,
         method_output / "checkpoint",
-        device=_device(),
-        epochs=UNET_EPOCHS,
-        steps_per_epoch=UNET_STEPS_PER_EPOCH,
-        batch_size=UNET_BATCH_SIZE,
-        patch_size=UNET_PATCH_SIZE,
-        base_channels=UNET_BASE_CHANNELS,
+        device=device,
+        epochs=epochs,
+        steps_per_epoch=steps_per_epoch,
+        batch_size=batch_size,
+        patch_size=patch_size,
+        base_channels=base_channels,
         patience=1,
     )
 
-    for img in TEST_IMG_DIR.glob("*.tif"):
+    for img in test_images:
         img_name = _sample_name(img)
-        observed, predicted, residual = unet.single_predict(
+        observed = _load_e0_observed(img, downsample)
+        predicted = unet.predict(
             checkpoint,
-            img,
-            device=_device(),
-            tile_size=UNET_PATCH_SIZE,
+            observed,
+            device=device,
+            tile_size=patch_size,
         )
-        _save_images("unet_small", img_name, observed, predicted, residual)
+        residual = observed - predicted
+        _save_images(output_root, "unet_small", img_name, observed, predicted, residual)
 
     print("U-Net-small Done!")
 
 
-def _synthetic_pairs() -> list[tuple[Path, Path]]:
+def _synthetic_pairs(synthetic_dir: Path = SYNTHETIC_DIR) -> list[tuple[Path, Path]]:
     pairs: list[tuple[Path, Path]] = []
-    if not SYNTHETIC_DIR.is_dir():
+    if not synthetic_dir.is_dir():
         return pairs
 
-    for sample_dir in SYNTHETIC_DIR.iterdir():
+    for sample_dir in sorted(synthetic_dir.iterdir()):
         if not sample_dir.is_dir():
             continue
 
@@ -113,12 +159,29 @@ def _synthetic_pairs() -> list[tuple[Path, Path]]:
     return pairs
 
 
+def _test_images(test_image_dir: Path) -> list[Path]:
+    images = sorted(test_image_dir.glob("*.tif"))
+    if not images:
+        raise FileNotFoundError(f"No TIFF test images found in: {test_image_dir}")
+    return images
+
+
+def _load_e0_observed(path: Path, downsample: int = E0_DOWNSAMPLE):
+    """Use one preprocessing path and resolution for all E0 methods."""
+    return utils.load_gray_image(path, downsample=downsample)
+
+
 def _sample_name(path: Path):
     return path.stem.removeprefix("observed_")
 
 
-def _save_images(method, image_name, observed, predicted, residual):
-    method_output = OUTPUT_ROOT / method
+def _save_images(output_root, method, image_name, observed, predicted, residual):
+    if observed.shape != predicted.shape or observed.shape != residual.shape:
+        raise ValueError(
+            f"{method} 输出尺寸不一致：observed={observed.shape}, "
+            f"background={predicted.shape}, residual={residual.shape}"
+        )
+    method_output = Path(output_root) / method
     method_output.mkdir(exist_ok=True, parents=True)
     display_residual = residual.clip(0, 1)
 
@@ -143,6 +206,23 @@ def _save_images(method, image_name, observed, predicted, residual):
         vmin=0.0,
         vmax=1.0,
     )
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser(description="E0：三种方法的流程检查，不产生论文结果")
+    parser.add_argument("--output-root", default=str(OUTPUT_ROOT))
+    parser.add_argument("--test-image-dir", default=str(TEST_IMG_DIR))
+    parser.add_argument("--synthetic-dir", default=str(SYNTHETIC_DIR))
+    parser.add_argument("--downsample", type=int, default=E0_DOWNSAMPLE)
+    parser.add_argument("--fft-sigma", type=float, default=FFT_SIGMA)
+    parser.add_argument("--pinn-steps", type=int, default=STEP)
+    parser.add_argument("--pinn-batch-size", type=int, default=BATCH_SIZE)
+    parser.add_argument("--unet-epochs", type=int, default=UNET_EPOCHS)
+    parser.add_argument("--unet-steps-per-epoch", type=int, default=UNET_STEPS_PER_EPOCH)
+    parser.add_argument("--unet-batch-size", type=int, default=UNET_BATCH_SIZE)
+    parser.add_argument("--unet-patch-size", type=int, default=UNET_PATCH_SIZE)
+    parser.add_argument("--unet-base-channels", type=int, default=UNET_BASE_CHANNELS)
+    return parser.parse_args()
 
 
 if __name__ == "__main__":

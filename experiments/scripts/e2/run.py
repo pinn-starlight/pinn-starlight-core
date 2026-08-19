@@ -71,8 +71,7 @@ def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict
 
 def main():
     args = _parse_args()
-    output_root = Path(args.output_root)
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = utils.prepare_output_root(args.output_root)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seeds = tuple(args.seeds)
 
@@ -171,7 +170,9 @@ def main():
                 "checkpoint": utils.project_relative(checkpoint),
             }
         )
-        unet_checkpoints.append((float(checkpoint_data["validation_loss"]), seed, checkpoint))
+        unet_checkpoints.append(
+            (float(checkpoint_data["validation_loss"]), seed, checkpoint)
+        )
 
         for sample in samples:
             result = run_method(

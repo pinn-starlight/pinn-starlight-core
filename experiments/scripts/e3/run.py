@@ -47,8 +47,7 @@ def build_variant_config(name: str, locked_pinn_config: dict) -> dict:
 
 def main():
     args = _parse_args()
-    output_root = Path(args.output_root)
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = utils.prepare_output_root(args.output_root)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     locked_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
     test_rows = utils.load_manifest(args.manifest, split="test")

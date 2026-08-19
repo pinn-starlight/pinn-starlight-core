@@ -8,6 +8,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+STAR_COUNT_LIMIT = 2000
+
 
 def mae(prediction, target) -> float:
     prediction, target = _pair(prediction, target)
@@ -70,7 +72,7 @@ def extract_stars(
     threshold: float = 0.03,
     matching_radius: int = 3,
     flux_radius: int = 2,
-    max_stars: int = 2000,
+    max_stars: int = STAR_COUNT_LIMIT,
 ) -> list[dict]:
     """从干净参考图或残差图中提取局部亮点及其近邻光通量。"""
     image = _image(image)
@@ -124,14 +126,15 @@ def star_metrics(
 ) -> dict[str, float]:
     """以 clean_true 提取的星点作为固定参考，计算匹配和光通量误差。"""
     reference = reference_stars
+    reference_capped = bool(reference is not None and len(reference) >= STAR_COUNT_LIMIT)
     if reference is None:
-        reference = extract_stars(
+        reference, reference_capped = _extract_stars_with_cap(
             clean_true,
             threshold=threshold,
             matching_radius=matching_radius,
             flux_radius=flux_radius,
         )
-    predicted = extract_stars(
+    predicted, predicted_capped = _extract_stars_with_cap(
         np.clip(residual_pred, 0.0, 1.0),
         threshold=threshold,
         matching_radius=matching_radius,
@@ -167,6 +170,8 @@ def star_metrics(
         "flux_error": flux_error,
         "reference_star_count": float(len(reference)),
         "predicted_star_count": float(len(predicted)),
+        "reference_star_count_capped": float(reference_capped),
+        "predicted_star_count_capped": float(predicted_capped),
     }
 
 
@@ -219,7 +224,7 @@ def evaluate_real(observed, background_pred, residual_pred) -> dict[str, float]:
     residual_pred = _image(residual_pred, clip=False)
     total_variation = np.mean(np.abs(np.diff(background_pred, axis=0)))
     total_variation += np.mean(np.abs(np.diff(background_pred, axis=1)))
-    stars = extract_stars(np.clip(residual_pred, 0.0, 1.0))
+    stars, count_capped = _extract_stars_with_cap(np.clip(residual_pred, 0.0, 1.0))
     return {
         "observed_mean": float(observed.mean()),
         "background_mean": float(background_pred.mean()),
@@ -229,7 +234,15 @@ def evaluate_real(observed, background_pred, residual_pred) -> dict[str, float]:
         "residual_negative_fraction": float(np.mean(residual_pred < 0.0)),
         "residual_saturated_fraction": float(np.mean(residual_pred > 1.0)),
         "detected_star_count": float(len(stars)),
+        "detected_star_count_capped": float(count_capped),
     }
+
+
+def _extract_stars_with_cap(image, **kwargs):
+    """Return the bounded list plus an explicit lower-bound marker."""
+    stars = extract_stars(image, max_stars=STAR_COUNT_LIMIT + 1, **kwargs)
+    capped = len(stars) > STAR_COUNT_LIMIT
+    return stars[:STAR_COUNT_LIMIT], capped
 
 
 def center_error(predicted_x, predicted_y, true_x, true_y) -> float:

@@ -23,7 +23,11 @@ DEFAULT_CONFIG = {
     "model_lr": 1e-3,
     "icity_lr": 1e-3,
     "alpha": 0.5,
-    "center_mode": "bright_init_learnable",
+    # The bright-region estimate is physically interpretable and more stable
+    # than an unconstrained center under the current weak PDE auxiliary loss.
+    # Keep learning available as an explicit E3 ablation instead of making it
+    # the implicit formal setting.
+    "center_mode": "bright_init_fixed",
     "prediction_batch_size": 65536,
     "log_every": 100,
 }
@@ -188,6 +192,12 @@ def normalized_config(config=None):
     result["steps"] = int(result["steps"])
     result["batch_size"] = int(result["batch_size"])
     result["kernel_size"] = int(result["kernel_size"])
+    if result["center_mode"] not in {
+        "origin_fixed",
+        "bright_init_fixed",
+        "bright_init_learnable",
+    }:
+        raise ValueError(f"未知 center_mode：{result['center_mode']}")
     if result["steps"] <= 0 or result["batch_size"] <= 0:
         raise ValueError("steps 和 batch_size 必须大于 0")
     if result["kernel_size"] <= 1 or result["kernel_size"] % 2 == 0:

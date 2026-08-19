@@ -13,7 +13,7 @@ from collections.abc import Iterable
 
 import numpy as np
 
-from pinn_starlight_core.data.image_loader import ImageLoader
+from experiments.common.utils import experiment_utils as utils
 
 SIGMA_CANDIDATES = (0.02, 0.04, 0.08, 0.16)
 
@@ -48,11 +48,10 @@ def estimate_background(observed, normalized_sigma: float):
     return np.asarray(background, dtype=np.float32)
 
 
-def single_estimate(input_path, normalized_sigma: float):
+def single_estimate(input_path, normalized_sigma: float, downsample: int = 2):
     """读取单张图片并返回 observed、background_pred 和 residual_pred。"""
-    loader = ImageLoader(str(input_path), device="cpu")
-    _, brightness, width, height = loader.get_gray_data()
-    observed = brightness.reshape(height, width).numpy()
+    # Keep E0 on the same preprocessing path as PINN and U-Net.
+    observed = utils.load_gray_image(input_path, downsample=downsample)
     predicted = estimate_background(observed, normalized_sigma)
     residual = observed - predicted
     return observed, predicted, residual

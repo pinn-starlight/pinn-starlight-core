@@ -30,6 +30,17 @@ uv run python -m experiments.scripts.e4.run
 
 所有入口都支持 `--help`。正式默认值符合实验计划；只有 E0 或调试时才应使用较少步数、较少样本或单个种子。调试结果不能填入论文。
 
+PINN 的正式默认源点模式为 `bright_init_fixed`：先用平滑亮区估计源点，再在训练中固定该物理位置。`bright_init_learnable` 仍可通过 E1 的 `--center-mode` 或 E3 消融显式运行，但在当前 PDE 辅助项较弱且没有源点标注的目标下，它只代表“允许漂移”的对照，不应默认解释为更优的定位方法。
+
+实验入口只接受空的输出目录，避免覆盖已有结果。需要重跑时，请通过 `--output-root` 指定新目录，例如：
+
+```powershell
+uv run python -m experiments.scripts.e2.run --output-root experiments/outputs/e2_synthetic_fixed
+uv run python -m experiments.scripts.e4.run `
+  --e2-config experiments/outputs/e2_synthetic_fixed/locked_e2_config.json `
+  --output-root experiments/outputs/e4_real_fixed
+```
+
 ## 数据协议
 
 `generate_synthetic` 从 `data/collections/manifest.csv` 读取 5 张 `synthetic_base_candidate`，先按基础图固定划分，再为每张图生成：
@@ -42,6 +53,8 @@ uv run python -m experiments.scripts.e4.run
 最终得到 18 个训练样本、6 个验证样本和 6 个测试样本。同一基础图不会跨集合。后续实验只读取 `data/collections/synthetic/manifest.csv`，不会临时重新划分。
 
 星点 Precision、Recall、F1 和光通量误差使用 `clean_true` 上预先固定的局部对比极大值作为参考，阈值为 `0.03`，匹配半径为 3 像素。它不是外部星表真值，论文中必须称为“由干净参考图提取的星点参考”。
+
+星点检测最多保留 2000 个候选；当 `*_star_count_capped` 或 `detected_star_count_capped` 为 `1` 时，对应数量只是下界，不能按精确星数解读。
 
 ## 正式输出
 
