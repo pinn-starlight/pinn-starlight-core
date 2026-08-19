@@ -37,7 +37,7 @@ OUTPUT_ROOT = utils.OUTPUT_ROOT / "e0"
 
 def main():
     args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root)
+    output_root = utils.prepare_output_root(args.output_root, force=args.force)
     device = _device()
     test_images = _test_images(Path(args.test_image_dir))
 
@@ -211,6 +211,11 @@ def _save_images(output_root, method, image_name, observed, predicted, residual)
 def _parse_args():
     parser = argparse.ArgumentParser(description="E0：三种方法的流程检查，不产生论文结果")
     parser.add_argument("--output-root", default=str(OUTPUT_ROOT))
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="清空指定的 experiments/outputs 子目录后重跑",
+    )
     parser.add_argument("--test-image-dir", default=str(TEST_IMG_DIR))
     parser.add_argument("--synthetic-dir", default=str(SYNTHETIC_DIR))
     parser.add_argument("--downsample", type=int, default=E0_DOWNSAMPLE)

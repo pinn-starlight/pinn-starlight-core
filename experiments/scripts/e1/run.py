@@ -80,7 +80,7 @@ def run_candidate(
 
 def main():
     args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root)
+    output_root = utils.prepare_output_root(args.output_root, force=args.force)
     validation_rows = utils.load_manifest(args.manifest, split="validation")
     if args.max_validation_samples > 0:
         validation_rows = validation_rows[: args.max_validation_samples]
@@ -317,6 +317,11 @@ def _parse_args():
     parser = argparse.ArgumentParser(description="E1：锁定 PINN 正式配置")
     parser.add_argument("--manifest", default=str(utils.SYNTHETIC_MANIFEST))
     parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e1_tuning"))
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="清空指定的 experiments/outputs 子目录后重跑",
+    )
     parser.add_argument("--seed", type=int, default=utils.SEEDS[0])
     parser.add_argument("--initial-steps", type=int, default=3000)
     parser.add_argument("--continue-steps", type=int, default=1000)

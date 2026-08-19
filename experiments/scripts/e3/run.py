@@ -47,7 +47,7 @@ def build_variant_config(name: str, locked_pinn_config: dict) -> dict:
 
 def main():
     args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root)
+    output_root = utils.prepare_output_root(args.output_root, force=args.force)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     locked_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
     test_rows = utils.load_manifest(args.manifest, split="test")
@@ -197,6 +197,11 @@ def _parse_args():
         default=str(utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"),
     )
     parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e3_ablation"))
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="清空指定的 experiments/outputs 子目录后重跑",
+    )
     parser.add_argument("--seeds", type=int, nargs="+", default=list(utils.SEEDS))
     parser.add_argument("--star-threshold", type=float, default=0.03)
     parser.add_argument("--matching-radius", type=int, default=3)
