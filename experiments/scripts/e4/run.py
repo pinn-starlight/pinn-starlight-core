@@ -26,13 +26,12 @@ METHODS = ("fft_gaussian", "unet_small", "pinn")
 
 def main():
     args = _parse_args()
-    output_root = Path(args.output_root)
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = utils.prepare_output_root(args.output_root)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pinn_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
     e2_config = json.loads(Path(args.e2_config).read_text(encoding="utf-8"))
     checkpoint = utils.resolve_path(e2_config["unet_checkpoint"])
-    unet_model, _ = unet.load_checkpoint_model(checkpoint, device)
+    unet_model, unet_checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
 
     utils.save_run_metadata(
         output_root,
@@ -45,6 +44,7 @@ def main():
             "e2_config": utils.project_relative(args.e2_config),
             "fft_sigma": e2_config["fft_sigma"],
             "unet_checkpoint": e2_config["unet_checkpoint"],
+            "unet_validation_loss": unet_checkpoint_data.get("validation_loss"),
             "pinn_seed": args.seed,
         },
     )

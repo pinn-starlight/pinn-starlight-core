@@ -94,6 +94,7 @@ def single_train(
     _validate_pair(observed, background_true)
 
     model = build_model(base_channels).to(device)
+    _initialize_output_layer(model, [background_true])
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     generator = torch.Generator().manual_seed(seed)
     _run_training_steps(
@@ -142,6 +143,7 @@ def train(
 
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_model(base_channels).to(device)
+    _initialize_output_layer(model, [background for _, background in train_pairs])
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     generator = torch.Generator().manual_seed(seed)
 
@@ -261,6 +263,15 @@ def _set_seed(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def _initialize_output_layer(model, targets) -> None:
+    """Start near the target mean instead of sigmoid(0)=0.5."""
+    target_mean = float(np.mean([np.mean(target) for target in targets]))
+    ratio = np.clip(target_mean, 1e-3, 1.0 - 1e-3)
+    bias = float(np.log(ratio / (1.0 - ratio)))
+    with torch.no_grad():
+        model.output.bias.fill_(bias)
 
 
 def _load_gray(path) -> np.ndarray:

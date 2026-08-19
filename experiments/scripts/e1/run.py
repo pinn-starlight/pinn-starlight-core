@@ -80,8 +80,7 @@ def run_candidate(
 
 def main():
     args = _parse_args()
-    output_root = Path(args.output_root)
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = utils.prepare_output_root(args.output_root)
     validation_rows = utils.load_manifest(args.manifest, split="validation")
     if args.max_validation_samples > 0:
         validation_rows = validation_rows[: args.max_validation_samples]
@@ -99,7 +98,7 @@ def main():
             "icity_lr": 1e-3,
             "physics_weight": 0.1,
             "kernel_size": 31,
-            "center_mode": "bright_init_learnable",
+            "center_mode": args.center_mode,
         }
     )
     utils.set_seed(args.seed)
@@ -110,6 +109,7 @@ def main():
             "manifest": utils.project_relative(args.manifest),
             "seed": args.seed,
             "selection_order": ["network", "physics_weight", "kernel_size", "steps"],
+            "center_mode": args.center_mode,
             "validation_samples": [row["sample_id"] for row in validation_rows],
         },
     )
@@ -324,6 +324,15 @@ def _parse_args():
     parser.add_argument("--batch-size", type=int, default=8192)
     parser.add_argument("--stability-tolerance", type=float, default=0.005)
     parser.add_argument("--max-validation-samples", type=int, default=0)
+    parser.add_argument(
+        "--center-mode",
+        choices=("origin_fixed", "bright_init_fixed", "bright_init_learnable"),
+        default="bright_init_fixed",
+        help=(
+            "PINN 源点中心模式；默认使用亮区初始化后固定，"
+            "可学习模式仅作为显式消融项"
+        ),
+    )
     return parser.parse_args()
 
 
