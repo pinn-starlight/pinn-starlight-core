@@ -59,6 +59,8 @@ uv run python -m experiments.scripts.e4.run `
 
 ## 正式输出
 
+E4 默认读取 `data/test/native_test.tif`，以及 `data/collections/manifest.csv` 中标记为 `usage=e4_candidate` 的全部真实候选图。当前清单对应 15 张 NEF；标记为 `review_source` 的来源不明 JPG 不会自动进入正式结果。默认统一下采样 2 倍后使用整幅图，不做中心裁剪；显存不足时可显式加 `--crop-size 1024`。真实图没有背景真值，仍只做定性比较和无参考统计。
+
 每个实验根目录保存 `config.json`、`environment.json`、`metrics.csv` 和 `summary.json`。每张预测保存：
 
 ```text
