@@ -20,8 +20,58 @@ from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
-REAL_IMAGES = (str(utils.PROJECT_ROOT / "data/test/native_test.tif"),)
+NATIVE_REAL_IMAGE = str(utils.PROJECT_ROOT / "data/test/native_test.tif")
+COLLECTION_ROOT = utils.PROJECT_ROOT / "data/collections"
+COLLECTION_MANIFEST = utils.PROJECT_ROOT / "data/collections/manifest.csv"
 METHODS = ("fft_gaussian", "unet_small", "pinn")
+
+
+def _default_real_images():
+    """Return the fixed native image plus reviewed real-data candidates.
+
+    The collection manifest is the source of truth for E4 candidates. Rows
+    marked ``review_source`` are intentionally excluded until their provenance
+    is checked; in the current manifest this excludes the JPG candidate.
+    """
+    if not Path(NATIVE_REAL_IMAGE).is_file():
+        raise FileNotFoundError(f"E4 主图不存在：{NATIVE_REAL_IMAGE}")
+    if not COLLECTION_MANIFEST.is_file():
+        raise FileNotFoundError(
+            "E4 需要数据清单，但未找到 "
+            f"{COLLECTION_MANIFEST}；请同步 data/collections"
+        )
+
+    rows = utils.load_manifest(COLLECTION_MANIFEST)
+    candidates = sorted(
+        (row for row in rows if row.get("usage") == "e4_candidate"),
+        key=lambda row: row["image_id"],
+    )
+    if not candidates:
+        raise ValueError(
+            f"{COLLECTION_MANIFEST} 中没有 usage=e4_candidate 的图像"
+        )
+
+    images = [NATIVE_REAL_IMAGE]
+    missing = []
+    for row in candidates:
+        current_path = Path(row["current_path"])
+        if current_path.is_absolute():
+            image_path = current_path
+        elif current_path.parts[:2] == ("data", "collections"):
+            image_path = utils.resolve_path(current_path)
+        else:
+            image_path = COLLECTION_ROOT / current_path
+        if not image_path.is_file():
+            missing.append(f"{row['image_id']}: {image_path}")
+        images.append(str(image_path))
+    if missing:
+        raise FileNotFoundError(
+            "E4 清单中有不存在的图像：\n" + "\n".join(missing)
+        )
+    return tuple(dict.fromkeys(images))
+
+
+REAL_IMAGES = _default_real_images()
 
 
 def main():
@@ -38,6 +88,8 @@ def main():
         {
             "experiment": "E4",
             "images": [utils.project_relative(path) for path in args.images],
+            "image_count": len(args.images),
+            "candidate_manifest": utils.project_relative(COLLECTION_MANIFEST),
             "downsample": args.downsample,
             "center_crop_size": args.crop_size,
             "pinn_config": utils.project_relative(args.pinn_config),
@@ -50,8 +102,12 @@ def main():
     )
 
     rows = []
-    for image_path in args.images:
+    for image_index, image_path in enumerate(args.images, start=1):
         image_path = utils.resolve_path(image_path)
+        print(
+            f"E4 [{image_index}/{len(args.images)}] {image_path.name}",
+            flush=True,
+        )
         observed = utils.load_gray_image(image_path, downsample=args.downsample)
         observed = _center_crop(observed, args.crop_size)
         image_name = image_path.stem
@@ -226,7 +282,15 @@ def _center_crop(image, crop_size):
 
 def _parse_args():
     parser = argparse.ArgumentParser(description="E4：固定真实图三方法对比")
-    parser.add_argument("--images", nargs="+", default=list(REAL_IMAGES))
+    parser.add_argument(
+        "--images",
+        nargs="+",
+        default=list(REAL_IMAGES),
+        help=(
+            "真实图路径；默认包含 native_test.tif 和 manifest 中所有 "
+            "usage=e4_candidate 的图像"
+        ),
+    )
     parser.add_argument(
         "--pinn-config",
         default=str(utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"),
@@ -243,7 +307,12 @@ def _parse_args():
     )
     parser.add_argument("--seed", type=int, default=utils.SEEDS[0])
     parser.add_argument("--downsample", type=int, default=2)
-    parser.add_argument("--crop-size", type=int, default=1024)
+    parser.add_argument(
+        "--crop-size",
+        type=int,
+        default=0,
+        help="中心裁剪边长；0 表示使用下采样后的整幅图（显存不足时可设为 1024）",
+    )
     return parser.parse_args()
 
 
