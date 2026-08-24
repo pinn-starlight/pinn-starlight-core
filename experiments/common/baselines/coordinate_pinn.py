@@ -1,9 +1,9 @@
 """E0-E4 共用的坐标 PINN 背景估计。"""
 
-from __future__ import annotations
-
 import time
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Literal, TypedDict, cast
 
 import numpy as np
 import torch
@@ -11,10 +11,29 @@ from tqdm import tqdm
 
 import pinn_starlight_core.nn.pinn_loss as loss
 from experiments.common.utils import experiment_utils as utils
+from pinn_starlight_core.data.image_loader import coordinate_grid
 from pinn_starlight_core.nn.physics_model import Icity
 from pinn_starlight_core.nn.pinn_layers import SkyglowMLP
 
-DEFAULT_CONFIG = {
+
+CenterMode = Literal["origin_fixed", "bright_init_fixed", "bright_init_learnable"]
+
+
+class PINNConfig(TypedDict):
+    hidden_dims: list[int]
+    physics_weight: float
+    kernel_size: int
+    steps: int
+    batch_size: int
+    model_lr: float
+    icity_lr: float
+    alpha: float
+    center_mode: CenterMode
+    prediction_batch_size: int
+    log_every: int
+
+
+DEFAULT_CONFIG: PINNConfig = {
     "hidden_dims": [128, 128],
     "physics_weight": 0.1,
     "kernel_size": 31,
@@ -35,7 +54,7 @@ DEFAULT_CONFIG = {
 
 def train_background(
     observed,
-    config=None,
+    config: Mapping[str, object] | None = None,
     device=None,
     seed=20260728,
     resume_state=None,
@@ -52,7 +71,7 @@ def train_background(
     utils.reset_peak_vram(device)
     observed = _load_observed(observed)
     height, width = observed.shape
-    coords = _coordinate_grid(height, width, device)
+    coords = coordinate_grid(height, width, device)
     values = torch.from_numpy(observed.reshape(-1)).to(device)
 
     model = SkyglowMLP(config["hidden_dims"]).to(device)
@@ -79,54 +98,20 @@ def train_background(
         generator.set_state(resume_state["generator_state"])
 
     alpha = torch.tensor(float(config["alpha"]), dtype=torch.float32, device=device)
-    steps = int(config["steps"])
-    batch_size = min(int(config["batch_size"]), coords.shape[0])
-    log_every = max(1, int(config["log_every"]))
-    progress_bar = tqdm(range(steps), desc="PINN", leave=False) if show_progress else None
-    progress = progress_bar if progress_bar is not None else range(steps)
-
     started = time.perf_counter()
-    final_total = final_data = final_physics = float("nan")
-    model.train()
-    city_source.train()
-    for local_step in progress:
-        indices = torch.randint(
-            0,
-            coords.shape[0],
-            (batch_size,),
-            device=device,
-            generator=generator,
-        )
-        batch_xy = coords[indices].clone().requires_grad_(True)
-        batch_observed = values[indices]
-        background_pred = torch.sigmoid(model(batch_xy).squeeze(-1))
-        data_loss = loss.mse_data(batch_observed, background_pred)
-
-        if config["physics_weight"] > 0:
-            city_pred = city_source(batch_xy, alpha)
-            physics_loss = loss.mse_physics(
-                background_pred,
-                city_pred,
-                alpha,
-                batch_xy,
-            )
-        else:
-            physics_loss = torch.zeros((), device=device)
-        total_loss = data_loss + float(config["physics_weight"]) * physics_loss
-
-        optimizer.zero_grad(set_to_none=True)
-        total_loss.backward()
-        optimizer.step()
-
-        final_total = float(total_loss.detach().item())
-        final_data = float(data_loss.detach().item())
-        final_physics = float(physics_loss.detach().item())
-        global_step = start_step + local_step + 1
-        if global_step == 1 or global_step % log_every == 0 or local_step + 1 == steps:
-            history.append(_history_row(global_step, final_total, final_data, final_physics, city_source))
-        if progress_bar is not None and local_step % 20 == 0:
-            progress_bar.set_postfix(loss=f"{final_total:.6f}")
-
+    history, final_total, final_data, final_physics = _train_steps(
+        model,
+        city_source,
+        coords,
+        values,
+        optimizer,
+        generator,
+        alpha,
+        config,
+        start_step,
+        history,
+        show_progress,
+    )
     runtime_s = elapsed_before + time.perf_counter() - started
     background_pred = _predict_background(
         model,
@@ -137,7 +122,7 @@ def train_background(
     )
     residual_pred = observed - background_pred
     sigma_x, sigma_y = city_source.get_sigma()
-    final_step = start_step + steps
+    final_step = start_step + int(config["steps"])
 
     result = {
         "observed": observed,
@@ -176,18 +161,82 @@ def train_background(
     return result
 
 
+def _train_steps(
+    model,
+    city_source,
+    coords,
+    values,
+    optimizer,
+    generator,
+    alpha,
+    config: PINNConfig,
+    start_step,
+    history,
+    show_progress,
+):
+    steps = int(config["steps"])
+    batch_size = min(int(config["batch_size"]), coords.shape[0])
+    log_every = max(1, int(config["log_every"]))
+    progress_bar = tqdm(range(steps), desc="PINN", leave=False) if show_progress else None
+    progress = progress_bar if progress_bar is not None else range(steps)
+
+    final_total = final_data = final_physics = float("nan")
+    model.train()
+    city_source.train()
+    for local_step in progress:
+        indices = torch.randint(
+            0,
+            coords.shape[0],
+            (batch_size,),
+            device=coords.device,
+            generator=generator,
+        )
+        batch_xy = coords[indices].clone().requires_grad_(True)
+        batch_observed = values[indices]
+        background_pred = torch.sigmoid(model(batch_xy).squeeze(-1))
+        data_loss = loss.mse_data(batch_observed, background_pred)
+
+        if config["physics_weight"] > 0:
+            city_pred = city_source(batch_xy, alpha)
+            physics_loss = loss.mse_physics(
+                background_pred,
+                city_pred,
+                alpha,
+                batch_xy,
+            )
+        else:
+            physics_loss = torch.zeros((), device=coords.device)
+        total_loss = data_loss + float(config["physics_weight"]) * physics_loss
+
+        optimizer.zero_grad(set_to_none=True)
+        total_loss.backward()
+        optimizer.step()
+
+        final_total = float(total_loss.detach().item())
+        final_data = float(data_loss.detach().item())
+        final_physics = float(physics_loss.detach().item())
+        global_step = start_step + local_step + 1
+        if global_step == 1 or global_step % log_every == 0 or local_step + 1 == steps:
+            history.append(_history_row(global_step, final_total, final_data, final_physics, city_source))
+        if progress_bar is not None and local_step % 20 == 0:
+            progress_bar.set_postfix(loss=f"{final_total:.6f}")
+
+    return history, final_total, final_data, final_physics
+
+
 def single_train(input_path, device, step, batch_size):
     """兼容 E0 的简短入口。"""
-    config = dict(DEFAULT_CONFIG)
-    config.update({"steps": int(step), "batch_size": int(batch_size)})
+    config: PINNConfig = DEFAULT_CONFIG.copy()
+    config["steps"] = int(step)
+    config["batch_size"] = int(batch_size)
     result = train_background(input_path, config=config, device=device, return_state=False)
     return result["observed"], result["background_pred"], result["residual_pred"]
 
 
-def normalized_config(config=None):
-    result = dict(DEFAULT_CONFIG)
+def normalized_config(config: Mapping[str, object] | None = None) -> PINNConfig:
+    result: PINNConfig = DEFAULT_CONFIG.copy()
     if config:
-        result.update(config)
+        result.update(cast(PINNConfig, config))
     result["hidden_dims"] = [int(value) for value in result["hidden_dims"]]
     result["steps"] = int(result["steps"])
     result["batch_size"] = int(result["batch_size"])
@@ -233,7 +282,7 @@ def _to_cpu(value):
     return value
 
 
-def _optimizer(model, city_source, config):
+def _optimizer(model, city_source, config: PINNConfig):
     groups = [{"params": model.parameters(), "lr": float(config["model_lr"])}]
     city_parameters = [
         parameter for parameter in city_source.parameters() if parameter.requires_grad
@@ -253,13 +302,6 @@ def _load_observed(observed):
     if not np.isfinite(array).all():
         raise ValueError("observed 包含 NaN 或 Inf")
     return np.clip(array, 0.0, 1.0).astype(np.float32)
-
-
-def _coordinate_grid(height, width, device):
-    x = torch.linspace(-1.0, 1.0, width, device=device)
-    y = torch.linspace(-1.0, 1.0, height, device=device)
-    yy, xx = torch.meshgrid(y, x, indexing="ij")
-    return torch.stack((xx.reshape(-1), yy.reshape(-1)), dim=1)
 
 
 def _predict_background(model, coords, height, width, batch_size):

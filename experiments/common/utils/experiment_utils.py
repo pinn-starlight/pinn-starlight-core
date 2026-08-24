@@ -1,7 +1,4 @@
 """正式实验共用的数据、随机种子和结果保存工具。"""
-
-from __future__ import annotations
-
 import csv
 import json
 import os
@@ -53,37 +50,46 @@ def project_relative(path) -> str:
 
 
 def prepare_output_root(path, force: bool = False) -> Path:
-    """Create an output root, optionally replacing an existing run explicitly.
-
-    ``force`` is intentionally restricted to descendants of the project's
-    ``experiments/outputs`` directory.  This keeps a typo such as ``--force .``
-    from deleting an arbitrary working directory.
-    """
+    """Create an output root, optionally replacing an existing run explicitly."""
     path = Path(path)
-    if path.exists():
-        if not path.is_dir():
-            raise NotADirectoryError(f"输出路径不是目录：{path}")
-        if any(path.iterdir()):
-            if not force:
-                raise FileExistsError(
-                    f"输出目录非空，不会覆盖已有结果：{path}。"
-                    "如确认要重跑，请添加 --force，或指定新的 --output-root。"
-                )
-            if path.is_symlink():
-                raise ValueError("--force 不允许清理符号链接输出目录")
-            resolved_path = path.resolve()
-            resolved_output_root = OUTPUT_ROOT.resolve()
-            if (
-                resolved_path == resolved_output_root
-                or resolved_output_root not in resolved_path.parents
-            ):
-                raise ValueError(
-                    "--force 只允许清理 experiments/outputs 下的输出目录："
-                    f"{resolved_path}"
-                )
-            shutil.rmtree(resolved_path)
+    if not path.exists():
+        return _create_output_root(path)
+    _validate_output_directory(path)
+    if not any(path.iterdir()):
+        return path
+    if not force:
+        raise FileExistsError(
+            f"输出目录非空，不会覆盖已有结果：{path}。"
+            "如确认要重跑，请添加 --force，或指定新的 --output-root。"
+        )
+    _remove_forced_output(path)
+    return _create_output_root(path)
+
+
+def _create_output_root(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _validate_output_directory(path: Path) -> None:
+    if not path.is_dir():
+        raise NotADirectoryError(f"输出路径不是目录：{path}")
+
+
+def _remove_forced_output(path: Path) -> None:
+    if path.is_symlink():
+        raise ValueError("--force 不允许清理符号链接输出目录")
+    resolved_path = path.resolve()
+    resolved_output_root = OUTPUT_ROOT.resolve()
+    if (
+        resolved_path == resolved_output_root
+        or resolved_output_root not in resolved_path.parents
+    ):
+        raise ValueError(
+            "--force 只允许清理 experiments/outputs 下的输出目录："
+            f"{resolved_path}"
+        )
+    shutil.rmtree(resolved_path)
 
 
 def load_gray_image(path, downsample: int = 1) -> np.ndarray:
