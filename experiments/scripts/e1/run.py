@@ -80,6 +80,10 @@ def run_candidate(
 
 def main():
     args = _parse_args()
+    if args.initial_steps <= 0 or args.continue_steps <= 0 or args.max_steps <= 0:
+        raise ValueError("训练步数参数必须大于 0")
+    if args.stability_patience <= 0:
+        raise ValueError("stability_patience 必须大于 0")
     output_root = utils.prepare_output_root(args.output_root, force=args.force)
     validation_rows = utils.load_manifest(args.manifest, split="validation")
     if args.max_validation_samples > 0:
@@ -110,6 +114,11 @@ def main():
             "seed": args.seed,
             "selection_order": ["network", "physics_weight", "kernel_size", "steps"],
             "center_mode": args.center_mode,
+            "initial_steps": args.initial_steps,
+            "continue_steps": args.continue_steps,
+            "max_steps": args.max_steps,
+            "stability_tolerance": args.stability_tolerance,
+            "stability_patience": args.stability_patience,
             "validation_samples": [row["sample_id"] for row in validation_rows],
         },
     )
@@ -231,6 +240,10 @@ def _continue_until_stable(
     total_steps = int(config["steps"])
     previous_mae = current_result["aggregate"]["bg_mae"]
     states = current_result["states"]
+    best_result = current_result
+    best_steps = total_steps
+    best_key = _selection_key(current_result["aggregate"])
+    stable_rounds = 0
     while total_steps < args.max_steps:
         additional_steps = min(args.continue_steps, args.max_steps - total_steps)
         continuation_config = dict(config)
@@ -256,15 +269,24 @@ def _continue_until_stable(
                 **continued["aggregate"],
             }
         )
-        if relative_improvement < args.stability_tolerance:
-            break
         total_steps = next_total
         current_result = continued
         states = continued["states"]
         previous_mae = current_mae
+        current_key = _selection_key(current_result["aggregate"])
+        if current_key < best_key:
+            best_result = current_result
+            best_steps = total_steps
+            best_key = current_key
+        if relative_improvement < args.stability_tolerance:
+            stable_rounds += 1
+        else:
+            stable_rounds = 0
+        if stable_rounds >= args.stability_patience:
+            break
     config = dict(config)
-    config["steps"] = total_steps
-    return config, current_result
+    config["steps"] = best_steps
+    return config, best_result
 
 
 def _aggregate(rows):
@@ -325,9 +347,15 @@ def _parse_args():
     parser.add_argument("--seed", type=int, default=utils.SEEDS[0])
     parser.add_argument("--initial-steps", type=int, default=3000)
     parser.add_argument("--continue-steps", type=int, default=1000)
-    parser.add_argument("--max-steps", type=int, default=6000)
+    parser.add_argument("--max-steps", type=int, default=12000)
     parser.add_argument("--batch-size", type=int, default=8192)
     parser.add_argument("--stability-tolerance", type=float, default=0.005)
+    parser.add_argument(
+        "--stability-patience",
+        type=int,
+        default=3,
+        help="连续多少个续训区间的验证集改善不足才停止",
+    )
     parser.add_argument("--max-validation-samples", type=int, default=0)
     parser.add_argument(
         "--center-mode",

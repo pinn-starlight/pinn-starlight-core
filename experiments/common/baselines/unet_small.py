@@ -7,9 +7,6 @@
 - 训练阶段随机裁剪、翻转和旋转；整图预测采用重叠分块以控制显存。
 - 返回浮点 background_pred，不在本模块中裁剪 residual_pred 或保存展示图。
 """
-
-from __future__ import annotations
-
 import sys
 from pathlib import Path
 

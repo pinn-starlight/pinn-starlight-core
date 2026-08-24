@@ -2,9 +2,6 @@
 
 observed = clean_true + background_true + noise
 """
-
-from __future__ import annotations
-
 import argparse
 import csv
 import json

@@ -11,6 +11,17 @@ _RAW_EXTS = {'cr2', 'nef', 'dng', 'arw'}
 _TIFF_EXTS = {'tif', 'tiff'}
 
 
+def coordinate_grid(height: int, width: int, device="cpu") -> torch.Tensor:
+    """Return normalized ``(x, y)`` coordinates in image row-major order."""
+    if height <= 0 or width <= 0:
+        raise ValueError("height and width must be positive")
+
+    x = torch.linspace(-1.0, 1.0, width, device=device)
+    y = torch.linspace(-1.0, 1.0, height, device=device)
+    yy, xx = torch.meshgrid(y, x, indexing="ij")
+    return torch.stack((xx.reshape(-1), yy.reshape(-1)), dim=1)
+
+
 # 暂时使用灰度图训练
 class ImageLoader:
     def __init__(self, path: str, device="cpu", downsample=2):
@@ -64,14 +75,7 @@ class ImageLoader:
             0.0722 * rgb[:, :, 2]
         )
 
-        x = np.linspace(-1, 1, self.W)
-        y = np.linspace(-1, 1, self.H)
-        xx, yy = np.meshgrid(x, y)
-
-        coords = torch.tensor(
-            np.stack([xx.ravel(), yy.ravel()], axis=-1),
-            dtype=torch.float32, device=self.device
-        )
+        coords = coordinate_grid(self.H, self.W, self.device)
         brightness = torch.tensor(
             gray.ravel(), dtype=torch.float32, device=self.device
         )

@@ -7,8 +7,6 @@
 - 测试集和真实图使用同一个锁定值。
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 
 import numpy as np
