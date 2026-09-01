@@ -11,23 +11,23 @@ import torch.nn.functional as F
 STAR_COUNT_LIMIT = 2000
 
 
-def mae(prediction, target) -> float:
+def mae(prediction, target):
     prediction, target = _pair(prediction, target)
     return float(np.mean(np.abs(prediction - target)))
 
 
-def rmse(prediction, target) -> float:
+def rmse(prediction, target):
     prediction, target = _pair(prediction, target)
     return float(np.sqrt(np.mean((prediction - target) ** 2)))
 
 
-def psnr(prediction, target, data_range: float = 1.0) -> float:
+def psnr(prediction, target, data_range = 1.0) :
     prediction, target = _pair(prediction, target)
     mse = float(np.mean((prediction - target) ** 2))
     return float(10.0 * np.log10(data_range**2 / max(mse, 1e-12)))
 
 
-def ssim(prediction, target, data_range: float = 1.0) -> float:
+def ssim(prediction, target, data_range= 1.0):
     """使用 11x11 高斯窗口计算灰度 SSIM，data_range 固定为 1。"""
     prediction, target = _pair(prediction, target)
     height, width = prediction.shape

@@ -58,7 +58,7 @@ def _default_real_images():
         if current_path.is_absolute():
             image_path = current_path
         elif current_path.parts[:2] == ("data", "collections"):
-            image_path = utils.resolve_path(current_path)
+            image_path = utils.convert_absol_path(current_path)
         else:
             image_path = COLLECTION_ROOT / current_path
         if not image_path.is_file():
@@ -80,7 +80,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pinn_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
     e2_config = json.loads(Path(args.e2_config).read_text(encoding="utf-8"))
-    checkpoint = utils.resolve_path(e2_config["unet_checkpoint"])
+    checkpoint = utils.convert_absol_path(e2_config["unet_checkpoint"])
     unet_model, unet_checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
 
     utils.save_run_metadata(
@@ -103,7 +103,7 @@ def main():
 
     rows = []
     for image_index, image_path in enumerate(args.images, start=1):
-        image_path = utils.resolve_path(image_path)
+        image_path = utils.convert_absol_path(image_path)
         print(
             f"E4 [{image_index}/{len(args.images)}] {image_path.name}",
             flush=True,

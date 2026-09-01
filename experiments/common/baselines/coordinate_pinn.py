@@ -35,9 +35,9 @@ class PINNConfig(TypedDict):
 
 DEFAULT_CONFIG: PINNConfig = {
     "hidden_dims": [128, 128],
-    "physics_weight": 0.1,
+    "physics_weight": 0.5,
     "kernel_size": 31,
-    "steps": 3000,
+    "steps": 10000,
     "batch_size": 8192,
     "model_lr": 1e-3,
     "icity_lr": 1e-3,
@@ -224,15 +224,6 @@ def _train_steps(
     return history, final_total, final_data, final_physics
 
 
-def single_train(input_path, device, step, batch_size):
-    """兼容 E0 的简短入口。"""
-    config: PINNConfig = DEFAULT_CONFIG.copy()
-    config["steps"] = int(step)
-    config["batch_size"] = int(batch_size)
-    result = train_background(input_path, config=config, device=device, return_state=False)
-    return result["observed"], result["background_pred"], result["residual_pred"]
-
-
 def normalized_config(config: Mapping[str, object] | None = None) -> PINNConfig:
     result: PINNConfig = DEFAULT_CONFIG.copy()
     if config:
@@ -254,20 +245,6 @@ def normalized_config(config: Mapping[str, object] | None = None) -> PINNConfig:
     if result["physics_weight"] < 0:
         raise ValueError("physics_weight 不能小于 0")
     return result
-
-
-def save_checkpoint(path, result) -> None:
-    """保存可继续训练的 PINN 状态。"""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "state": result["state"],
-            "config": result["config"],
-            "seed": result["seed"],
-        },
-        path,
-    )
 
 
 def _to_cpu(value):

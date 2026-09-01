@@ -342,7 +342,7 @@ def build_dataset(
     sample_number = 0
     for candidate in candidates:
         base_id = candidate["image_id"]
-        input_file = utils.resolve_path(
+        input_file = utils.convert_absol_path(
             Path("data/collections") / candidate["current_path"]
         )
         clean_true = load_clean_image(

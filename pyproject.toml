@@ -16,6 +16,9 @@ dependencies = [
     "numpy>=2.4.4",
     "pillow>=12.2.0",
     "tifffile>=2026.3.3",
+    "segmentation-models-pytorch>=0.5.0",
+    "scipy",
+    "scipy-stubs",
 ]
 
 [dependency-groups]

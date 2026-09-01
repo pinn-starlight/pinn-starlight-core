@@ -13,6 +13,8 @@ import numpy as np
 
 from experiments.common.utils import experiment_utils as utils
 
+from scipy.ndimage import gaussian_filter as _gaussian_filter
+
 SIGMA_CANDIDATES = (0.02, 0.04, 0.08, 0.16)
 
 
@@ -27,6 +29,15 @@ def estimate_background(observed, normalized_sigma: float):
         raise ValueError("normalized_sigma 必须位于 (0, 0.5] 范围内")
 
     spatial_sigma = 1.0 / (2.0 * np.pi * normalized_sigma)
+    if _gaussian_filter is not None:
+        background = _gaussian_filter(
+            observed,
+            sigma=spatial_sigma,
+            mode="reflect",
+            truncate=3.0,
+        )
+        return np.asarray(background, dtype=np.float32)
+
     pad = max(4, int(np.ceil(3.0 * spatial_sigma)))
     pad_y = min(pad, observed.shape[0] - 1)
     pad_x = min(pad, observed.shape[1] - 1)
@@ -48,7 +59,6 @@ def estimate_background(observed, normalized_sigma: float):
 
 def single_estimate(input_path, normalized_sigma: float, downsample: int = 2):
     """读取单张图片并返回 observed、background_pred 和 residual_pred。"""
-    # Keep E0 on the same preprocessing path as PINN and U-Net.
     observed = utils.load_gray_image(input_path, downsample=downsample)
     predicted = estimate_background(observed, normalized_sigma)
     residual = observed - predicted
@@ -87,4 +97,4 @@ def select_sigma(
 
         scores[float(candidate)] = float(np.mean(sample_losses))
 
-    return min(scores, key=lambda candidate: scores[candidate])
+    return min(scores, key=lambda candidate_val: scores[candidate_val])

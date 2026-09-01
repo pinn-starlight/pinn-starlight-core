@@ -12,7 +12,7 @@ _TIFF_EXTS = {'tif', 'tiff'}
 
 
 def coordinate_grid(height: int, width: int, device="cpu") -> torch.Tensor:
-    """Return normalized ``(x, y)`` coordinates in image row-major order."""
+    """获取(x,y)坐标"""
     if height <= 0 or width <= 0:
         raise ValueError("height and width must be positive")
 
@@ -24,35 +24,19 @@ def coordinate_grid(height: int, width: int, device="cpu") -> torch.Tensor:
 
 # 暂时使用灰度图训练
 class ImageLoader:
-    def __init__(self, path: str, device="cpu", downsample=2):
+    def __init__(self, path: Path, device="cpu", downsample=2):
         """
             此path为文件的路径而非文件夹
         """
         if downsample <= 0:
             raise ValueError("downsample must be positive")
+        if not path.exists():
+            raise FileNotFoundError(f"图像不存在：{path}")
         self.device = device
-        ext = Path(path).suffix.lower().lstrip('.')
-        scale = None
+        ext = path.suffix.lower().lstrip('.')
+        scale_val, data = self._normalize_photo(ext, path)
 
-        if ext in _RAW_EXTS:
-            with rawpy.imread(path) as raw:
-                data = raw.postprocess(
-                    use_camera_wb=True,
-                    no_auto_bright=True,
-                    output_bps=16,
-                    gamma=(1, 1)
-                )
-            scale = 65535.0
-        elif ext in _RASTER_EXTS:
-            data = plt.imread(path)
-            scale = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
-        elif ext in _TIFF_EXTS:
-            data = tif.imread(path)
-            scale = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
-        else:
-            raise ValueError(f'Unsupported format: .{ext}')
-
-        if scale is None:
+        if scale_val is None:
             raise ValueError('scale is None')
 
         if data.ndim == 3 and data.shape[-1] == 4:
@@ -62,10 +46,33 @@ class ImageLoader:
         if data.ndim != 3 or data.shape[-1] != 3:
             raise ValueError(f'Unsupported image shape: {data.shape}')
 
-        rgb_data = data.astype(np.float32) / np.float32(scale)
+        rgb_data = data.astype(np.float32) / np.float32(scale_val)
 
         self.rgb_data = rgb_data[::downsample, ::downsample, :]
         self.H, self.W = self.rgb_data.shape[:2]
+
+    @staticmethod
+    def _normalize_photo(ext : str, path):
+        if ext in _RASTER_EXTS:
+            with rawpy.imread(path) as raw:
+                data = raw.postprocess(
+                    use_camera_wb=True,
+                    no_auto_bright=True,
+                    output_bps=16,
+                    gamma=(1, 1)
+                )
+            scale_val = 65535.0
+        elif ext in _RASTER_EXTS:
+            data = plt.imread(path)
+            scale_val = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
+        elif ext in _TIFF_EXTS:
+            data = tif.imread(path)
+            scale_val = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
+        else:
+            raise ValueError(f'Unsupported format: .{ext}')
+
+        return scale_val, data
+
 
     def get_gray_data(self):
         rgb = self.rgb_data
@@ -80,5 +87,5 @@ class ImageLoader:
             gray.ravel(), dtype=torch.float32, device=self.device
         )
 
-        return coords, brightness, self.W, self.H
+        return coords, np.clip(brightness, 0, 1), self.W, self.H
 
