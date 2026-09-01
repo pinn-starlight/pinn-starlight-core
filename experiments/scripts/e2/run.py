@@ -266,7 +266,7 @@ def _metric_row(method, seed, sample, result, args):
 
 def _pairs(rows):
     return [
-        (utils.resolve_path(row["observed"]), utils.resolve_path(row["background_true"]))
+        (utils.convert_absol_path(row["observed"]), utils.convert_absol_path(row["background_true"]))
         for row in rows
     ]
 

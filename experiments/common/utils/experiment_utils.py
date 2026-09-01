@@ -22,10 +22,8 @@ SYNTHETIC_ROOT = PROJECT_ROOT / "data/collections/synthetic"
 SYNTHETIC_MANIFEST = SYNTHETIC_ROOT / "manifest.csv"
 SEEDS = (20260728, 20260729, 20260730)
 
-_RAW_EXTENSIONS = {".cr2", ".nef", ".dng", ".arw"}
 
-
-def set_seed(seed: int) -> None:
+def set_seed(seed: int):
     """固定 Python、NumPy、PyTorch 和 CUDA 的随机数源。"""
     random.seed(seed)
     np.random.seed(seed)
@@ -34,14 +32,14 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def resolve_path(path) -> Path:
+def convert_absol_path(path):
     """把 manifest 中的项目相对路径转换为绝对路径。"""
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
-def project_relative(path) -> str:
-    """尽量返回便于移动项目的相对路径。"""
+def project_relative(path):
+    """返回便于移动项目的相对路径。"""
     path = Path(path).resolve()
     try:
         return path.relative_to(PROJECT_ROOT.resolve()).as_posix()
@@ -49,12 +47,17 @@ def project_relative(path) -> str:
         return str(path)
 
 
-def prepare_output_root(path, force: bool = False) -> Path:
-    """Create an output root, optionally replacing an existing run explicitly."""
+def prepare_output_root(path, force = False) -> Path:
+    """
+        创建输出根目录，并且可以用参数强制覆盖
+        return Path
+    """
     path = Path(path)
     if not path.exists():
-        return _create_output_root(path)
-    _validate_output_directory(path)
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    if not path.is_dir():
+        raise NotADirectoryError(f"输出路径不是目录：{path}")
     if not any(path.iterdir()):
         return path
     if not force:
@@ -62,21 +65,12 @@ def prepare_output_root(path, force: bool = False) -> Path:
             f"输出目录非空，不会覆盖已有结果：{path}。"
             "如确认要重跑，请添加 --force，或指定新的 --output-root。"
         )
+    # path.mkdir(parents=True, exist_ok=True)
     _remove_forced_output(path)
-    return _create_output_root(path)
-
-
-def _create_output_root(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def _validate_output_directory(path: Path) -> None:
-    if not path.is_dir():
-        raise NotADirectoryError(f"输出路径不是目录：{path}")
-
-
-def _remove_forced_output(path: Path) -> None:
+def _remove_forced_output(path: Path):
     if path.is_symlink():
         raise ValueError("--force 不允许清理符号链接输出目录")
     resolved_path = path.resolve()
@@ -92,62 +86,36 @@ def _remove_forced_output(path: Path) -> None:
     shutil.rmtree(resolved_path)
 
 
-def load_gray_image(path, downsample: int = 1) -> np.ndarray:
+def load_gray_image(path, downsample = 1) -> np.ndarray:
     """读取一张线性灰度图，返回范围为 [0, 1] 的 float32 数组。"""
-    path = resolve_path(path)
-    if downsample <= 0:
-        raise ValueError("downsample 必须大于 0")
-    if not path.is_file():
-        raise FileNotFoundError(f"图像不存在：{path}")
+    path = convert_absol_path(path)
 
-    if path.suffix.lower() in _RAW_EXTENSIONS | {".tif", ".tiff"}:
-        loader = ImageLoader(str(path), device="cpu", downsample=downsample)
-        rgb = loader.rgb_data
-        gray = (
-            0.2126 * rgb[:, :, 0]
-            + 0.7152 * rgb[:, :, 1]
-            + 0.0722 * rgb[:, :, 2]
-        )
-    else:
-        with Image.open(path) as image:
-            data = np.asarray(image)
-        if data.ndim == 3:
-            data = data[:, :, :3]
-            gray = (
-                0.2126 * data[:, :, 0]
-                + 0.7152 * data[:, :, 1]
-                + 0.0722 * data[:, :, 2]
-            )
-        elif data.ndim == 2:
-            gray = data
-        else:
-            raise ValueError(f"不支持的图像形状：{data.shape}")
+    loader = ImageLoader(path=path, downsample=downsample)
+    _, gray, _, _ = loader.get_gray_data()
 
-        if np.issubdtype(data.dtype, np.integer):
-            gray = gray.astype(np.float32) / float(np.iinfo(data.dtype).max)
-
-    gray = np.asarray(gray, dtype=np.float32)
-    if path.suffix.lower() not in _RAW_EXTENSIONS | {".tif", ".tiff"}:
-        gray = gray[::downsample, ::downsample]
-    return np.clip(gray, 0.0, 1.0)
+    return gray
 
 
-def load_manifest(path=SYNTHETIC_MANIFEST, split: str | None = None) -> list[dict]:
+def load_manifest(path=SYNTHETIC_MANIFEST, split: str | None = None):
     """读取正式合成数据 manifest，可按 split 过滤。"""
-    path = resolve_path(path)
+    path = convert_absol_path(path)
+    filtered_rows = []
     if not path.is_file():
         raise FileNotFoundError(f"合成数据 manifest 不存在：{path}")
 
     with path.open("r", encoding="utf-8-sig", newline="") as file:
         rows = list(csv.DictReader(file))
     if split is not None:
-        rows = [row for row in rows if row.get("split") == split]
+        for row in rows:
+            if row["split"] == split:
+                filtered_rows.append(row)
+        rows = filtered_rows
     return rows
 
 
-def load_synthetic_sample(row: dict) -> dict:
+def load_synthetic_sample(row: dict):
     """从一行 manifest 读取 clean、background、observed 和元数据。"""
-    metadata_path = resolve_path(row["metadata"])
+    metadata_path = convert_absol_path(row["metadata"])
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     return {
         "sample_id": row["sample_id"],
@@ -160,7 +128,7 @@ def load_synthetic_sample(row: dict) -> dict:
     }
 
 
-def write_json(path, value) -> None:
+def write_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -169,7 +137,7 @@ def write_json(path, value) -> None:
     )
 
 
-def save_run_metadata(output_dir: Path, config: dict) -> None:
+def save_run_metadata(output_dir: Path, config: dict):
     """保存配置、环境、Git commit 和工作区状态。"""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -192,15 +160,7 @@ def save_run_metadata(output_dir: Path, config: dict) -> None:
     write_json(output_dir / "environment.json", environment)
 
 
-def save_float_tiff(path, image) -> None:
-    """以 32 位浮点 TIFF 保存指标计算使用的原始数组。"""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    array = np.asarray(image, dtype=np.float32)
-    Image.fromarray(array, mode="F").save(path)
-
-
-def save_display_png(path, image, clip: bool = True) -> None:
+def save_display_png(path, image, clip = True):
     """保存论文展示用的 8 位灰度 PNG。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -218,7 +178,7 @@ def save_prediction_arrays(
     observed,
     background_pred,
     residual_pred,
-) -> None:
+):
     """保存浮点 TIFF，并另存同名 PNG 用于论文排版。"""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -228,11 +188,10 @@ def save_prediction_arrays(
         "residual_pred": residual_pred,
     }
     for name, image in arrays.items():
-        save_float_tiff(output_dir / f"{name}.tif", image)
         save_display_png(output_dir / f"{name}.png", image)
 
 
-def save_rows_csv(path, rows: list[dict]) -> None:
+def save_rows_csv(path, rows: list[dict]):
     """把一组同类结果写成 CSV；空结果也会写出空文件。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -253,7 +212,7 @@ def save_rows_csv(path, rows: list[dict]) -> None:
             writer.writerow({key: _csv_value(row.get(key)) for key in fieldnames})
 
 
-def summarize_rows(rows: list[dict], group_key: str) -> dict:
+def summarize_rows(rows: list[dict], group_key: str):
     """按方法或消融版本汇总数值列的均值、标准差和样本数。"""
     summary = {}
     for group in sorted({str(row[group_key]) for row in rows}):
@@ -263,8 +222,7 @@ def summarize_rows(rows: list[dict], group_key: str) -> dict:
                 key
                 for row in group_rows
                 for key, value in row.items()
-                if key not in {group_key, "seed", "step"}
-                and _is_finite_number(value)
+                if key not in {group_key, "seed", "step"} and _is_finite_number(value)
             }
         )
         values: dict[str, int | float] = {"count": len(group_rows)}
@@ -277,11 +235,11 @@ def summarize_rows(rows: list[dict], group_key: str) -> dict:
     return summary
 
 
-def parameter_count(model) -> int:
+def parameter_count(model):
     return sum(parameter.numel() for parameter in model.parameters())
 
 
-def reset_peak_vram(device) -> None:
+def reset_peak_vram(device):
     if torch.cuda.is_available() and torch.device(device).type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
 
@@ -292,7 +250,7 @@ def peak_vram_mb(device):
     return None
 
 
-def _git_output(*args) -> str:
+def _git_output(*args):
     try:
         result = subprocess.run(
             ["git", *args],
@@ -335,5 +293,5 @@ def _csv_value(value):
     return value
 
 
-def _is_finite_number(value) -> bool:
+def _is_finite_number(value):
     return isinstance(value, (int, float, np.number)) and np.isfinite(value)
