@@ -7,6 +7,7 @@
 - 测试集和真实图使用同一个锁定值。
 """
 
+#暂时使用ai
 from collections.abc import Iterable
 
 import numpy as np
@@ -55,14 +56,6 @@ def estimate_background(observed, normalized_sigma: float):
         pad_x : pad_x + observed.shape[1],
     ]
     return np.asarray(background, dtype=np.float32)
-
-
-def single_estimate(input_path, normalized_sigma: float, downsample: int = 2):
-    """读取单张图片并返回 observed、background_pred 和 residual_pred。"""
-    observed = utils.load_gray_image(input_path, downsample=downsample)
-    predicted = estimate_background(observed, normalized_sigma)
-    residual = observed - predicted
-    return observed, predicted, residual
 
 
 def select_sigma(

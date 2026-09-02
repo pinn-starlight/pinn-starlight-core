@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from experiments.common.utils import experiment_utils as utils
 
-
+#暂时使用ai
 class _ConvBlock(nn.Sequential):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__(
@@ -55,46 +55,6 @@ def build_model(base_channels: int = 16):
     if base_channels <= 0:
         raise ValueError("base_channels must be greater than 0")
     return UNetSmall(base_channels=base_channels)
-
-
-def single_train(
-    observed_path,
-    background_true_path,
-    device,
-    steps: int,
-    batch_size: int,
-    patch_size: int = 256,
-    learning_rate: float = 1e-3,
-    base_channels: int = 16,
-    seed: int = 20260728,
-):
-    _set_seed(seed)
-    observed = _load_gray(observed_path)
-    background_true = _load_gray(background_true_path)
-    _validate_pair(observed, background_true)
-
-    device = _resolve_device(device)
-    model = build_model(base_channels).to(device)
-    _initialize_output_layer(model, [background_true])
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    generator = torch.Generator().manual_seed(seed)
-
-    _run_training_steps(
-        model,
-        [(observed, background_true)],
-        optimizer,
-        device,
-        steps,
-        batch_size,
-        patch_size,
-        generator,
-        description="U-Net-small",
-    )
-
-    overlap = min(32, patch_size // 4)
-    predicted = _predict_background(model, observed, device, patch_size, overlap)
-    residual = observed - predicted
-    return observed, predicted, residual
 
 
 def train(

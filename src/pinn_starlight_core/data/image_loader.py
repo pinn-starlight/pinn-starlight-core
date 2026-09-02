@@ -53,8 +53,8 @@ class ImageLoader:
 
     @staticmethod
     def _normalize_photo(ext : str, path):
-        if ext in _RASTER_EXTS:
-            with rawpy.imread(path) as raw:
+        if ext in _RAW_EXTS:
+            with rawpy.imread(str(path)) as raw:
                 data = raw.postprocess(
                     use_camera_wb=True,
                     no_auto_bright=True,
