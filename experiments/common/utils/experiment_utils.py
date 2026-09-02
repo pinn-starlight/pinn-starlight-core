@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import tifffile as tif
 from PIL import Image
 
 from pinn_starlight_core.data.image_loader import ImageLoader
@@ -33,7 +34,7 @@ def set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
 
 
-def convert_absol_path(path):
+def to_absolute_path(path):
     """把 manifest 中的项目相对路径转换为绝对路径。"""
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
@@ -89,7 +90,7 @@ def _remove_forced_output(path: Path):
 
 def load_gray_image(path, downsample = 1) -> np.ndarray:
     """读取一张线性灰度图，返回范围为 [0, 1] 的 float32 数组。"""
-    path = convert_absol_path(path)
+    path = to_absolute_path(path)
 
     loader = ImageLoader(path=path, downsample=downsample)
     _, gray, W, H = loader.get_gray_data()
@@ -102,7 +103,7 @@ def load_gray_image(path, downsample = 1) -> np.ndarray:
 
 def load_manifest(path=SYNTHETIC_MANIFEST, split: str | None = None):
     """读取正式合成数据 manifest，可按 split 过滤。"""
-    path = convert_absol_path(path)
+    path = to_absolute_path(path)
     filtered_rows = []
     if not path.is_file():
         raise FileNotFoundError(f"合成数据 manifest 不存在：{path}")
@@ -119,7 +120,7 @@ def load_manifest(path=SYNTHETIC_MANIFEST, split: str | None = None):
 
 def load_synthetic_sample(row: dict):
     """从一行 manifest 读取 clean、background、observed 和元数据。"""
-    metadata_path = convert_absol_path(row["metadata"])
+    metadata_path = to_absolute_path(row["metadata"])
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     return {
         "sample_id": row["sample_id"],
@@ -310,3 +311,13 @@ def parse_force_args(description):
         help="清空指定的 experiments/outputs 子目录后重跑",
     )
     return parser.parse_args()
+
+
+def save_float_tiff(path, image):
+    """保存tiff，合成数据用"""
+    path = Path(path)
+    image = np.asarray(image, dtype=np.float32)
+    if image.ndim != 2 or not np.isfinite(image).all():
+        raise ValueError("TIFF image must be a finite 2-D array")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tif.imwrite(path, image, dtype=np.float32)

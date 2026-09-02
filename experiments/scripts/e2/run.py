@@ -1,4 +1,4 @@
-"""E2：FFT-Gaussian、U-Net-small、PINN 合成测试集主对比。"""
+"""E2 synthetic benchmark."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ METHODS = ("fft_gaussian", "unet_small", "pinn")
 
 
 def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict:
-    """统一运行一种方法并返回背景、残差、耗时和附加记录。"""
+    """Run one method and return its prediction and measurements."""
     observed = sample["observed"]
     device = kwargs.get("device", torch.device("cpu"))
     utils.reset_peak_vram(device)
@@ -81,7 +81,7 @@ def main():
     if args.max_test_samples > 0:
         test_rows = test_rows[: args.max_test_samples]
     if not train_rows or not validation_rows or not test_rows:
-        raise ValueError("train/validation/test 均不能为空")
+        raise ValueError("train, validation, and test splits must all be non-empty")
 
     pinn_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
     validation_samples = [utils.load_synthetic_sample(row) for row in validation_rows]
@@ -266,7 +266,7 @@ def _metric_row(method, seed, sample, result, args):
 
 def _pairs(rows):
     return [
-        (utils.convert_absol_path(row["observed"]), utils.convert_absol_path(row["background_true"]))
+        (utils.to_absolute_path(row["observed"]), utils.to_absolute_path(row["background_true"]))
         for row in rows
     ]
 
@@ -405,7 +405,7 @@ def _pinn_parameters(result):
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="E2：三种方法的合成数据主对比")
+    parser = argparse.ArgumentParser(description="E2 synthetic benchmark")
     parser.add_argument("--manifest", default=str(utils.SYNTHETIC_MANIFEST))
     parser.add_argument(
         "--pinn-config",
@@ -415,7 +415,7 @@ def _parse_args():
     parser.add_argument(
         "--force",
         action="store_true",
-        help="清空指定的 experiments/outputs 子目录后重跑",
+        help="Clear the selected experiments/outputs subdirectory before running",
     )
     parser.add_argument("--seeds", type=int, nargs="+", default=list(utils.SEEDS))
     parser.add_argument("--epochs", type=int, default=20)

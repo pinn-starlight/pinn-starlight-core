@@ -14,7 +14,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
 
 import experiments.common.baselines.coordinate_pinn as pinn
 import experiments.common.baselines.fft_gaussian as fft
@@ -201,7 +200,8 @@ def _metrics_test():
 
 def _first_synthetic_sample():
     """直接从合成样本目录读取一张样本，不依赖 manifest。"""
-    for sample_dir in sorted(SYNTHETIC_DIR.iterdir()):
+    sample_dirs: list[Path] = list(SYNTHETIC_DIR.iterdir())
+    for sample_dir in sorted(sample_dirs):
         if not sample_dir.is_dir():
             continue
 
@@ -258,30 +258,18 @@ def _save_images(output_root, method, image_name, observed, predicted, residual)
         )
     method_output = Path(output_root) / method
     method_output.mkdir(exist_ok=True, parents=True)
-    display_residual = residual.clip(0, 1)
-
-    plt.imsave(
+    utils.save_display_png(
         method_output / f"observed_{image_name}.png",
-        observed,
-        cmap="gray",
-        vmin=0.0,
-        vmax=1.0,
+        observed
     )
-    plt.imsave(
-        method_output / f"residual_{image_name}.png",
-        display_residual,
-        cmap="gray",
-        vmin=0.0,
-        vmax=1.0,
-    )
-    plt.imsave(
+    utils.save_display_png(
         method_output / f"predicted_{image_name}.png",
-        predicted,
-        cmap="gray",
-        vmin=0.0,
-        vmax=1.0,
+        predicted
     )
-
+    utils.save_display_png(
+        method_output / f"residual_{image_name}.png",
+        residual
+    )
 
 
 
