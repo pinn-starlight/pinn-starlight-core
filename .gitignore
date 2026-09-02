@@ -9,6 +9,7 @@ experiments/outputs/
 
 #docs
 docs/pdf
+docs/.obsidian
 
 # python
 __pycache__/

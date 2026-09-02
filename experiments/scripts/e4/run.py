@@ -1,4 +1,4 @@
-"""E4：固定真实星空图上的三方法定性对比。"""
+"""E4 real-image qualitative comparison."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def _default_real_images():
     )
     if not candidates:
         raise ValueError(
-            f"{COLLECTION_MANIFEST} 中没有 usage=e4_candidate 的图像"
+            f"No usage=e4_candidate images in {COLLECTION_MANIFEST}"
         )
 
     images = [NATIVE_REAL_IMAGE]
@@ -58,7 +58,7 @@ def _default_real_images():
         if current_path.is_absolute():
             image_path = current_path
         elif current_path.parts[:2] == ("data", "collections"):
-            image_path = utils.convert_absol_path(current_path)
+            image_path = utils.to_absolute_path(current_path)
         else:
             image_path = COLLECTION_ROOT / current_path
         if not image_path.is_file():
@@ -80,7 +80,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pinn_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
     e2_config = json.loads(Path(args.e2_config).read_text(encoding="utf-8"))
-    checkpoint = utils.convert_absol_path(e2_config["unet_checkpoint"])
+    checkpoint = utils.to_absolute_path(e2_config["unet_checkpoint"])
     unet_model, unet_checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
 
     utils.save_run_metadata(
@@ -103,7 +103,7 @@ def main():
 
     rows = []
     for image_index, image_path in enumerate(args.images, start=1):
-        image_path = utils.convert_absol_path(image_path)
+        image_path = utils.to_absolute_path(image_path)
         print(
             f"E4 [{image_index}/{len(args.images)}] {image_path.name}",
             flush=True,
@@ -210,7 +210,7 @@ def main():
     utils.save_rows_csv(output_root / "metrics.csv", rows)
     utils.write_json(output_root / "summary.json", utils.summarize_rows(rows, "method"))
     print(f"E4 完成：{output_root}")
-    print("真实图没有背景真值，请填写每张图的 inspection_checklist.md。")
+    print("No ground truth is available for real images; review each inspection_checklist.md")
 
 
 def _save_comparison_figure(path, observed, predictions):
@@ -251,20 +251,16 @@ def _save_comparison_figure(path, observed, predictions):
 
 
 def _save_inspection_checklist(path, image_name):
-    content = f"""# {image_name} 人工检查
+    content = f"""# {image_name} inspection checklist
 
-本页只记录定性观察，不把真实图描述性统计当作有真值指标。
-
-| 检查项 | FFT-Gaussian | U-Net-small | PINN | 备注 |
+| Check | FFT-Gaussian | U-Net-small | PINN | Notes |
 | --- | --- | --- | --- | --- |
-| 大尺度梯度是否残留 |  |  |  |  |
-| 星点是否被背景吸收 |  |  |  |  |
-| 银河/薄云/地景是否被误判 |  |  |  |  |
-| 是否有边缘伪影 |  |  |  |  |
-| 是否出现负值 |  |  |  |  |
-| 是否产生原图不存在的亮点 |  |  |  |  |
-
-结论：
+| Large-scale gradient remains |  |  |  |  |
+| Stars absorbed into background |  |  |  |  |
+| Diffuse structure removed incorrectly |  |  |  |  |
+| Edge artifacts |  |  |  |  |
+| Negative values |  |  |  |  |
+| New bright points |  |  |  |  |
 """
     Path(path).write_text(content, encoding="utf-8")
 
@@ -281,15 +277,14 @@ def _center_crop(image, crop_size):
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="E4：固定真实图三方法对比")
+    parser = argparse.ArgumentParser(description="E4 real-image comparison")
     parser.add_argument(
         "--images",
         nargs="+",
         default=list(REAL_IMAGES),
         help=(
-            "真实图路径；默认包含 native_test.tif 和 manifest 中所有 "
-            "usage=e4_candidate 的图像"
-        ),
+            "Paths to real images. The default includes native_test.tif and manifest candidates."
+        )
     )
     parser.add_argument(
         "--pinn-config",
@@ -303,7 +298,7 @@ def _parse_args():
     parser.add_argument(
         "--force",
         action="store_true",
-        help="清空指定的 experiments/outputs 子目录后重跑",
+        help="Clear the selected experiments/outputs subdirectory before running",
     )
     parser.add_argument("--seed", type=int, default=utils.SEEDS[0])
     parser.add_argument("--downsample", type=int, default=2)
@@ -311,7 +306,7 @@ def _parse_args():
         "--crop-size",
         type=int,
         default=0,
-        help="中心裁剪边长；0 表示使用下采样后的整幅图（显存不足时可设为 1024）",
+        help="Center crop size; 0 uses the full downsampled image.",
     )
     return parser.parse_args()
 
