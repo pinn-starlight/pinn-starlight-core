@@ -54,7 +54,7 @@ DEFAULT_CONFIG: PINNConfig = {
 
 def train_background(
     observed,
-    config: Mapping[str, object] | None = None,
+    config=None,
     device=None,
     seed=20260728,
     resume_state=None,
@@ -224,10 +224,12 @@ def _train_steps(
     return history, final_total, final_data, final_physics
 
 
-def normalized_config(config: Mapping[str, object] | None = None) -> PINNConfig:
+def normalized_config(config) -> PINNConfig:
     result: PINNConfig = DEFAULT_CONFIG.copy()
-    if config:
-        result.update(cast(PINNConfig, config))
+
+    if config is not None:
+        result.update(config)
+
     result["hidden_dims"] = [int(value) for value in result["hidden_dims"]]
     result["steps"] = int(result["steps"])
     result["batch_size"] = int(result["batch_size"])

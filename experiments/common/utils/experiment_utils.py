@@ -1,4 +1,5 @@
 """正式实验共用的数据、随机种子和结果保存工具。"""
+import argparse
 import csv
 import json
 import os
@@ -91,9 +92,12 @@ def load_gray_image(path, downsample = 1) -> np.ndarray:
     path = convert_absol_path(path)
 
     loader = ImageLoader(path=path, downsample=downsample)
-    _, gray, _, _ = loader.get_gray_data()
+    _, gray, W, H = loader.get_gray_data()
 
-    return gray
+    gray = np.asarray(gray, dtype=np.float32)
+    gray = gray.reshape(H, W)
+
+    return np.clip(gray, 0.0, 1.0).astype(np.float32)
 
 
 def load_manifest(path=SYNTHETIC_MANIFEST, split: str | None = None):
@@ -295,3 +299,14 @@ def _csv_value(value):
 
 def _is_finite_number(value):
     return isinstance(value, (int, float, np.number)) and np.isfinite(value)
+
+
+def parse_force_args(description):
+    """通用的检查--force参数"""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="清空指定的 experiments/outputs 子目录后重跑",
+    )
+    return parser.parse_args()

@@ -10,9 +10,9 @@ U-Net-small 和 PINN 都完成一次最短运行。这里只检查整条流程�
 - 至少能打印 loss，并保存一张背景图和一张残差图；
 - 当前 PINN 加载器接口已修正，正式实验 alpha 固定为 0.5。
 """
-import argparse
 from pathlib import Path
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
@@ -20,9 +20,11 @@ import experiments.common.baselines.coordinate_pinn as pinn
 import experiments.common.baselines.fft_gaussian as fft
 import experiments.common.baselines.unet_small as unet
 import experiments.common.utils.experiment_utils as utils
+import experiments.common.utils.metrics as metrics
+from experiments.common.baselines.coordinate_pinn import DEFAULT_CONFIG
 
-STEP = 1_000
-BATCH_SIZE = 256
+PINN_STEP = 1_000
+PINN_BATCH_SIZE = 256
 FFT_SIGMA = 0.08
 UNET_EPOCHS = 1
 UNET_STEPS_PER_EPOCH = 10
@@ -36,49 +38,52 @@ OUTPUT_ROOT = utils.OUTPUT_ROOT / "e0"
 
 
 def main():
-    args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root, force=args.force)
-    device = _device()
-    test_images = _test_images(Path(args.test_image_dir))
+    args = utils.parse_force_args("E0实验，检验三种方法能否运行")
+    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=args.force)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"device:{device.type}")
+    test_images = _test_images(Path(TEST_IMG_DIR))
+    _metrics_test()
 
     print("Hello PINN-Starlight-core!")
-    _fft_test(output_root, test_images, args.downsample, args.fft_sigma)
+    _fft_test(output_root, test_images, E0_DOWNSAMPLE, FFT_SIGMA)
     _pinn_test(
         output_root,
         test_images,
         device,
-        args.downsample,
-        args.pinn_steps,
-        args.pinn_batch_size,
+        E0_DOWNSAMPLE,
+        PINN_STEP,
+        PINN_BATCH_SIZE,
     )
     _unet_test(
         output_root,
         test_images,
-        Path(args.synthetic_dir),
+        Path(SYNTHETIC_DIR),
         device,
-        args.downsample,
-        args.unet_epochs,
-        args.unet_steps_per_epoch,
-        args.unet_batch_size,
-        args.unet_patch_size,
-        args.unet_base_channels,
+        E0_DOWNSAMPLE,
+        UNET_EPOCHS,
+        UNET_STEPS_PER_EPOCH,
+        UNET_BATCH_SIZE,
+        UNET_PATCH_SIZE,
+        UNET_BASE_CHANNELS,
     )
 
 
-def _device():
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 def _pinn_test(output_root, test_images, device, downsample, steps, batch_size):
+    config = DEFAULT_CONFIG.copy()
+    config["steps"] = steps
+    config["batch_size"] = batch_size
+
     for img in test_images:
         img_name = _sample_name(img)
-        observed = _load_e0_observed(img, downsample)
-        observed, predicted, residual = pinn.single_train(
+        observed = utils.load_gray_image(img, downsample=downsample)
+        result = pinn.train_background(
             observed,
-            device,
-            steps,
-            batch_size,
+            config=config,
+            device=device,
         )
+        predicted = result["background_pred"]
+        residual = result["residual_pred"]
         _save_images(output_root, "coordinate_pinn", img_name, observed, predicted, residual)
 
     print("PINN Done!")
@@ -87,7 +92,7 @@ def _pinn_test(output_root, test_images, device, downsample, steps, batch_size):
 def _fft_test(output_root, test_images, downsample, sigma):
     for img in test_images:
         img_name = _sample_name(img)
-        observed = _load_e0_observed(img, downsample)
+        observed = utils.load_gray_image(img, downsample=downsample)
         predicted = fft.estimate_background(observed, sigma)
         residual = observed - predicted
         _save_images(output_root, "fft_gaussian", img_name, observed, predicted, residual)
@@ -129,7 +134,7 @@ def _unet_test(
 
     for img in test_images:
         img_name = _sample_name(img)
-        observed = _load_e0_observed(img, downsample)
+        observed = utils.load_gray_image(img, downsample=downsample)
         predicted = unet.predict(
             checkpoint,
             observed,
@@ -142,8 +147,83 @@ def _unet_test(
     print("U-Net-small Done!")
 
 
-def _synthetic_pairs(synthetic_dir: Path = SYNTHETIC_DIR) -> list[tuple[Path, Path]]:
-    pairs: list[tuple[Path, Path]] = []
+def _metrics_test():
+    """用完美预测检查合成数据评估器和输入形状。"""
+    sample = _first_synthetic_sample()
+    clean_true = sample["clean_true"]
+    background_true = sample["background_true"]
+    observed = sample["observed"]
+
+    for name, image in {
+        "clean_true": clean_true,
+        "background_true": background_true,
+        "observed": observed,
+    }.items():
+        if not isinstance(image, np.ndarray) or image.ndim != 2:
+            raise ValueError(
+                f"评估器输入 {name} 必须是二维 NumPy 数组，"
+                f"实际为 {type(image).__name__}, {getattr(image, 'shape', None)}"
+            )
+        if not np.isfinite(image).all():
+            raise ValueError(f"评估器输入 {name} 包含 NaN 或 Inf")
+
+    # 用当前检测器生成参考星点，避免旧 metadata 的检测算法影响自检。
+    reference_stars = metrics.extract_stars(clean_true, threshold=0.03)
+    test_sample = {
+        **sample,
+        "metadata": {
+            "star_reference": {
+                "threshold": 0.03,
+                "matching_radius": 3,
+                "stars": reference_stars,
+            }
+        },
+    }
+    perfect_prediction = {
+        "background_pred": background_true.copy(),
+        "residual_pred": clean_true.copy(),
+    }
+    scores = metrics.evaluate_synthetic(test_sample, perfect_prediction)
+
+    if scores["bg_mae"] > 1e-6 or scores["residual_mae"] > 1e-6:
+        raise AssertionError(f"完美预测的 MAE 不为 0：{scores}")
+    if not all(np.isfinite(value) for value in scores.values()):
+        raise AssertionError(f"评估器输出包含 NaN 或 Inf：{scores}")
+
+    print(
+        "Metrics test passed: "
+        f"shape={clean_true.shape}, "
+        f"bg_mae={scores['bg_mae']:.2e}, "
+        f"residual_mae={scores['residual_mae']:.2e}, "
+        f"star_f1={scores['star_f1']:.3f}"
+    )
+
+
+def _first_synthetic_sample():
+    """直接从合成样本目录读取一张样本，不依赖 manifest。"""
+    for sample_dir in sorted(SYNTHETIC_DIR.iterdir()):
+        if not sample_dir.is_dir():
+            continue
+
+        clean_files = list(sample_dir.glob("clean_true_*.tif"))
+        background_files = list(sample_dir.glob("background_true_*.tif"))
+        observed_files = list(sample_dir.glob("observed_*.tif"))
+        if len(clean_files) != 1 or len(background_files) != 1 or len(observed_files) != 1:
+            continue
+
+        return {
+            "clean_true": utils.load_gray_image(clean_files[0]),
+            "background_true": utils.load_gray_image(background_files[0]),
+            "observed": utils.load_gray_image(observed_files[0]),
+        }
+
+    raise FileNotFoundError(
+        f"合成数据目录中没有完整样本：{SYNTHETIC_DIR}"
+    )
+
+
+def _synthetic_pairs(synthetic_dir: Path = SYNTHETIC_DIR):
+    pairs = []
     if not synthetic_dir.is_dir():
         return pairs
 
@@ -159,16 +239,11 @@ def _synthetic_pairs(synthetic_dir: Path = SYNTHETIC_DIR) -> list[tuple[Path, Pa
     return pairs
 
 
-def _test_images(test_image_dir: Path) -> list[Path]:
+def _test_images(test_image_dir: Path):
     images = sorted(test_image_dir.glob("*.tif"))
     if not images:
         raise FileNotFoundError(f"No TIFF test images found in: {test_image_dir}")
     return images
-
-
-def _load_e0_observed(path: Path, downsample: int = E0_DOWNSAMPLE):
-    """Use one preprocessing path and resolution for all E0 methods."""
-    return utils.load_gray_image(path, downsample=downsample)
 
 
 def _sample_name(path: Path):
@@ -208,26 +283,7 @@ def _save_images(output_root, method, image_name, observed, predicted, residual)
     )
 
 
-def _parse_args():
-    parser = argparse.ArgumentParser(description="E0：三种方法的流程检查，不产生论文结果")
-    parser.add_argument("--output-root", default=str(OUTPUT_ROOT))
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="清空指定的 experiments/outputs 子目录后重跑",
-    )
-    parser.add_argument("--test-image-dir", default=str(TEST_IMG_DIR))
-    parser.add_argument("--synthetic-dir", default=str(SYNTHETIC_DIR))
-    parser.add_argument("--downsample", type=int, default=E0_DOWNSAMPLE)
-    parser.add_argument("--fft-sigma", type=float, default=FFT_SIGMA)
-    parser.add_argument("--pinn-steps", type=int, default=STEP)
-    parser.add_argument("--pinn-batch-size", type=int, default=BATCH_SIZE)
-    parser.add_argument("--unet-epochs", type=int, default=UNET_EPOCHS)
-    parser.add_argument("--unet-steps-per-epoch", type=int, default=UNET_STEPS_PER_EPOCH)
-    parser.add_argument("--unet-batch-size", type=int, default=UNET_BATCH_SIZE)
-    parser.add_argument("--unet-patch-size", type=int, default=UNET_PATCH_SIZE)
-    parser.add_argument("--unet-base-channels", type=int, default=UNET_BASE_CHANNELS)
-    return parser.parse_args()
+
 
 
 if __name__ == "__main__":
