@@ -1,6 +1,5 @@
 """E1：只使用合成验证集锁定 PINN 配置。"""
 
-import argparse
 from pathlib import Path
 
 import numpy as np
@@ -10,9 +9,30 @@ from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
-NETWORK_CANDIDATES = ([512], [256, 64], [128, 128])
-PHYSICS_WEIGHT_CANDIDATES = (0.01, 0.1, 0.3, 0.4, 0.5)
+FORCE_OVERWRITE_OUTPUT = True
+
+# E1可选配置
+NETWORK_CANDIDATES = ([256, 128], [256, 64], [128, 128], [128, 64])
+PHYSICS_WEIGHT_CANDIDATES = (0.1, 0.2, 0.3, 0.4, 0.5)
 KERNEL_SIZE_CANDIDATES = (21, 31)
+
+# E1 实验配置；需要调整实验时直接修改这里即可。
+MANIFEST = utils.SYNTHETIC_MANIFEST
+OUTPUT_ROOT = utils.OUTPUT_ROOT / "e1_tuning"
+#E1使用单seed
+SEED = utils.SEEDS[0]
+INITIAL_STEPS = 3000
+CONTINUE_STEPS = 1000
+MAX_STEPS = 12000
+BATCH_SIZE = 8192
+ALPHA = 0.5
+MODEL_LR = 1e-3
+ICITY_LR = 1e-3
+DEFAULT_PHYSICS_WEIGHT = 0.5
+DEFAULT_KERNEL_SIZE = 31
+STABILITY_TOLERANCE = 0.005
+STABILITY_PATIENCE = 3
+CENTER_MODE = "bright_init_fixed"
 
 
 def run_candidate(
@@ -79,15 +99,9 @@ def run_candidate(
 
 
 def main():
-    args = _parse_args()
-    if args.initial_steps <= 0 or args.continue_steps <= 0 or args.max_steps <= 0:
-        raise ValueError("训练步数参数必须大于 0")
-    if args.stability_patience <= 0:
-        raise ValueError("stability_patience 必须大于 0")
-    output_root = utils.prepare_output_root(args.output_root, force=args.force)
-    validation_rows = utils.load_manifest(args.manifest, split="validation")
-    if args.max_validation_samples > 0:
-        validation_rows = validation_rows[: args.max_validation_samples]
+    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
+    validation_rows = utils.load_manifest(MANIFEST, split="validation")
+
     if not validation_rows:
         raise ValueError("验证集为空，请先运行正式合成数据生成脚本")
 
@@ -95,30 +109,37 @@ def main():
     base_config = dict(pinn.DEFAULT_CONFIG)
     base_config.update(
         {
-            "alpha": 0.5,
-            "steps": args.initial_steps,
-            "batch_size": args.batch_size,
-            "model_lr": 1e-3,
-            "icity_lr": 1e-3,
-            "physics_weight": 0.1,
-            "kernel_size": 31,
-            "center_mode": args.center_mode,
+            "alpha": ALPHA,
+            "steps": INITIAL_STEPS,
+            "batch_size": BATCH_SIZE,
+            "model_lr": MODEL_LR,
+            "icity_lr": ICITY_LR,
+            "physics_weight": DEFAULT_PHYSICS_WEIGHT,
+            "kernel_size": DEFAULT_KERNEL_SIZE,
+            "center_mode": CENTER_MODE,
         }
     )
-    utils.set_seed(args.seed)
+    utils.set_seed(SEED)
     utils.save_run_metadata(
         output_root,
         {
             "experiment": "E1",
-            "manifest": utils.project_relative(args.manifest),
-            "seed": args.seed,
+            "manifest": utils.project_relative(MANIFEST),
+            "seed": SEED,
             "selection_order": ["network", "physics_weight", "kernel_size", "steps"],
-            "center_mode": args.center_mode,
-            "initial_steps": args.initial_steps,
-            "continue_steps": args.continue_steps,
-            "max_steps": args.max_steps,
-            "stability_tolerance": args.stability_tolerance,
-            "stability_patience": args.stability_patience,
+            "center_mode": CENTER_MODE,
+            "initial_steps": INITIAL_STEPS,
+            "continue_steps": CONTINUE_STEPS,
+            "max_steps": MAX_STEPS,
+            "batch_size": BATCH_SIZE,
+            "alpha": ALPHA,
+            "model_lr": MODEL_LR,
+            "icity_lr": ICITY_LR,
+            "default_physics_weight": DEFAULT_PHYSICS_WEIGHT,
+            "default_kernel_size": DEFAULT_KERNEL_SIZE,
+            "force_overwrite_output": FORCE_OVERWRITE_OUTPUT,
+            "stability_tolerance": STABILITY_TOLERANCE,
+            "stability_patience": STABILITY_PATIENCE,
             "validation_samples": [row["sample_id"] for row in validation_rows],
         },
     )
@@ -130,7 +151,7 @@ def main():
         [{"hidden_dims": list(candidate)} for candidate in NETWORK_CANDIDATES],
         validation_rows,
         output_root,
-        args.seed,
+        SEED,
         device,
         candidate_table,
         keep_states=False,
@@ -141,7 +162,7 @@ def main():
         [{"physics_weight": candidate} for candidate in PHYSICS_WEIGHT_CANDIDATES],
         validation_rows,
         output_root,
-        args.seed,
+        SEED,
         device,
         candidate_table,
         keep_states=False,
@@ -152,7 +173,7 @@ def main():
         [{"kernel_size": candidate} for candidate in KERNEL_SIZE_CANDIDATES],
         validation_rows,
         output_root,
-        args.seed,
+        SEED,
         device,
         candidate_table,
         keep_states=True,
@@ -163,7 +184,6 @@ def main():
         selected_result,
         validation_rows,
         output_root,
-        args,
         device,
         candidate_table,
     )
@@ -171,8 +191,8 @@ def main():
     locked_config["steps"] = int(
         max(row["step"] for row in selected_result["rows"])
     )
-    locked_config["selection_seed"] = args.seed
-    locked_config["validation_manifest"] = utils.project_relative(args.manifest)
+    locked_config["selection_seed"] = SEED
+    locked_config["validation_manifest"] = utils.project_relative(MANIFEST)
     locked_config["selection_score"] = selected_result["aggregate"]
 
     utils.save_rows_csv(output_root / "candidate_results.csv", candidate_table)
@@ -233,7 +253,6 @@ def _continue_until_stable(
     current_result,
     validation_rows,
     output_root,
-    args,
     device,
     candidate_table,
 ):
@@ -244,8 +263,8 @@ def _continue_until_stable(
     best_steps = total_steps
     best_key = _selection_key(current_result["aggregate"])
     stable_rounds = 0
-    while total_steps < args.max_steps:
-        additional_steps = min(args.continue_steps, args.max_steps - total_steps)
+    while total_steps < MAX_STEPS:
+        additional_steps = min(CONTINUE_STEPS, MAX_STEPS - total_steps)
         continuation_config = dict(config)
         continuation_config["steps"] = additional_steps
         next_total = total_steps + additional_steps
@@ -253,7 +272,7 @@ def _continue_until_stable(
             continuation_config,
             validation_rows,
             output_root / "T4_steps" / str(next_total),
-            args.seed,
+            SEED,
             device,
             resume_states=states,
             return_states=True,
@@ -278,11 +297,11 @@ def _continue_until_stable(
             best_result = current_result
             best_steps = total_steps
             best_key = current_key
-        if relative_improvement < args.stability_tolerance:
+        if relative_improvement < STABILITY_TOLERANCE:
             stable_rounds += 1
         else:
             stable_rounds = 0
-        if stable_rounds >= args.stability_patience:
+        if stable_rounds >= STABILITY_PATIENCE:
             break
     config = dict(config)
     config["steps"] = best_steps
@@ -333,40 +352,6 @@ def _final_parameters(result):
         "runtime_s": result["runtime_s"],
         "peak_vram_mb": result["peak_vram_mb"],
     }
-
-
-def _parse_args():
-    parser = argparse.ArgumentParser(description="E1：锁定 PINN 正式配置")
-    parser.add_argument("--manifest", default=str(utils.SYNTHETIC_MANIFEST))
-    parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e1_tuning"))
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="清空指定的 experiments/outputs 子目录后重跑",
-    )
-    parser.add_argument("--seed", type=int, default=utils.SEEDS[0])
-    parser.add_argument("--initial-steps", type=int, default=3000)
-    parser.add_argument("--continue-steps", type=int, default=1000)
-    parser.add_argument("--max-steps", type=int, default=12000)
-    parser.add_argument("--batch-size", type=int, default=8192)
-    parser.add_argument("--stability-tolerance", type=float, default=0.005)
-    parser.add_argument(
-        "--stability-patience",
-        type=int,
-        default=3,
-        help="连续多少个续训区间的验证集改善不足才停止",
-    )
-    parser.add_argument("--max-validation-samples", type=int, default=0)
-    parser.add_argument(
-        "--center-mode",
-        choices=("origin_fixed", "bright_init_fixed", "bright_init_learnable"),
-        default="bright_init_fixed",
-        help=(
-            "PINN 源点中心模式；默认使用亮区初始化后固定，"
-            "可学习模式仅作为显式消融项"
-        ),
-    )
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

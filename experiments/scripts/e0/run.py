@@ -22,6 +22,7 @@ import experiments.common.utils.experiment_utils as utils
 import experiments.common.utils.metrics as metrics
 from experiments.common.baselines.coordinate_pinn import DEFAULT_CONFIG
 
+FORCE_OVERWRITE_OUTPUT=True
 PINN_STEP = 1_000
 PINN_BATCH_SIZE = 256
 FFT_SIGMA = 0.08
@@ -37,8 +38,7 @@ OUTPUT_ROOT = utils.OUTPUT_ROOT / "e0"
 
 
 def main():
-    args = utils.parse_force_args("E0实验，检验三种方法能否运行")
-    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=args.force)
+    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device:{device.type}")
     test_images = _test_images(Path(TEST_IMG_DIR))
@@ -270,7 +270,6 @@ def _save_images(output_root, method, image_name, observed, predicted, residual)
         method_output / f"residual_{image_name}.png",
         residual
     )
-
 
 
 

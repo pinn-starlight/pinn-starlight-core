@@ -1,17 +1,11 @@
-"""E4 real-image qualitative comparison."""
+"""E4 真实图片对比."""
 
-from __future__ import annotations
 
-import argparse
 import json
 import time
 from pathlib import Path
-
-import matplotlib
 import numpy as np
 import torch
-
-matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 
 from experiments.common.baselines import coordinate_pinn as pinn
@@ -20,18 +14,24 @@ from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
+
+FORCE_OVERWRITE_OUTPUT = True
+
 NATIVE_REAL_IMAGE = str(utils.PROJECT_ROOT / "data/test/native_test.tif")
 COLLECTION_ROOT = utils.PROJECT_ROOT / "data/collections"
 COLLECTION_MANIFEST = utils.PROJECT_ROOT / "data/collections/manifest.csv"
 METHODS = ("fft_gaussian", "unet_small", "pinn")
+PINN_CONFIG = utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"
+E2_CONFIG = utils.OUTPUT_ROOT / "e2_synthetic/locked_e2_config.json"
+OUTPUT_ROOT = utils.OUTPUT_ROOT / "e4_real"
+SEED = tuple(utils.SEEDS)
+DOWNSAMPLE = 2
+CROP_SIZE = 0
 
 
 def _default_real_images():
-    """Return the fixed native image plus reviewed real-data candidates.
-
-    The collection manifest is the source of truth for E4 candidates. Rows
-    marked ``review_source`` are intentionally excluded until their provenance
-    is checked; in the current manifest this excludes the JPG candidate.
+    """
+        返回真实图
     """
     if not Path(NATIVE_REAL_IMAGE).is_file():
         raise FileNotFoundError(f"E4 主图不存在：{NATIVE_REAL_IMAGE}")
@@ -75,11 +75,10 @@ REAL_IMAGES = _default_real_images()
 
 
 def main():
-    args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root, force=args.force)
+    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    pinn_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
-    e2_config = json.loads(Path(args.e2_config).read_text(encoding="utf-8"))
+    pinn_config = json.loads(Path(PINN_CONFIG).read_text(encoding="utf-8"))
+    e2_config = json.loads(Path(E2_CONFIG).read_text(encoding="utf-8"))
     checkpoint = utils.to_absolute_path(e2_config["unet_checkpoint"])
     unet_model, unet_checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
 
@@ -87,29 +86,30 @@ def main():
         output_root,
         {
             "experiment": "E4",
-            "images": [utils.project_relative(path) for path in args.images],
-            "image_count": len(args.images),
+            "images": [utils.project_relative(path) for path in REAL_IMAGES],
+            "image_count": len(REAL_IMAGES),
             "candidate_manifest": utils.project_relative(COLLECTION_MANIFEST),
-            "downsample": args.downsample,
-            "center_crop_size": args.crop_size,
-            "pinn_config": utils.project_relative(args.pinn_config),
-            "e2_config": utils.project_relative(args.e2_config),
+            "downsample": DOWNSAMPLE,
+            "center_crop_size": CROP_SIZE,
+            "pinn_config": utils.project_relative(PINN_CONFIG),
+            "e2_config": utils.project_relative(E2_CONFIG),
             "fft_sigma": e2_config["fft_sigma"],
             "unet_checkpoint": e2_config["unet_checkpoint"],
             "unet_validation_loss": unet_checkpoint_data.get("validation_loss"),
-            "pinn_seed": args.seed,
+            "pinn_seed": SEED,
+            "force_overwrite_output": FORCE_OVERWRITE_OUTPUT,
         },
     )
 
     rows = []
-    for image_index, image_path in enumerate(args.images, start=1):
+    for image_index, image_path in enumerate(REAL_IMAGES, start=1):
         image_path = utils.to_absolute_path(image_path)
         print(
-            f"E4 [{image_index}/{len(args.images)}] {image_path.name}",
+            f"E4 [{image_index}/{len(REAL_IMAGES)}] {image_path.name}",
             flush=True,
         )
-        observed = utils.load_gray_image(image_path, downsample=args.downsample)
-        observed = _center_crop(observed, args.crop_size)
+        observed = utils.load_gray_image(image_path, downsample=DOWNSAMPLE)
+        observed = _center_crop(observed, CROP_SIZE)
         image_name = image_path.stem
         predictions = {}
 
@@ -143,7 +143,7 @@ def main():
             observed,
             config=pinn_config,
             device=device,
-            seed=args.seed,
+            seed=SEED,
         )
         predictions["pinn"] = {
             "background_pred": pinn_result["background_pred"],
@@ -275,41 +275,5 @@ def _center_crop(image, crop_size):
     left = (width - crop_width) // 2
     return image[top : top + crop_height, left : left + crop_width]
 
-
-def _parse_args():
-    parser = argparse.ArgumentParser(description="E4 real-image comparison")
-    parser.add_argument(
-        "--images",
-        nargs="+",
-        default=list(REAL_IMAGES),
-        help=(
-            "Paths to real images. The default includes native_test.tif and manifest candidates."
-        )
-    )
-    parser.add_argument(
-        "--pinn-config",
-        default=str(utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"),
-    )
-    parser.add_argument(
-        "--e2-config",
-        default=str(utils.OUTPUT_ROOT / "e2_synthetic/locked_e2_config.json"),
-    )
-    parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e4_real"))
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Clear the selected experiments/outputs subdirectory before running",
-    )
-    parser.add_argument("--seed", type=int, default=utils.SEEDS[0])
-    parser.add_argument("--downsample", type=int, default=2)
-    parser.add_argument(
-        "--crop-size",
-        type=int,
-        default=0,
-        help="Center crop size; 0 uses the full downsampled image.",
-    )
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

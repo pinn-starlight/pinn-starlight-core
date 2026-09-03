@@ -1,8 +1,5 @@
-"""E3：PDE 与源点中心的四组最小消融。"""
+﻿"""E3 参数消融"""
 
-from __future__ import annotations
-
-import argparse
 import json
 from pathlib import Path
 
@@ -13,6 +10,8 @@ from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
+FORCE_OVERWRITE_OUTPUT = True
+
 VARIANTS = (
     "data_only",
     "center_fixed",
@@ -20,11 +19,21 @@ VARIANTS = (
     "bright_init_learnable",
 )
 
+MANIFEST = utils.SYNTHETIC_MANIFEST
+PINN_CONFIG = utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"
+OUTPUT_ROOT = utils.OUTPUT_ROOT / "e3_ablation"
+SEEDS = tuple(utils.SEEDS)
+# 暂时保留成这个数据
+STAR_THRESHOLD = 0.03
+MATCHING_RADIUS = 3
+
+MAX_TEST_SAMPLES = 3
+
 
 def build_variant_config(name: str, locked_pinn_config: dict) -> dict:
-    """只改变消融允许变化的 physics_weight 与 center_mode。"""
+    """切换消融模式"""
     if name not in VARIANTS:
-        raise ValueError(f"未知消融版本：{name}")
+        raise ValueError(f"不存在该消融类型{name}")
     config = dict(locked_pinn_config)
     if name == "data_only":
         config["physics_weight"] = 0.0
@@ -41,29 +50,31 @@ def build_variant_config(name: str, locked_pinn_config: dict) -> dict:
         if locked_pinn_config.get(key) != config.get(key)
     }
     if not changed <= {"physics_weight", "center_mode"}:
-        raise AssertionError(f"消融修改了不允许的配置项：{sorted(changed)}")
+        raise AssertionError(f"消融失败：{sorted(changed)}")
     return config
 
 
 def main():
-    args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root, force=args.force)
+    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    locked_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
-    test_rows = utils.load_manifest(args.manifest, split="test")
-    if args.max_test_samples > 0:
-        test_rows = test_rows[: args.max_test_samples]
+    locked_config = json.loads(Path(PINN_CONFIG).read_text(encoding="utf-8"))
+    test_rows = utils.load_manifest(MANIFEST, split="test")
+    if MAX_TEST_SAMPLES > 0:
+        test_rows = test_rows[:MAX_TEST_SAMPLES]
     if not test_rows:
         raise ValueError("测试集为空")
-
     utils.save_run_metadata(
         output_root,
         {
             "experiment": "E3",
-            "manifest": utils.project_relative(args.manifest),
-            "pinn_config": utils.project_relative(args.pinn_config),
+            "manifest": utils.project_relative(MANIFEST),
+            "pinn_config": utils.project_relative(PINN_CONFIG),
             "variants": VARIANTS,
-            "seeds": args.seeds,
+            "seeds": SEEDS,
+            "force_overwrite_output": FORCE_OVERWRITE_OUTPUT,
+            "star_threshold": STAR_THRESHOLD,
+            "matching_radius": MATCHING_RADIUS,
+            "max_test_samples": MAX_TEST_SAMPLES,
             "test_samples": [row["sample_id"] for row in test_rows],
             "center_error_subset": "single_eccentric",
         },
@@ -74,7 +85,7 @@ def main():
     for variant in VARIANTS:
         variant_config = build_variant_config(variant, locked_config)
         utils.write_json(output_root / variant / "variant_config.json", variant_config)
-        for seed in args.seeds:
+        for seed in SEEDS:
             for sample in samples:
                 result = pinn.train_background(
                     sample["observed"],
@@ -98,8 +109,8 @@ def main():
                 scores = metrics.evaluate_synthetic(
                     sample,
                     result,
-                    star_threshold=args.star_threshold,
-                    matching_radius=args.matching_radius,
+                    star_threshold=STAR_THRESHOLD,
+                    matching_radius=MATCHING_RADIUS,
                 )
                 error = _center_error(variant, sample, result)
                 rows.append(
@@ -123,7 +134,7 @@ def main():
     utils.save_rows_csv(output_root / "metrics.csv", rows)
     utils.save_rows_csv(output_root / "ablation_table.csv", table)
     utils.write_json(output_root / "summary.json", summary)
-    print(f"E3 完成：{output_root / 'ablation_table.csv'}")
+    print(f"E3:生成完毕")
 
 
 def _center_error(variant, sample, result):
@@ -188,25 +199,6 @@ def _final_parameters(result):
         )
     }
 
-
-def _parse_args():
-    parser = argparse.ArgumentParser(description="E3：PDE 与中心消融")
-    parser.add_argument("--manifest", default=str(utils.SYNTHETIC_MANIFEST))
-    parser.add_argument(
-        "--pinn-config",
-        default=str(utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"),
-    )
-    parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e3_ablation"))
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="清空指定的 experiments/outputs 子目录后重跑",
-    )
-    parser.add_argument("--seeds", type=int, nargs="+", default=list(utils.SEEDS))
-    parser.add_argument("--star-threshold", type=float, default=0.03)
-    parser.add_argument("--matching-radius", type=int, default=3)
-    parser.add_argument("--max-test-samples", type=int, default=0)
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

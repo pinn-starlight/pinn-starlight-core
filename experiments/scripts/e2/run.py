@@ -1,8 +1,6 @@
-"""E2 synthetic benchmark."""
+"""E2：以合成数据为基准的Benchmark"""
 
-from __future__ import annotations
 
-import argparse
 import json
 import time
 from pathlib import Path
@@ -16,11 +14,29 @@ from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
+
+FORCE_OVERWRITE_OUTPUT = True
+
 METHODS = ("fft_gaussian", "unet_small", "pinn")
+SEEDS = tuple(utils.SEEDS)
+OUTPUT_ROOT = utils.OUTPUT_ROOT / "e2_benchmark"
+MANIFEST = utils.SYNTHETIC_MANIFEST
+MAX_TEST_SAMPLES = 100
+PINN_CONFIG = utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"
+
+# U-net和fft的参数
+PATCH_SIZE = 1
+UNET_EPOCHS = 20
+UNET_STEPS_PER_EPOCH = 100
+UNET_BATCH_SIZE = 4
+UNET_BASE_CHANNELS = 16
+UNET_PATIENCE = 5
+STAR_THRESHOLD = 1
+MATCHING_RADIUS = 3
 
 
 def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict:
-    """Run one method and return its prediction and measurements."""
+    """单次运行"""
     observed = sample["observed"]
     device = kwargs.get("device", torch.device("cpu"))
     utils.reset_peak_vram(device)
@@ -70,46 +86,47 @@ def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict
 
 
 def main():
-    args = _parse_args()
-    output_root = utils.prepare_output_root(args.output_root, force=args.force)
+    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    seeds = tuple(args.seeds)
+    seeds = SEEDS
 
-    train_rows = utils.load_manifest(args.manifest, split="train")
-    validation_rows = utils.load_manifest(args.manifest, split="validation")
-    test_rows = utils.load_manifest(args.manifest, split="test")
-    if args.max_test_samples > 0:
-        test_rows = test_rows[: args.max_test_samples]
+    train_rows = utils.load_manifest(MANIFEST, split="train")
+    validation_rows = utils.load_manifest(MANIFEST, split="validation")
+    test_rows = utils.load_manifest(MANIFEST, split="test")
+    if MAX_TEST_SAMPLES > 0:
+        test_rows = test_rows[:MAX_TEST_SAMPLES]
     if not train_rows or not validation_rows or not test_rows:
-        raise ValueError("train, validation, and test splits must all be non-empty")
+        raise ValueError("train, validation, and test splits 必须非空")
 
-    pinn_config = json.loads(Path(args.pinn_config).read_text(encoding="utf-8"))
+    pinn_config = json.loads(Path(PINN_CONFIG).read_text(encoding="utf-8"))
     validation_samples = [utils.load_synthetic_sample(row) for row in validation_rows]
     fft_sigma = fft.select_sigma(validation_samples)
     locked_config = {
         "fft_sigma": fft_sigma,
         "pinn_config": pinn_config,
-        "unet_tile_size": args.patch_size,
-        "unet_overlap": min(32, args.patch_size // 4),
-        "star_threshold": args.star_threshold,
-        "matching_radius": args.matching_radius,
+        "unet_tile_size": PATCH_SIZE,
+        "unet_overlap": min(32, PATCH_SIZE // 4),
+        "star_threshold": STAR_THRESHOLD,
+        "matching_radius": MATCHING_RADIUS,
     }
     utils.save_run_metadata(
         output_root,
         {
             "experiment": "E2",
-            "manifest": utils.project_relative(args.manifest),
-            "pinn_config": utils.project_relative(args.pinn_config),
+            "manifest": utils.project_relative(MANIFEST),
+            "pinn_config": utils.project_relative(PINN_CONFIG),
             "seeds": seeds,
+            "force_overwrite_output": FORCE_OVERWRITE_OUTPUT,
+            "max_test_samples": MAX_TEST_SAMPLES,
             "locked_config": locked_config,
             "test_samples": [row["sample_id"] for row in test_rows],
             "unet_training": {
-                "epochs": args.epochs,
-                "steps_per_epoch": args.steps_per_epoch,
-                "batch_size": args.unet_batch_size,
-                "patch_size": args.patch_size,
-                "base_channels": args.base_channels,
-                "patience": args.patience,
+                "epochs": UNET_EPOCHS,
+                "steps_per_epoch": UNET_STEPS_PER_EPOCH,
+                "batch_size": UNET_BATCH_SIZE,
+                "patch_size": PATCH_SIZE,
+                "base_channels": UNET_BASE_CHANNELS,
+                "patience": UNET_PATIENCE,
             },
         },
     )
@@ -131,7 +148,6 @@ def main():
                 "deterministic",
                 sample,
                 result,
-                args,
             )
         )
 
@@ -147,12 +163,12 @@ def main():
             validation_pairs,
             checkpoint_dir,
             device=device,
-            epochs=args.epochs,
-            steps_per_epoch=args.steps_per_epoch,
-            batch_size=args.unet_batch_size,
-            patch_size=args.patch_size,
-            base_channels=args.base_channels,
-            patience=args.patience,
+            epochs=UNET_EPOCHS,
+            steps_per_epoch=UNET_STEPS_PER_EPOCH,
+            batch_size=UNET_BATCH_SIZE,
+            patch_size=PATCH_SIZE,
+            base_channels=UNET_BASE_CHANNELS,
+            patience=UNET_PATIENCE,
             seed=seed,
         )
         training_time = time.perf_counter() - started
@@ -188,7 +204,7 @@ def main():
                 sample,
                 result,
             )
-            metric_rows.append(_metric_row("unet_small", seed, sample, result, args))
+            metric_rows.append(_metric_row("unet_small", seed, sample, result))
         del model
         if device.type == "cuda":
             torch.cuda.empty_cache()
@@ -207,7 +223,7 @@ def main():
             pinn_result = result["pinn_result"]
             utils.save_rows_csv(sample_output / "history.csv", pinn_result["history"])
             utils.write_json(sample_output / "final_parameters.json", _pinn_parameters(pinn_result))
-            metric_rows.append(_metric_row("pinn", seed, sample, result, args))
+            metric_rows.append(_metric_row("pinn", seed, sample, result))
 
     summary = utils.summarize_rows(metric_rows, "method")
     grouped_table = _grouped_results(metric_rows)
@@ -219,10 +235,10 @@ def main():
         "unet_checkpoint": utils.project_relative(best_checkpoint),
         "unet_seed": best_seed,
         "unet_validation_loss": best_validation,
-        "unet_tile_size": args.patch_size,
-        "unet_overlap": min(32, args.patch_size // 4),
-        "star_threshold": args.star_threshold,
-        "matching_radius": args.matching_radius,
+        "unet_tile_size": PATCH_SIZE,
+        "unet_overlap": min(32, PATCH_SIZE // 4),
+        "star_threshold": STAR_THRESHOLD,
+        "matching_radius": MATCHING_RADIUS,
     }
 
     utils.save_rows_csv(output_root / "metrics.csv", metric_rows)
@@ -244,12 +260,12 @@ def _save_result(output_dir, sample, result):
     )
 
 
-def _metric_row(method, seed, sample, result, args):
+def _metric_row(method, seed, sample, result):
     scores = metrics.evaluate_synthetic(
         sample,
         result,
-        star_threshold=args.star_threshold,
-        matching_radius=args.matching_radius,
+        star_threshold=STAR_THRESHOLD,
+        matching_radius=MATCHING_RADIUS,
     )
     return {
         "method": method,
@@ -403,31 +419,6 @@ def _pinn_parameters(result):
         )
     }
 
-
-def _parse_args():
-    parser = argparse.ArgumentParser(description="E2 synthetic benchmark")
-    parser.add_argument("--manifest", default=str(utils.SYNTHETIC_MANIFEST))
-    parser.add_argument(
-        "--pinn-config",
-        default=str(utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"),
-    )
-    parser.add_argument("--output-root", default=str(utils.OUTPUT_ROOT / "e2_synthetic"))
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Clear the selected experiments/outputs subdirectory before running",
-    )
-    parser.add_argument("--seeds", type=int, nargs="+", default=list(utils.SEEDS))
-    parser.add_argument("--epochs", type=int, default=20)
-    parser.add_argument("--steps-per-epoch", type=int, default=100)
-    parser.add_argument("--unet-batch-size", type=int, default=4)
-    parser.add_argument("--patch-size", type=int, default=256)
-    parser.add_argument("--base-channels", type=int, default=16)
-    parser.add_argument("--patience", type=int, default=5)
-    parser.add_argument("--star-threshold", type=float, default=0.03)
-    parser.add_argument("--matching-radius", type=int, default=3)
-    parser.add_argument("--max-test-samples", type=int, default=0)
-    return parser.parse_args()
 
 
 if __name__ == "__main__":
