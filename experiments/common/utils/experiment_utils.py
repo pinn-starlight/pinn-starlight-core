@@ -98,7 +98,20 @@ def load_manifest(path=SYNTHETIC_MANIFEST, split: str | None = None):
             if row["split"] == split:
                 filtered_rows.append(row)
         rows = filtered_rows
+
     return rows
+
+
+def load_observed(observed):
+    if isinstance(observed, (str, Path)):
+        array = load_gray_image(observed)
+    else:
+        array = np.asarray(observed, dtype=np.float32)
+    if array.ndim != 2:
+        raise ValueError(f"observed 必须是二维灰度图，实际为 {array.shape}")
+    if not np.isfinite(array).all():
+        raise ValueError("observed 包含 NaN 或 Inf")
+    return np.clip(array, 0.0, 1.0).astype(np.float32)
 
 
 def load_synthetic_sample(row: dict):
