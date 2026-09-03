@@ -172,7 +172,7 @@ def _metrics_test():
         **sample,
         "metadata": {
             "star_reference": {
-                "threshold": 0.03,
+                "threshold": 0.3,
                 "matching_radius": 3,
                 "stars": reference_stars,
             }

@@ -9,7 +9,7 @@ from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
-FORCE_OVERWRITE_OUTPUT = True
+FORCE_OVERWRITE_OUTPUT = False
 
 # E1可选配置
 NETWORK_CANDIDATES = ([256, 128], [256, 64], [128, 128], [128, 64])
@@ -32,7 +32,7 @@ DEFAULT_PHYSICS_WEIGHT = 0.5
 DEFAULT_KERNEL_SIZE = 31
 STABILITY_TOLERANCE = 0.005
 STABILITY_PATIENCE = 3
-CENTER_MODE = "bright_init_fixed"
+CENTER_MODE = "bright_init_learnable"
 
 
 def run_candidate(
@@ -54,7 +54,19 @@ def run_candidate(
     states = {}
     for manifest_row in validation_manifest:
         sample = utils.load_synthetic_sample(manifest_row)
-        sample_id = sample["sample_id"]
+        #TODO:检查一下这里的逻辑
+        reference_stars = metrics.extract_stars(sample["clean_true"])
+        sample = {
+            **sample,
+            "metadata": {
+                "star_reference": {
+                    "threshold": 0.3,
+                    "matching_radius": 3,
+                    "stars": reference_stars,
+            },
+        },
+        }
+        sample_id = str(sample["sample_id"])
         result = pinn.train_background(
             sample["observed"],
             config=config,
@@ -311,7 +323,6 @@ def _continue_until_stable(
 def _aggregate(rows):
     return {
         "bg_mae": float(np.mean([row["bg_mae"] for row in rows])),
-        "residual_psnr": float(np.mean([row["residual_psnr"] for row in rows])),
         "residual_ssim": float(np.mean([row["residual_ssim"] for row in rows])),
         "star_f1": float(np.mean([row["star_f1"] for row in rows])),
         "flux_error": float(np.mean([row["flux_error"] for row in rows])),
@@ -323,7 +334,6 @@ def _aggregate(rows):
 def _selection_key(aggregate):
     return (
         aggregate["bg_mae"],
-        -aggregate["residual_psnr"],
         -aggregate["residual_ssim"],
         aggregate["flux_error"],
         aggregate["parameter_count"],

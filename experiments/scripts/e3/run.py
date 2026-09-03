@@ -10,7 +10,7 @@ from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
-FORCE_OVERWRITE_OUTPUT = True
+FORCE_OVERWRITE_OUTPUT = False
 
 VARIANTS = (
     "data_only",

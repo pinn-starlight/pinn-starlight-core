@@ -67,7 +67,6 @@ def prepare_output_root(path, force = False) -> Path:
             f"输出目录非空，不会覆盖已有结果：{path}。"
             "如确认要重跑，请添加 --force，或指定新的 --output-root。"
         )
-    # path.mkdir(parents=True, exist_ok=True)
     _remove_forced_output(path)
     return path
 

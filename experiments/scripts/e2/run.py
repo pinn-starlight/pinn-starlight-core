@@ -15,7 +15,7 @@ from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
 
-FORCE_OVERWRITE_OUTPUT = True
+FORCE_OVERWRITE_OUTPUT = False
 
 METHODS = ("fft_gaussian", "unet_small", "pinn")
 SEEDS = tuple(utils.SEEDS)
