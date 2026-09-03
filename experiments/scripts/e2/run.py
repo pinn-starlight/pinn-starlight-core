@@ -25,13 +25,13 @@ MAX_TEST_SAMPLES = 100
 PINN_CONFIG = utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"
 
 # U-net和fft的参数
-PATCH_SIZE = 1
+UNET_PATCH_SIZE = 256
 UNET_EPOCHS = 20
 UNET_STEPS_PER_EPOCH = 100
 UNET_BATCH_SIZE = 4
-UNET_BASE_CHANNELS = 16
+UNET_BASE_CHANNELS = 32
 UNET_PATIENCE = 5
-STAR_THRESHOLD = 0.03
+STAR_THRESHOLD = 0.1
 MATCHING_RADIUS = 3
 
 
@@ -104,8 +104,8 @@ def main():
     locked_config = {
         "fft_sigma": fft_sigma,
         "pinn_config": pinn_config,
-        "unet_tile_size": PATCH_SIZE,
-        "unet_overlap": min(32, PATCH_SIZE // 4),
+        "unet_tile_size": UNET_PATCH_SIZE,
+        "unet_overlap": min(32, UNET_PATCH_SIZE // 4),
         "star_threshold": STAR_THRESHOLD,
         "matching_radius": MATCHING_RADIUS,
     }
@@ -124,7 +124,7 @@ def main():
                 "epochs": UNET_EPOCHS,
                 "steps_per_epoch": UNET_STEPS_PER_EPOCH,
                 "batch_size": UNET_BATCH_SIZE,
-                "patch_size": PATCH_SIZE,
+                "patch_size": UNET_PATCH_SIZE,
                 "base_channels": UNET_BASE_CHANNELS,
                 "patience": UNET_PATIENCE,
             },
@@ -166,7 +166,7 @@ def main():
             epochs=UNET_EPOCHS,
             steps_per_epoch=UNET_STEPS_PER_EPOCH,
             batch_size=UNET_BATCH_SIZE,
-            patch_size=PATCH_SIZE,
+            patch_size=UNET_PATCH_SIZE,
             base_channels=UNET_BASE_CHANNELS,
             patience=UNET_PATIENCE,
             seed=seed,
@@ -235,8 +235,8 @@ def main():
         "unet_checkpoint": utils.project_relative(best_checkpoint),
         "unet_seed": best_seed,
         "unet_validation_loss": best_validation,
-        "unet_tile_size": PATCH_SIZE,
-        "unet_overlap": min(32, PATCH_SIZE // 4),
+        "unet_tile_size": UNET_PATCH_SIZE,
+        "unet_overlap": min(32, UNET_PATCH_SIZE // 4),
         "star_threshold": STAR_THRESHOLD,
         "matching_radius": MATCHING_RADIUS,
     }

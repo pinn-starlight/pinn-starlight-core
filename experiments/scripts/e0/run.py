@@ -22,7 +22,7 @@ import experiments.common.utils.experiment_utils as utils
 import experiments.common.utils.metrics as metrics
 from experiments.common.baselines.coordinate_pinn import DEFAULT_CONFIG
 
-FORCE_OVERWRITE_OUTPUT=True
+FORCE_OVERWRITE_OUTPUT=False
 PINN_STEP = 1_000
 PINN_BATCH_SIZE = 256
 FFT_SIGMA = 0.08
@@ -194,7 +194,8 @@ def _metrics_test():
         f"shape={clean_true.shape}, "
         f"bg_mae={scores['bg_mae']:.2e}, "
         f"residual_mae={scores['residual_mae']:.2e}, "
-        f"star_f1={scores['star_f1']:.3f}"
+        f"star_f1={scores['star_f1']:.3f},"
+        f"star_counts={scores['star_counts']}"
     )
 
 

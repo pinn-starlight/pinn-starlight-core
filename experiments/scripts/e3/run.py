@@ -24,7 +24,7 @@ PINN_CONFIG = utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "e3_ablation"
 SEEDS = tuple(utils.SEEDS)
 # 暂时保留成这个数据
-STAR_THRESHOLD = 0.03
+STAR_THRESHOLD = 0.1
 MATCHING_RADIUS = 3
 
 MAX_TEST_SAMPLES = 3
