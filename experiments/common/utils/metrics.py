@@ -2,7 +2,6 @@
 
 import math
 
-import matplotlib.pyplot as plt
 import numpy as np
 from astropy.stats import sigma_clipped_stats
 from photutils.detection import DAOStarFinder
@@ -89,7 +88,6 @@ def star_metrics(
     else:
         flux_error = 0.0 if not reference else 1.0
 
-    #TODO:这里的star_count是否有用
     return {
         "star_precision": float(precision),
         "star_recall": float(recall),
@@ -99,7 +97,7 @@ def star_metrics(
         "predicted_star_count": float(len(predicted)),
         "reference_star_count_capped": float(reference_capped),
         "predicted_star_count_capped": float(predicted_capped),
-        "star_count": int(len(reference_stars))
+        "star_counts": int(len(reference_stars))
     }
 
 
@@ -185,7 +183,7 @@ def _match_stars(reference_stars, predicted_stars, max_distance):
                     }
                 )
 
-    possible_matches.sort(key=lambda item: item["distance"])
+    possible_matches.sort(key=lambda items: items["distance"])
 
     matched_true = set()
     matched_pred = set()

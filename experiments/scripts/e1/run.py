@@ -54,7 +54,6 @@ def run_candidate(
     states = {}
     for manifest_row in validation_manifest:
         sample = utils.load_synthetic_sample(manifest_row)
-        #TODO:检查一下这里的逻辑
         reference_stars = metrics.extract_stars(sample["clean_true"])
         sample = {
             **sample,

@@ -8,6 +8,7 @@ from scipy import fft
 
 SIGMA_CANDIDATES = (0.02, 0.04, 0.08, 0.16)
 
+# TODO:需要让学长检查一下
 
 def estimate_background(observed, normalized_sigma: float):
     """返回与observed一样大小的(H,W)矩阵"""
