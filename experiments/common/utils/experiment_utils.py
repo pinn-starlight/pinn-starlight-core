@@ -72,22 +72,6 @@ def prepare_output_root(path, force = False) -> Path:
     return path
 
 
-def _remove_forced_output(path: Path):
-    if path.is_symlink():
-        raise ValueError("--force 不允许清理符号链接输出目录")
-    resolved_path = path.resolve()
-    resolved_output_root = OUTPUT_ROOT.resolve()
-    if (
-        resolved_path == resolved_output_root
-        or resolved_output_root not in resolved_path.parents
-    ):
-        raise ValueError(
-            "--force 只允许清理 experiments/outputs 下的输出目录："
-            f"{resolved_path}"
-        )
-    shutil.rmtree(resolved_path)
-
-
 def load_gray_image(path, downsample = 1) -> np.ndarray:
     """读取一张线性灰度图，返回范围为 [0, 1] 的 float32 数组。"""
     path = to_absolute_path(path)
@@ -196,6 +180,16 @@ def save_prediction_arrays(
         save_display_png(output_dir / f"{name}.png", image)
 
 
+def save_float_tiff(path, image):
+    """保存tiff，合成数据用"""
+    path = Path(path)
+    image = np.asarray(image, dtype=np.float32)
+    if image.ndim != 2 or not np.isfinite(image).all():
+        raise ValueError("TIFF image must be a finite 2-D array")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tif.imwrite(path, image, dtype=np.float32)
+
+
 def save_rows_csv(path, rows: list[dict]):
     """把一组同类结果写成 CSV；空结果也会写出空文件。"""
     path = Path(path)
@@ -255,6 +249,22 @@ def peak_vram_mb(device):
     return None
 
 
+def _remove_forced_output(path: Path):
+    if path.is_symlink():
+        raise ValueError("--force 不允许清理符号链接输出目录")
+    resolved_path = path.resolve()
+    resolved_output_root = OUTPUT_ROOT.resolve()
+    if (
+        resolved_path == resolved_output_root
+        or resolved_output_root not in resolved_path.parents
+    ):
+        raise ValueError(
+            "--force 只允许清理 experiments/outputs 下的输出目录："
+            f"{resolved_path}"
+        )
+    shutil.rmtree(resolved_path)
+
+
 def _git_output(*args):
     try:
         result = subprocess.run(
@@ -300,24 +310,3 @@ def _csv_value(value):
 
 def _is_finite_number(value):
     return isinstance(value, (int, float, np.number)) and np.isfinite(value)
-
-
-def parse_force_args(description):
-    """通用的检查--force参数"""
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="清空指定的 experiments/outputs 子目录后重跑",
-    )
-    return parser.parse_args()
-
-
-def save_float_tiff(path, image):
-    """保存tiff，合成数据用"""
-    path = Path(path)
-    image = np.asarray(image, dtype=np.float32)
-    if image.ndim != 2 or not np.isfinite(image).all():
-        raise ValueError("TIFF image must be a finite 2-D array")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tif.imwrite(path, image, dtype=np.float32)
