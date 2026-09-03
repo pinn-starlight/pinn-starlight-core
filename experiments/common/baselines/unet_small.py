@@ -1,4 +1,12 @@
-"""E0, E2, E4 shared U-Net-small baseline."""
+"""E0、E2、E4 共用的小型 U-Net 背景估计模型。
+
+接口约定：
+- 输入图像是二维灰度数组，通常已经归一化到 [0, 1]。
+- 训练目标是与输入图对应的真实背景图。
+- 训练函数只负责训练一次并返回检查点路径。
+- 预测函数只加载已有模型，不进行训练。
+- 同一个训练好的模型应重复用于所有测试图像。
+"""
 
 from __future__ import annotations
 
@@ -12,7 +20,6 @@ from tqdm import tqdm
 
 from experiments.common.utils import experiment_utils as utils
 
-#暂时使用ai
 class _ConvBlock(nn.Sequential):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__(
@@ -24,7 +31,7 @@ class _ConvBlock(nn.Sequential):
 
 
 class UNetSmall(nn.Module):
-    """A small single-channel U-Net with two downsampling stages."""
+    """单通道输入、单通道输出，并进行两次下采样的小型 U-Net。"""
 
     def __init__(self, base_channels: int = 16):
         super().__init__()
@@ -52,8 +59,9 @@ class UNetSmall(nn.Module):
 
 
 def build_model(base_channels: int = 16):
+    """创建一个尚未训练的 U-Net 模型。"""
     if base_channels <= 0:
-        raise ValueError("base_channels must be greater than 0")
+        raise ValueError("基础通道数必须大于 0")
     return UNetSmall(base_channels=base_channels)
 
 
@@ -71,18 +79,31 @@ def train(
     patience: int = 5,
     seed: int = 20260728,
 ):
+    """训练一次 U-Net，并返回最佳检查点路径。
+
+    训练输入是由多组二元数据组成的列表。每组包含一张带背景的输入图和
+    一张对应的真实背景图，二者尺寸必须相同。验证数据格式相同。
+
+    返回值：
+        ``pathlib.Path``：最佳模型检查点路径，文件名为
+        ``unet_small_best.pt``。
+
+    使用约定：
+        本函数完成一次全局训练。训练结束后应加载并复用返回的检查点，
+        对所有测试图进行预测，不应针对每张测试图再次训练。
+    """
     if epochs <= 0 or steps_per_epoch <= 0:
-        raise ValueError("epochs and steps_per_epoch must be greater than 0")
+        raise ValueError("训练轮数和每轮更新次数必须大于 0")
     if batch_size <= 0:
-        raise ValueError("batch_size must be greater than 0")
+        raise ValueError("批次大小必须大于 0")
     if patience <= 0:
-        raise ValueError("patience must be greater than 0")
+        raise ValueError("提前停止轮数必须大于 0")
 
     _set_seed(seed)
     train_pairs = _load_pairs(train_manifest)
     validation_pairs = _load_pairs(validation_manifest)
     if not train_pairs or not validation_pairs:
-        raise ValueError("training and validation sets must not be empty")
+        raise ValueError("训练集和验证集不能为空")
 
     device = _resolve_device(device)
     model = build_model(base_channels).to(device)
@@ -106,7 +127,7 @@ def train(
             batch_size,
             patch_size,
             generator,
-            description=f"U-Net epoch {epoch + 1}/{epochs}",
+            description=f"U-Net 第 {epoch + 1}/{epochs} 轮",
         )
         validation_loss = _validation_loss(model, validation_pairs, device, patch_size)
 
@@ -142,6 +163,11 @@ def predict(
     tile_size: int = 256,
     overlap: int = 32,
 ):
+    """加载检查点，对一张图像预测背景。
+
+    返回值是二维浮点数组，尺寸与输入图像相同，表示预测的背景图。
+    本函数不会训练模型。
+    """
     device = _resolve_device(device)
     model, _ = load_checkpoint_model(checkpoint, device)
     observed_array = _load_gray(observed) if isinstance(observed, (str, Path)) else np.asarray(observed, dtype=np.float32)
@@ -149,11 +175,16 @@ def predict(
 
 
 def load_checkpoint_model(checkpoint, device=None):
+    """加载检查点并返回模型和检查点信息。
+
+    返回值是二元组：第一个元素是已经切换到评估模式的模型，第二个元素
+    是保存于检查点中的训练信息字典。
+    """
     device = _resolve_device(device)
     checkpoint_data = torch.load(checkpoint, map_location="cpu")
 
     if "model_state" not in checkpoint_data:
-        raise ValueError("unsupported checkpoint format")
+        raise ValueError("检查点格式不受支持")
 
     base_channels = int(checkpoint_data["base_channels"])
     model = build_model(base_channels)
@@ -170,6 +201,10 @@ def predict_with_model(
     tile_size: int = 256,
     overlap: int = 32,
 ):
+    """使用已经加载的模型预测背景，不进行训练。
+
+    返回值是二维浮点数组，尺寸与 ``observed`` 相同。
+    """
     device = _resolve_device(device or next(model.parameters()).device)
     observed = np.asarray(observed, dtype=np.float32)
     return _predict_background(model, observed, device, tile_size, overlap)
@@ -182,6 +217,10 @@ def single_predict(
     tile_size: int = 256,
     overlap: int = 32,
 ):
+    """处理一张图像并返回输入图、预测背景图和残差图。
+
+    返回值依次为输入图像、预测背景图和输入图像减去背景图得到的残差图。
+    """
     observed = _load_gray(input_path)
     predicted = predict(
         checkpoint,
@@ -230,11 +269,11 @@ def _load_pairs(manifest):
 
 def _validate_pair(observed: np.ndarray, background_true: np.ndarray) -> None:
     if observed.ndim != 2 or background_true.ndim != 2:
-        raise ValueError("observed and background_true must both be 2D grayscale arrays")
+        raise ValueError("输入图和真实背景图都必须是二维灰度数组")
     if observed.shape != background_true.shape:
-        raise ValueError("observed and background_true must have the same shape")
+        raise ValueError("输入图和真实背景图的尺寸必须相同")
     if not np.isfinite(observed).all() or not np.isfinite(background_true).all():
-        raise ValueError("training images contain NaN or Inf")
+        raise ValueError("训练图像不能包含 NaN 或 Inf")
 
 
 def _run_training_steps(
@@ -249,9 +288,9 @@ def _run_training_steps(
     description,
 ):
     if steps <= 0 or batch_size <= 0:
-        raise ValueError("steps and batch_size must be greater than 0")
+        raise ValueError("更新次数和批次大小必须大于 0")
     if patch_size <= 0:
-        raise ValueError("patch_size must be greater than 0")
+        raise ValueError("图像块边长必须大于 0")
 
     model.train()
     progress = tqdm(range(steps), desc=description, file=sys.stdout)
@@ -334,11 +373,11 @@ def _validation_loss(model, pairs, device, tile_size):
 def _predict_background(model, observed, device, tile_size, overlap):
     observed = np.asarray(observed, dtype=np.float32)
     if observed.ndim != 2:
-        raise ValueError("observed must be a 2D grayscale array")
+        raise ValueError("输入图必须是二维灰度数组")
     if tile_size <= 0:
-        raise ValueError("tile_size must be greater than 0")
+        raise ValueError("推理图块边长必须大于 0")
     if not 0 <= overlap < tile_size:
-        raise ValueError("overlap must be within [0, tile_size)")
+        raise ValueError("重叠宽度必须位于 [0, 推理图块边长) 范围内")
 
     original_height, original_width = observed.shape
     padded = _pad_to_patch(observed, tile_size)

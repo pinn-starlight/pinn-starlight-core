@@ -69,7 +69,7 @@ def train_background(
     utils.set_seed(seed)
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
     utils.reset_peak_vram(device)
-    observed = _load_observed(observed)
+    observed = utils.load_observed(observed)
     height, width = observed.shape
     coords = coordinate_grid(height, width, device)
     values = torch.from_numpy(observed.reshape(-1)).to(device)
@@ -269,18 +269,6 @@ def _optimizer(model, city_source, config: PINNConfig):
     if config["physics_weight"] > 0 and city_parameters:
         groups.append({"params": city_parameters, "lr": float(config["icity_lr"])})
     return torch.optim.Adam(groups)
-
-
-def _load_observed(observed):
-    if isinstance(observed, (str, Path)):
-        array = utils.load_gray_image(observed)
-    else:
-        array = np.asarray(observed, dtype=np.float32)
-    if array.ndim != 2:
-        raise ValueError(f"observed 必须是二维灰度图，实际为 {array.shape}")
-    if not np.isfinite(array).all():
-        raise ValueError("observed 包含 NaN 或 Inf")
-    return np.clip(array, 0.0, 1.0).astype(np.float32)
 
 
 def _predict_background(model, coords, height, width, batch_size):
