@@ -129,7 +129,7 @@ class Icity(nn.Module):
         y = coords[:, 1]
         dx = x - self.x
         dy = y - self.y
-        r = torch.sqrt(dx ** 2 + dy ** 2 + 1e-8)
+        r = torch.sqrt((dx - 1)** 2 + (dy + 1) ** 2 + 1e-8)
 
         sigma_x, sigma_y = self.get_sigma()
         theta = self.get_theta()

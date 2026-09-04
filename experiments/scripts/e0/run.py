@@ -1,14 +1,5 @@
-"""E0：先试试三种方法能不能跑，不进入论文结果。
-
-目标：用两张合成样本和 native_test.tif，让 FFT-Gaussian、
-U-Net-small 和 PINN 都完成一次最短运行。这里只检查整条流程是否可用，
-不比较方法效果，也不把数值写入论文结果。
-
-最简单的通过条件：
-- 输入、background_pred、residual_pred 尺寸和数值范围正确；
-- loss、指标和参数无 NaN/Inf；
-- 至少能打印 loss，并保存一张背景图和一张残差图；
-- 当前 PINN 加载器接口已修正，正式实验 alpha 固定为 0.5。
+"""
+    E0：冒烟测试
 """
 from pathlib import Path
 
@@ -16,16 +7,16 @@ import numpy as np
 import torch
 
 import experiments.common.baselines.coordinate_pinn as pinn
-import experiments.common.baselines.fft_gaussian as fft
+import experiments.common.baselines.fft_screened_poisson as fft
 import experiments.common.baselines.unet_small as unet
 import experiments.common.utils.experiment_utils as utils
 import experiments.common.utils.metrics as metrics
 from experiments.common.baselines.coordinate_pinn import DEFAULT_CONFIG
 
-FORCE_OVERWRITE_OUTPUT=False
+FORCE_OVERWRITE_OUTPUT=True
 PINN_STEP = 1_000
 PINN_BATCH_SIZE = 256
-FFT_SIGMA = 0.08
+FFT_WEIGHT = 1
 UNET_EPOCHS = 1
 UNET_STEPS_PER_EPOCH = 10
 UNET_BATCH_SIZE = 1
@@ -46,7 +37,7 @@ def main():
     test_images = _test_images(Path(TEST_IMG_DIR))
     _metrics_test()
 
-    _fft_test(output_root, test_images, E0_DOWNSAMPLE, FFT_SIGMA)
+    _fft_test(output_root, test_images, E0_DOWNSAMPLE, FFT_WEIGHT)
     _pinn_test(
         output_root,
         test_images,
@@ -96,9 +87,9 @@ def _fft_test(output_root, test_images, downsample, sigma):
         observed = utils.load_gray_image(img, downsample=downsample)
         predicted = fft.estimate_background(observed, sigma)
         residual = observed - predicted
-        _save_images(output_root, "fft_gaussian", img_name, observed, predicted, residual)
+        _save_images(output_root, "fft_screened_poisson", img_name, observed, predicted, residual)
 
-    print("FFT-Gaussian Done!")
+    print("FFT-screened-Poisson Done!")
 
 
 def _unet_test(

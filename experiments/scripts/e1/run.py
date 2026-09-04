@@ -9,11 +9,11 @@ from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
-FORCE_OVERWRITE_OUTPUT = False
+FORCE_OVERWRITE_OUTPUT = True
 
 # E1可选配置
 NETWORK_CANDIDATES = ([256, 128], [256, 64], [128, 128], [128, 64])
-PHYSICS_WEIGHT_CANDIDATES = (0.4, 0.5, 0.8, 1.0, 1.5)
+PHYSICS_WEIGHT_CANDIDATES = (0.4, 0.5, 0.6, 0.7)
 KERNEL_SIZE_CANDIDATES = (21, 31)
 
 # E1 实验配置；需要调整实验时直接修改这里即可。
@@ -22,7 +22,7 @@ OUTPUT_ROOT = utils.OUTPUT_ROOT / "e1_tuning"
 #E1使用单seed
 SEED = utils.SEEDS[0]
 INITIAL_STEPS = 10000
-CONTINUE_STEPS = 1000
+CONTINUE_STEPS = 10000
 MAX_STEPS = 50000
 BATCH_SIZE = 8192
 ALPHA = 0.5

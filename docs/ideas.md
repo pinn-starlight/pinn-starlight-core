@@ -124,3 +124,12 @@ PINN 当前针对每张图独立优化。可以研究：
 4. 它带来的收益是否值得增加的解释成本？
 
 只要会影响 E0-E4 的按时完成，就先留在本文件，不进入当前版本。
+### PINN boundary conditions (follow-up)
+
+The current PINN has no explicit boundary loss. A future implementation can sample points on the four image edges and use automatic differentiation to penalize the normal derivative.
+
+- Zero Neumann: `dB/dx = 0` on the left and right edges, and `dB/dy = 0` on the top and bottom edges.
+- Periodic: match the background value and normal derivative across opposite edges.
+- Add `boundary_weight * boundary_loss` to the total loss.
+
+This requires a new loss function in `src/pinn_starlight_core/nn/pinn_loss.py` and boundary-point sampling plus loss integration in `experiments/common/baselines/coordinate_pinn.py`. The FFT baseline currently assumes periodic boundaries; switching it to DCT would correspond to zero-Neumann boundaries. Keep this as a future experiment and do not mix results produced under different boundary assumptions.
