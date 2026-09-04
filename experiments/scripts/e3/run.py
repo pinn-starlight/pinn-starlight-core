@@ -182,8 +182,6 @@ def _ablation_table(rows):
                 "variant": variant,
                 "bg_mae": np.mean(bg_mae_values),
                 "bg_mae_std": np.std(bg_mae_values),
-                "residual_psnr": np.mean([row["residual_psnr"] for row in subset]),
-                "residual_psnr_std": np.std([row["residual_psnr"] for row in subset]),
                 "star_f1": np.mean([row["star_f1"] for row in subset]),
                 "star_f1_std": np.std([row["star_f1"] for row in subset]),
                 "flux_error": np.mean([row["flux_error"] for row in subset]),
