@@ -73,6 +73,7 @@ def run_candidate(
             seed=seed,
             resume_state=(resume_states or {}).get(sample_id),
             return_state=return_states,
+            show_progress=False
         )
         sample_output = output_dir / sample_id
         utils.save_prediction_arrays(
@@ -110,6 +111,7 @@ def run_candidate(
 
 
 def main():
+    print("E1")
     output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     validation_rows = utils.load_manifest(MANIFEST, split="validation")
 

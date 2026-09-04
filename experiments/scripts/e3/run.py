@@ -55,6 +55,7 @@ def build_variant_config(name: str, locked_pinn_config: dict) -> dict:
 
 
 def main():
+    print("E3")
     output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     locked_config = json.loads(Path(PINN_CONFIG).read_text(encoding="utf-8"))
@@ -80,7 +81,10 @@ def main():
         },
     )
 
-    samples = [utils.load_synthetic_sample(row) for row in test_rows]
+    samples = [
+        _attach_reference_stars(utils.load_synthetic_sample(row))
+        for row in test_rows
+    ]
     rows = []
     for variant in VARIANTS:
         variant_config = build_variant_config(variant, locked_config)
@@ -92,6 +96,7 @@ def main():
                     config=variant_config,
                     device=device,
                     seed=seed,
+                    show_progress=False
                 )
                 sample_output = output_root / variant / f"seed_{seed}" / sample["sample_id"]
                 utils.save_prediction_arrays(
@@ -119,7 +124,6 @@ def main():
                         "seed": seed,
                         "sample_id": sample["sample_id"],
                         "background_type": sample["background_type"],
-                        "intensity_level": sample["metadata"]["intensity_level"],
                         "runtime_s": result["runtime_s"],
                         "peak_vram_mb": result["peak_vram_mb"],
                         "center_error": error,
@@ -149,6 +153,18 @@ def _center_error(variant, sample, result):
         centers[0]["x"],
         centers[0]["y"],
     )
+
+
+def _attach_reference_stars(sample):
+    metadata = dict(sample.get("metadata", {}))
+    metadata["star_reference"] = {
+        "threshold": STAR_THRESHOLD,
+        "matching_radius": MATCHING_RADIUS,
+        "stars": metrics.extract_stars(
+            sample["clean_true"], threshold=STAR_THRESHOLD
+        ),
+    }
+    return {**sample, "metadata": metadata}
 
 
 def _ablation_table(rows):

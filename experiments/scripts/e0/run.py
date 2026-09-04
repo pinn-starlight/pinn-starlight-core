@@ -38,13 +38,14 @@ OUTPUT_ROOT = utils.OUTPUT_ROOT / "e0"
 
 
 def main():
+    print("Hello PINN-Starlight-core!")
+    print("E0")
     output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device:{device.type}")
     test_images = _test_images(Path(TEST_IMG_DIR))
     _metrics_test()
 
-    print("Hello PINN-Starlight-core!")
     _fft_test(output_root, test_images, E0_DOWNSAMPLE, FFT_SIGMA)
     _pinn_test(
         output_root,
@@ -80,6 +81,7 @@ def _pinn_test(output_root, test_images, device, downsample, steps, batch_size):
             observed,
             config=config,
             device=device,
+            show_progress=False
         )
         predicted = result["background_pred"]
         residual = result["residual_pred"]
@@ -194,7 +196,7 @@ def _metrics_test():
         f"shape={clean_true.shape}, "
         f"bg_mae={scores['bg_mae']:.2e}, "
         f"residual_mae={scores['residual_mae']:.2e}, "
-        f"star_f1={scores['star_f1']:.3f},"
+        f"star_f1={scores['star_f1']:.3f}, "
         f"star_counts={scores['star_counts']}"
     )
 

@@ -65,6 +65,7 @@ def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict
             config=locked_config["pinn_config"],
             device=kwargs["device"],
             seed=kwargs["seed"],
+            show_progress=False
         )
         background_pred = pinn_result["background_pred"]
         extra = {
@@ -86,6 +87,7 @@ def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict
 
 
 def main():
+    print("E2")
     output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seeds = SEEDS
@@ -131,7 +133,10 @@ def main():
         },
     )
 
-    samples = [utils.load_synthetic_sample(row) for row in test_rows]
+    samples = [
+        _attach_reference_stars(utils.load_synthetic_sample(row))
+        for row in test_rows
+    ]
     metric_rows = []
     training_rows = []
 
@@ -170,6 +175,7 @@ def main():
             base_channels=UNET_BASE_CHANNELS,
             patience=UNET_PATIENCE,
             seed=seed,
+            show_progress=False
         )
         training_time = time.perf_counter() - started
         model, checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
@@ -272,7 +278,6 @@ def _metric_row(method, seed, sample, result):
         "seed": seed,
         "sample_id": sample["sample_id"],
         "background_type": sample["background_type"],
-        "intensity_level": sample["metadata"]["intensity_level"],
         "runtime_s": result["runtime_s"],
         "peak_vram_mb": result["peak_vram_mb"],
         "parameter_count": result["parameter_count"],
@@ -287,37 +292,43 @@ def _pairs(rows):
     ]
 
 
+def _attach_reference_stars(sample):
+    metadata = dict(sample.get("metadata", {}))
+    metadata["star_reference"] = {
+        "threshold": STAR_THRESHOLD,
+        "matching_radius": MATCHING_RADIUS,
+        "stars": metrics.extract_stars(
+            sample["clean_true"], threshold=STAR_THRESHOLD
+        ),
+    }
+    return {**sample, "metadata": metadata}
+
+
 def _grouped_results(rows):
     table = []
     for method in METHODS:
         for background_type in sorted({row["background_type"] for row in rows}):
-            for intensity_level in sorted({row["intensity_level"] for row in rows}):
-                subset = [
-                    row
-                    for row in rows
-                    if row["method"] == method
-                    and row["background_type"] == background_type
-                    and row["intensity_level"] == intensity_level
-                ]
-                if not subset:
-                    continue
-                table.append(
-                    {
-                        "method": method,
-                        "background_type": background_type,
-                        "intensity_level": intensity_level,
-                        "count": len(subset),
-                        "bg_mae_mean": np.mean([row["bg_mae"] for row in subset]),
-                        "bg_mae_std": np.std([row["bg_mae"] for row in subset]),
-                        "residual_psnr_mean": np.mean(
-                            [row["residual_psnr"] for row in subset]
-                        ),
-                        "star_f1_mean": np.mean([row["star_f1"] for row in subset]),
-                        "flux_error_mean": np.mean(
-                            [row["flux_error"] for row in subset]
-                        ),
-                    }
-                )
+            subset = [
+                row
+                for row in rows
+                if row["method"] == method
+                and row["background_type"] == background_type
+            ]
+            if not subset:
+                continue
+            table.append(
+                {
+                    "method": method,
+                    "background_type": background_type,
+                    "count": len(subset),
+                    "bg_mae_mean": np.mean([row["bg_mae"] for row in subset]),
+                    "bg_mae_std": np.std([row["bg_mae"] for row in subset]),
+                    "star_f1_mean": np.mean([row["star_f1"] for row in subset]),
+                    "flux_error_mean": np.mean(
+                        [row["flux_error"] for row in subset]
+                    ),
+                }
+            )
     return table
 
 
@@ -347,7 +358,6 @@ def _failure_cases(rows):
                     "seed": row["seed"],
                     "sample_id": row["sample_id"],
                     "background_type": row["background_type"],
-                    "intensity_level": row["intensity_level"],
                     "bg_mae": row["bg_mae"],
                     "star_f1": row["star_f1"],
                     "flux_error": row["flux_error"],
@@ -373,8 +383,6 @@ def _main_result_table(rows, training_rows):
                 "bg_mae_std": np.std([row["bg_mae"] for row in subset]),
                 "bg_ssim": np.mean([row["bg_ssim"] for row in subset]),
                 "bg_ssim_std": np.std([row["bg_ssim"] for row in subset]),
-                "residual_psnr": np.mean([row["residual_psnr"] for row in subset]),
-                "residual_psnr_std": np.std([row["residual_psnr"] for row in subset]),
                 "residual_ssim": np.mean([row["residual_ssim"] for row in subset]),
                 "residual_ssim_std": np.std([row["residual_ssim"] for row in subset]),
                 "star_f1": np.mean([row["star_f1"] for row in subset]),
