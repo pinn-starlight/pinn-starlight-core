@@ -114,6 +114,7 @@ def train(
     base_channels: int = 32,
     patience: int = 5,
     seed: int = 20260728,
+    show_progress = True
 ):
     """训练一次 U-Net，并返回最佳模型检查点路径。
 
@@ -123,16 +124,9 @@ def train(
     返回：
         检查点路径。测试阶段应加载并复用该检查点，不应再次训练。
     """
-    if epochs <= 0 or steps_per_epoch <= 0:
-        raise ValueError("训练轮数和每轮更新次数必须大于 0")
-    if batch_size <= 0:
-        raise ValueError("批次大小必须大于 0")
-    if patience <= 0:
-        raise ValueError("提前停止轮数必须大于 0")
-    if patch_size < 16:
-        raise ValueError("图像块边长至少需要 16，以支持四次下采样")
-
-    _set_seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
     train_pairs = _load_pairs(train_manifest)
     validation_pairs = _load_pairs(validation_manifest)
     if not train_pairs or not validation_pairs:
@@ -159,6 +153,7 @@ def train(
             patch_size,
             generator,
             description=f"U-Net 第 {epoch + 1}/{epochs} 轮",
+            show_progress=show_progress
         )
         validation_loss = _validation_loss(
             model,
@@ -257,12 +252,6 @@ def single_predict(
     return observed, predicted, observed - predicted
 
 
-def _set_seed(seed: int) -> None:
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
 def _load_pairs(manifest):
     pairs = []
     for item in manifest:
@@ -274,18 +263,14 @@ def _load_pairs(manifest):
 
         observed = utils.load_gray_image(observed_path)
         background_true = utils.load_gray_image(background_path)
-        _validate_pair(observed, background_true)
+        if observed.ndim != 2 or background_true.ndim != 2:
+            raise ValueError("输入图和真实背景图都必须是二维灰度数组")
+        if observed.shape != background_true.shape:
+            raise ValueError("输入图和真实背景图的尺寸必须相同")
+        if not np.isfinite(observed).all() or not np.isfinite(background_true).all():
+            raise ValueError("训练图像不能包含 NaN 或 Inf")
         pairs.append((observed, background_true))
     return pairs
-
-
-def _validate_pair(observed: np.ndarray, background_true: np.ndarray) -> None:
-    if observed.ndim != 2 or background_true.ndim != 2:
-        raise ValueError("输入图和真实背景图都必须是二维灰度数组")
-    if observed.shape != background_true.shape:
-        raise ValueError("输入图和真实背景图的尺寸必须相同")
-    if not np.isfinite(observed).all() or not np.isfinite(background_true).all():
-        raise ValueError("训练图像不能包含 NaN 或 Inf")
 
 
 def _run_training_steps(
@@ -298,9 +283,10 @@ def _run_training_steps(
     patch_size,
     generator,
     description,
+    show_progress = True,
 ):
     model.train()
-    progress = tqdm(range(steps), desc=description, file=sys.stdout)
+    progress = tqdm(range(steps), desc=description, file=sys.stdout) if show_progress else range(steps)
     for step in progress:
         batch_observed, batch_target = _sample_batch(
             pairs,
@@ -316,9 +302,6 @@ def _run_training_steps(
         optimizer.zero_grad(set_to_none=True)
         training_loss.backward()
         optimizer.step()
-
-        if step % 20 == 0:
-            progress.set_postfix(loss=f"{training_loss.detach().item():.6f}")
 
 
 def _sample_batch(pairs, batch_size, patch_size, generator):

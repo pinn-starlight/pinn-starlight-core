@@ -21,9 +21,9 @@ COLLECTION_ROOT = utils.PROJECT_ROOT / "data/collections"
 COLLECTION_MANIFEST = utils.PROJECT_ROOT / "data/collections/manifest.csv"
 METHODS = ("fft_gaussian", "unet_small", "pinn")
 PINN_CONFIG = utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"
-E2_CONFIG = utils.OUTPUT_ROOT / "e2_synthetic/locked_e2_config.json"
+E2_CONFIG = utils.OUTPUT_ROOT / "e2_benchmark/locked_e2_config.json"
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "e4_real"
-SEED = tuple(utils.SEEDS)
+SEED = utils.SEEDS[0]
 DOWNSAMPLE = 2
 CROP_SIZE = 0
 
@@ -74,6 +74,7 @@ REAL_IMAGES = _default_real_images()
 
 
 def main():
+    print("E4")
     output_root = utils.prepare_output_root(OUTPUT_ROOT, force=FORCE_OVERWRITE_OUTPUT)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pinn_config = json.loads(Path(PINN_CONFIG).read_text(encoding="utf-8"))
@@ -143,6 +144,7 @@ def main():
             config=pinn_config,
             device=device,
             seed=SEED,
+            show_progress=False
         )
         predictions["pinn"] = {
             "background_pred": pinn_result["background_pred"],
