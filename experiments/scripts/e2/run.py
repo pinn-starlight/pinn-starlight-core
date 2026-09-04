@@ -9,7 +9,7 @@ import numpy as np
 import torch
 
 from experiments.common.baselines import coordinate_pinn as pinn
-from experiments.common.baselines import fft_gaussian as fft
+from experiments.common.baselines import fft_screened_poisson as fft
 from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
@@ -17,7 +17,7 @@ from experiments.common.utils import metrics
 
 FORCE_OVERWRITE_OUTPUT = False
 
-METHODS = ("fft_gaussian", "unet_small", "pinn")
+METHODS = ("fft_screened_poisson", "unet_small", "pinn")
 SEEDS = tuple(utils.SEEDS)
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "e2_benchmark"
 MANIFEST = utils.SYNTHETIC_MANIFEST
@@ -41,10 +41,10 @@ def run_method(method: str, sample: dict, locked_config: dict, **kwargs) -> dict
     device = kwargs.get("device", torch.device("cpu"))
     utils.reset_peak_vram(device)
     started = time.perf_counter()
-    if method == "fft_gaussian":
+    if method == "fft_screened_poisson":
         background_pred = fft.estimate_background(
             observed,
-            float(locked_config["fft_sigma"]),
+            float(locked_config["fft_screened_poisson"]),
         )
         extra = {"parameter_count": 0, "peak_vram_mb": None}
     elif method == "unet_small":
@@ -102,9 +102,9 @@ def main():
 
     pinn_config = json.loads(Path(PINN_CONFIG).read_text(encoding="utf-8"))
     validation_samples = [utils.load_synthetic_sample(row) for row in validation_rows]
-    fft_sigma = fft.select_sigma(validation_samples)
+    fft_weight = fft.select_weight(validation_samples)
     locked_config = {
-        "fft_sigma": fft_sigma,
+        "fft_weight": fft_weight,
         "pinn_config": pinn_config,
         "unet_tile_size": UNET_PATCH_SIZE,
         "unet_overlap": min(32, UNET_PATCH_SIZE // 4),
@@ -141,15 +141,15 @@ def main():
     training_rows = []
 
     for sample in samples:
-        result = run_method("fft_gaussian", sample, locked_config)
+        result = run_method("fft_screened_poisson", sample, locked_config)
         _save_result(
-            output_root / "fft_gaussian/deterministic" / sample["sample_id"],
+            output_root / "fft_screened_poisson/deterministic" / sample["sample_id"],
             sample,
             result,
         )
         metric_rows.append(
             _metric_row(
-                "fft_gaussian",
+                "fft_screened_poisson",
                 "deterministic",
                 sample,
                 result,
@@ -237,7 +237,7 @@ def main():
     failure_cases = _failure_cases(metric_rows)
     best_validation, best_seed, best_checkpoint = min(unet_checkpoints)
     e2_locked = {
-        "fft_sigma": fft_sigma,
+        "fft_weight": fft_weight,
         "unet_checkpoint": utils.project_relative(best_checkpoint),
         "unet_seed": best_seed,
         "unet_validation_loss": best_validation,

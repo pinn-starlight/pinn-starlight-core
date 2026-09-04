@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from experiments.common.baselines import coordinate_pinn as pinn
-from experiments.common.baselines import fft_gaussian as fft
+from experiments.common.baselines import fft_screened_poisson as fft
 from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
