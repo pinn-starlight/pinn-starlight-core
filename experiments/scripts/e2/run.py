@@ -24,7 +24,7 @@ MANIFEST = utils.SYNTHETIC_MANIFEST
 MAX_TEST_SAMPLES = 100
 PINN_CONFIG = utils.OUTPUT_ROOT / "e1_tuning/locked_pinn_config.json"
 
-# U-net和fft的参数
+# U-net的参数
 UNET_PATCH_SIZE = 256
 UNET_EPOCHS = 20
 UNET_STEPS_PER_EPOCH = 100

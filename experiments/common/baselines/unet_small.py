@@ -15,11 +15,11 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn
 from tqdm import tqdm
 
 from experiments.common.utils import experiment_utils as utils
+
 
 # TODO:需要让学长检查一下
 
@@ -78,27 +78,16 @@ class UNetSmall(nn.Module):
         skip4 = self.encoder4(self.pool(skip3))
         hidden = self.bottom(self.pool(skip4))
 
-        hidden = self.decoder1(self._join(self.up1(hidden), skip4))
-        hidden = self.decoder2(self._join(self.up2(hidden), skip3))
-        hidden = self.decoder3(self._join(self.up3(hidden), skip2))
-        hidden = self.decoder4(self._join(self.up4(hidden), skip1))
+        up1 = self.up1(hidden)
+        hidden = self.decoder1(torch.cat((up1, skip4), dim=1))
+        up2 = self.up2(hidden)
+        hidden = self.decoder2(torch.cat((up2, skip3), dim=1))
+        up3 = self.up3(hidden)
+        hidden = self.decoder3(torch.cat((up3, skip2), dim=1))
+        up4 = self.up4(hidden)
+        hidden = self.decoder4(torch.cat((up4, skip1), dim=1))
+
         return self.output(hidden)
-
-    @staticmethod
-    def _join(upsampled, skip):
-        if upsampled.shape[-2:] != skip.shape[-2:]:
-            upsampled = F.interpolate(
-                upsampled,
-                size=skip.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
-            )
-        return torch.cat([upsampled, skip], dim=1)
-
-
-def build_model(base_channels: int = 32):
-    """创建并返回一个尚未训练的 U-Net 模型。"""
-    return UNetSmall(base_channels=base_channels)
 
 
 def train(
@@ -124,15 +113,13 @@ def train(
     返回：
         检查点路径。测试阶段应加载并复用该检查点，不应再次训练。
     """
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    utils.set_seed(seed)
     train_pairs = _load_pairs(train_manifest)
     validation_pairs = _load_pairs(validation_manifest)
     if not train_pairs or not validation_pairs:
         raise ValueError("训练集和验证集不能为空")
 
-    model = build_model(base_channels).to(device)
+    model = UNetSmall(base_channels=base_channels).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     generator = torch.Generator().manual_seed(seed)
 
@@ -189,7 +176,7 @@ def train(
 
 def predict(
     checkpoint,
-    observed,
+    path,
     device="cpu",
     tile_size: int = 256,
     overlap: int = 32,
@@ -197,9 +184,9 @@ def predict(
     """加载检查点，对一张图像预测背景并返回二维数组。"""
     model, _ = load_checkpoint_model(checkpoint, device)
     observed_array = (
-        utils.load_gray_image(observed)
-        if isinstance(observed, (str, Path))
-        else np.asarray(observed, dtype=np.float32)
+        utils.load_gray_image(path)
+        if isinstance(path, (str, Path))
+        else np.asarray(path, dtype=np.float32)
     )
     return predict_with_model(model, observed_array, device, tile_size, overlap)
 
@@ -211,7 +198,7 @@ def load_checkpoint_model(checkpoint, device="cpu"):
         raise ValueError("检查点格式不受支持")
 
     base_channels = int(checkpoint_data.get("base_channels", 32))
-    model = build_model(base_channels)
+    model = UNetSmall(base_channels=base_channels)
     model.load_state_dict(checkpoint_data["model_state"])
     model.to(device)
     model.eval()
@@ -287,7 +274,7 @@ def _run_training_steps(
 ):
     model.train()
     progress = tqdm(range(steps), desc=description, file=sys.stdout) if show_progress else range(steps)
-    for step in progress:
+    for _ in progress:
         batch_observed, batch_target = _sample_batch(
             pairs,
             batch_size,
