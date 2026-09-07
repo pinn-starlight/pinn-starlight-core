@@ -11,6 +11,7 @@ experiments/outputs/
 docs/pdf
 docs/.obsidian
 logs
+docs/编写
 
 # python
 __pycache__/
