@@ -1,58 +1,123 @@
-"""PINN 光污染分离 — 主入口 (Screened Poisson, v2.0)"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
 import torch
 from torch import optim
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
-import pinn_starlight_core.nn.Layers as Layers
-import pinn_starlight_core.nn.Losses as Loss
-import pinn_starlight_core.data.PhotoLoader as RAWLoader
-import pinn_starlight_core.data.FakeRAW as FakeRAW
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+from pinn_starlight_core.data.image_loader import ImageLoader
+from pinn_starlight_core.nn import physics_model
+from pinn_starlight_core.nn import pinn_layers as layers
+from pinn_starlight_core.nn import pinn_loss as losses
 
-# --- 数据 ---
-raw_loader = RAWLoader.RAWLoader()
-raw_loader.from_array(FakeRAW.FakeRaw().get_fake_raw())
-coords, values, W, H = raw_loader.get_gray_data(device=device)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+INPUT_DIR = Path(f"{PROJECT_ROOT}/data/test")
+STEPS = 1000
+BATCH_SIZE = 1_024
+PHYSICS_WEIGHT = 0.4
+MODEL_LR = 1e-3
+ICITY_LR = 1e-3
+ALPHA_LR = 1e-4
+ALPHA_INIT = 0.55
+ALPHA_MIN = 0.4
+ALPHA_MAX = 0.6
+KERNEL_SIZE = 31
 
-# --- 模型 ---
-layers = [
-    Layers.SkyglowLinear(2, 512).to(device), Layers.SkyglowActivation(),
-    Layers.SkyglowLinear(512, 64).to(device), Layers.SkyglowActivation(),
-    Layers.SkyglowLinear(64, 1).to(device),
-]
-params = [p for l in layers if isinstance(l, Layers.SkyglowLinear) for p in l.parameters()]
-optimizer = optim.Adam(params, lr=0.001)
-ld, lp = Loss.MSEData(), Loss.MSEPhysics()
 
-# --- I_city: 指数背景 bg=A*exp(-(x+y)/D), ∇²bg=2bg/D² ---
-# Screened Poisson: ∇²I - αI + I_city = 0  →  I_city = (α - 2/D²)*bg
-alpha, D_bg = 4.0, 0.7
-bg = 0.3 * torch.exp(-(coords[:, 0] + coords[:, 1]) / D_bg).to(device)
-I_city = (alpha - 2.0 / D_bg**2) * bg
+def single_train(input_file, device):
+    loader = ImageLoader(str(input_file), device)
+    coords, values, _, _ = loader.get_gray_data()
 
-phy_weight = 0.01
-batch_size = max(1024, min(8192, coords.shape[0] // 200))
-steps = max(2000, coords.shape[0] // 100)
+    model = layers.SkyglowMLP().to(device)
+    city_source = physics_model.Icity(device, KERNEL_SIZE, loader).to(device)
+    alpha_module = physics_model.Alpha(
+        init=ALPHA_INIT,
+        alpha_min=ALPHA_MIN,
+        alpha_max=ALPHA_MAX,
+    ).to(device)
+    optimizer = optim.Adam(
+        [
+            {"params": model.parameters(), "lr": MODEL_LR},
+            {"params": city_source.parameters(), "lr": ICITY_LR},
+            {"params": alpha_module.parameters(), "lr": ALPHA_LR},
+        ]
+    )
 
-for step in tqdm(range(steps)):
-    idx = torch.randint(0, coords.shape[0], (batch_size,), device=device)
-    batch_xy = coords[idx].clone().requires_grad_(True)
-    batch_I = values[idx]
+    final_total_loss = 0.0
+    final_data_loss = 0.0
+    final_physics_loss = 0.0
 
-    a = batch_xy
-    for layer in layers:
-        a = layer.forward(a)
-    I_pred = a.squeeze()
+    for _ in tqdm(range(STEPS), file=sys.stdout):
+        index = torch.randint(0, coords.shape[0], (BATCH_SIZE,), device=device)
+        batch_xy = coords[index].clone().requires_grad_(True)
+        batch_observed = values[index]
 
-    I_city_b = I_city[idx]
+        alpha = alpha_module()
+        background_pred = model(batch_xy).squeeze(-1)
+        city_pred = city_source(batch_xy, alpha)
+        data_loss = losses.mse_data(batch_observed, background_pred)
+        physics_loss = losses.mse_physics(
+            background_pred,
+            city_pred,
+            alpha,
+            batch_xy,
+        )
+        total_loss = data_loss + PHYSICS_WEIGHT * physics_loss
 
-    data_loss = ld.forward(batch_I, I_pred)
-    phys_loss = lp.forward(batch_I, I_pred, I_city_b, alpha, batch_xy)
-    loss = data_loss + phys_loss
+        optimizer.zero_grad(set_to_none=True)
+        total_loss.backward()
+        optimizer.step()
 
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+        final_total_loss = total_loss.detach().item()
+        final_data_loss = data_loss.detach().item()
+        final_physics_loss = physics_loss.detach().item()
 
-    if step % 500 == 0:
-        print(f"Step {step}, data={data_loss.item():.6f}, phys={phys_loss.item():.6f}")
+    sigma_x, sigma_y = city_source.get_sigma()
+    return {
+        "total_loss": final_total_loss,
+        "data_loss": final_data_loss,
+        "physics_loss": final_physics_loss,
+        "alpha": alpha_module().detach().item(),
+        "center_x": city_source.x.detach().item(),
+        "center_y": city_source.y.detach().item(),
+        "sigma_x": sigma_x.detach().item(),
+        "sigma_y": sigma_y.detach().item(),
+        "theta": city_source.get_theta().detach().item(),
+    }
+
+
+def print_summary(input_file, result):
+    print(f"\n{input_file.name} | step {STEPS}")
+    print(
+        f"loss={result['total_loss']:.8f} | "
+        f"data={result['data_loss']:.8f} | "
+        f"physics={result['physics_loss']:.8f}"
+    )
+    print(
+        f"alpha={result['alpha']:.4f} | "
+        f"center=({result['center_x']:.4f}, {result['center_y']:.4f}) | "
+        f"sigma=({result['sigma_x']:.4f}, {result['sigma_y']:.4f}) | "
+        f"theta={result['theta']:.4f}"
+    )
+
+
+def main() -> None:
+    print("Hello PINN-Starlight-core")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if not INPUT_DIR.is_dir():
+        raise FileNotFoundError(f"Input directory does not exist: {INPUT_DIR}")
+
+    input_files = sorted(path for path in INPUT_DIR.iterdir() if path.is_file())
+    if not input_files:
+        raise FileNotFoundError(f"No input images found in: {INPUT_DIR}")
+
+    for input_file in input_files:
+        result = single_train(input_file, device)
+        print_summary(input_file, result)
+
+
+if __name__ == "__main__":
+    main()

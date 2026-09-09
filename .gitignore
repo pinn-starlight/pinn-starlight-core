@@ -1,6 +1,15 @@
 .venv
 /.idea
+.agents
+.vscode
+tmp
+experiments/scripts/legacy
+experiments/output
+experiments/outputs/
+
+#docs
 docs
+logs
 
 # python
 __pycache__/
