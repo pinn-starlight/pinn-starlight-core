@@ -1,0 +1,228 @@
+Metadata-Version: 2.4
+Name: pinn-starlight-core
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: <3.12,>=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: jupyter>=1.1.1
+Requires-Dist: matplotlib>=3.10.9
+Requires-Dist: rawpy==0.27.0
+Requires-Dist: tqdm==4.66.5
+Requires-Dist: torch
+Requires-Dist: torchvision
+Requires-Dist: lightning>=2.6.5
+Requires-Dist: jsonargparse[signatures]>=4.50.0
+Requires-Dist: numpy>=2.4.4
+Requires-Dist: pillow>=12.2.0
+Requires-Dist: tifffile>=2026.3.3
+Requires-Dist: segmentation-models-pytorch>=0.5.0
+Requires-Dist: scipy
+Requires-Dist: scipy-stubs
+Requires-Dist: scikit-image>=0.26.0
+Requires-Dist: astropy
+Requires-Dist: photutils
+
+# PINN Starlight
+
+> **论文正式实验版本：Stage 10。** 下文早期 “V3” 段落保留为原型历史；
+> 正式论文链路、数据语义与冻结配置以本 README 末尾的 Stage 10 段落以及
+> `docs/Stage10_版本说明_Stage9到Stage10_数理原理与噪声逻辑.md` 为准。
+
+> 基于物理约束的低噪声星空图像光污染背景建模与天体信号分离
+
+PINN Starlight 是一个面向低噪声星空图像的研究型原型项目。它使用物理信息神经网络（PINN）对光污染背景进行建模，并尝试将其与真实天体信号分离。
+
+当前版本聚焦于三件事：
+
+1. 基础 PINN 光污染分离主链路
+2. 可学习的 `I_city` 光污染源项
+3. 有界可学习的 `alpha` PDE 系数
+
+---
+
+## 当前版本：V3
+
+V3 的重点是把原先固定的 PDE 系数 `alpha` 改成**受约束的可学习参数**，并让它在训练中同时作用于：
+
+- 物理损失 `∇²I - αI + I_city`
+- `I_city` 的解析公式
+
+当前代码已经具备：
+
+- 基于坐标输入的 MLP 背景建模
+- 数据损失 + 物理损失联合训练
+- `autograd` 二阶微分拉普拉斯
+- 基于模糊亮区初始化的可学习 `I_city`
+- 有界可学习 `alpha` 模块
+- 真实图像加载（RAW / PNG / JPG / TIFF）
+- 训练后输出观测图、预测图、残差图
+
+---
+
+## 方法概览
+
+输入为低噪声星空图像，输出为每个像素位置上的光污染背景估计值。
+
+```text
+输入图像
+  ↓
+坐标网格 (x, y) + 像素亮度 I_obs
+  ↓
+MLP 预测背景 I_pred(x, y)
+  ↓
+物理约束：∇²I_pred - αI_pred + I_city = 0
+  ↓
+残差：I_star = I_obs - I_pred
+```
+
+其中：
+
+- `I_pred`：网络预测的光污染背景
+- `I_city`：结构化光污染源项
+- `alpha`：受约束可学习 PDE 系数
+- `I_star`：从原图中分离出的残差信号
+
+---
+
+## 项目结构
+
+```text
+pinn-starlight-core/
+├── src/pinn_starlight_core/
+│   ├── image.py                 # RAW 和常见图片加载
+│   ├── model.py                 # 网络、光源项和物理损失
+│   └── main.py                  # 训练入口
+├── experiments/scripts/
+│   ├── PhotoTraining.py         # 批量训练与结果图
+│   └── run_e1.py                # 实验配置入口
+├── docs/
+├── pyproject.toml
+└── README.md
+```
+
+---
+
+## 快速开始
+
+```bash
+uv sync
+$env:PYTHONPATH="src"
+uv run python -m pinn_starlight_core.main
+```
+
+当前实验原型的主要训练逻辑位于 `src/pinn_starlight_core/main.py`，包括：
+
+- 读取输入图像并生成坐标数据
+- 训练坐标 MLP 背景模型
+- 联合计算数据损失和物理损失
+- 保存训练曲线和结果图
+
+---
+
+## 数学形式
+
+当前采用的物理约束形式为：
+
+$$
+\nabla^2 I - \alpha I + I_{city} = 0
+$$
+
+训练损失为：
+
+$$
+\mathcal{L} = \mathcal{L}_{data} + \lambda \mathcal{L}_{physics}
+$$
+
+其中：
+
+$$
+\mathcal{L}_{data} = \frac{1}{N}\sum (I_{pred} - I_{obs})^2
+$$
+
+$$
+\mathcal{L}_{physics} = \frac{1}{N}\sum (\nabla^2 I_{pred} - \alpha I_{pred} + I_{city})^2
+$$
+
+---
+
+## 当前版本的研究定位
+
+本项目当前并不把“极限星等提升”或“星表输出”作为核心任务，而把它们视为后续评估指标。
+
+V3 的核心目标是：
+
+- 让 `alpha` 成为可学习、但不完全放飞的 PDE 系数
+- 让 `I_city` 成为可学习的结构化源项
+- 建立一个适用于低噪声星空图像的物理约束分离原型
+
+---
+
+## 下一步
+
+后续版本将继续推进：
+
+1. `I_city` 范围学习
+2. RGB-aware 训练与损失
+3. 天空区域 mask 与真实场景适配
+4. 预训练与 checkpoint 保存
+5. 系统实验与消融
+
+详见：
+
+- `docs/版本路线图.md`
+- `docs/项目题目.md`
+
+---
+
+## 参考文献
+
+- Garstang, R. H. (1986). Model for artificial night-sky illumination.
+- Raissi, M., Perdikaris, P., & Karniadakis, G. E. (2019). Physics-informed neural networks.
+
+---
+
+## 开源协议
+
+MIT License
+
+---
+
+## Stage 10 formal experiment (paper pipeline)
+
+Stage 10 supersedes the Stage-9 formal benchmark/results.  The key change is
+semantic rather than cosmetic: each camera-acquired reference is first flattened
+with a fixed, method-independent native low-frequency background estimate before
+synthetic skyglow is injected.  The main benchmark therefore isolates the
+*added* light-pollution component instead of rewarding a supervised method for
+learning a label convention that unsupervised methods cannot observe.
+
+Main Stage-10 rules:
+
+- `clean_true = camera_reference - B_native_hat`, with `B_native_hat` from
+  `photutils.Background2D` (sigma-clipped median, fixed settings).
+- `observed = clean_true + background_true`; no additional Gaussian/Poisson
+  noise is injected.  Low/high are skyglow intensity/scale levels, not noise
+  levels.
+- Scientific float TIFFs and metrics are never clipped; negative residuals are
+  retained.  PNG clipping is display-only.
+- PINN and Fourier-LS share the same observed-only multi-candidate centre rule
+  and the same sparse signed effective-forcing family (`Kmax=3`).
+- The current multi-source synthetic benchmark still injects two actual sources;
+  `Kmax=3` is model capacity, not a claim of three-source empirical validation.
+- Stage-9 selection artifacts, Global Lock, and E2/E3/E4 outputs must not be
+  reused after this change.
+
+The formal order remains:
+
+```text
+preflight -> generate synthetic_formal --force -> preflight
+          -> PINN / Gaussian / Fourier-LS / U-Net selection artifacts --force
+          -> Global Lock --force
+          -> E2 / E3 / E4 --force
+```
+
+See `docs/Stage10_版本说明_Stage9到Stage10_数理原理与噪声逻辑.md` for the full
+noise semantics, derivation, audit rules, and rerun checklist.
+
+`collections/synthetic/` remains legacy data and is excluded from the formal
+pipeline.

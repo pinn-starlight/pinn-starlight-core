@@ -8,8 +8,7 @@ experiments/output
 experiments/outputs/
 
 #docs
-docs
-logs
+docs/
 
 # python
 __pycache__/
@@ -27,3 +26,6 @@ notebooks/study/MNIST/data
 
 #ai generated file
 notebooks/
+# pixi environments
+.pixi/*
+!.pixi/config.toml

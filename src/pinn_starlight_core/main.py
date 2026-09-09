@@ -23,7 +23,6 @@ ALPHA_LR = 1e-4
 ALPHA_INIT = 0.55
 ALPHA_MIN = 0.4
 ALPHA_MAX = 0.6
-KERNEL_SIZE = 31
 
 
 def single_train(input_file, device):
@@ -31,7 +30,9 @@ def single_train(input_file, device):
     coords, values, _, _ = loader.get_gray_data()
 
     model = layers.SkyglowMLP().to(device)
-    city_source = physics_model.Icity(device, KERNEL_SIZE, loader).to(device)
+    city_source = physics_model.EffectiveForcingMixture(
+        device, loader=loader, max_components=3, sigma_max=0.55, initial_sigma=0.425
+    ).to(device)
     alpha_module = physics_model.Alpha(
         init=ALPHA_INIT,
         alpha_min=ALPHA_MIN,
@@ -74,17 +75,19 @@ def single_train(input_file, device):
         final_data_loss = data_loss.detach().item()
         final_physics_loss = physics_loss.detach().item()
 
-    sigma_x, sigma_y = city_source.get_sigma()
+    components = city_source.diagnostics(alpha_module().detach())
+    strongest = max(components, key=lambda item: item["weight"])
     return {
         "total_loss": final_total_loss,
         "data_loss": final_data_loss,
         "physics_loss": final_physics_loss,
         "alpha": alpha_module().detach().item(),
-        "center_x": city_source.x.detach().item(),
-        "center_y": city_source.y.detach().item(),
-        "sigma_x": sigma_x.detach().item(),
-        "sigma_y": sigma_y.detach().item(),
-        "theta": city_source.get_theta().detach().item(),
+        "center_x": strongest["center_x"],
+        "center_y": strongest["center_y"],
+        "sigma_x": strongest["sigma_x"],
+        "sigma_y": strongest["sigma_y"],
+        "theta": strongest["theta"],
+        "components": components,
     }
 
 

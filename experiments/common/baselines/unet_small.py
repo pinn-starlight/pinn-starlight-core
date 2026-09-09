@@ -1,10 +1,10 @@
 """E0、E2、E4 共用的 U-Net 背景估计模型。
 
-网络结构参考 Astro U-net：四次下采样、四次上采样、跳跃连接、每个阶段
+U-net：四次下采样、四次上采样、跳跃连接、每个阶段
 两个三乘三卷积，最后使用一个一乘一卷积输出单通道背景图。
 
 接口约定：
-- 输入和目标都是二维灰度图，通常已经归一化到 [0, 1]。
+- 输入和目标都是二维 float 灰度图；正式 synthetic TIFF 保持加性观测原值，训练读取不做 clipping。
 - 训练函数返回最佳模型检查点路径。
 - 预测函数只使用已经训练好的模型，不重新训练。
 - 一个训练好的检查点应复用于所有测试图像。
@@ -24,21 +24,21 @@ from experiments.common.utils import experiment_utils as utils
 # TODO:需要让学长检查一下
 
 class _ConvBlock(nn.Sequential):
-    """两个三乘三卷积和两个 LeakyReLU 激活层。"""
+    """两个三乘三卷积和两个 ReLU 激活层。"""
 
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.ReLU(inplace=True),
         )
 
 
 class UNetSmall(nn.Module):
     """单通道输入、单通道输出的四层 U-Net。"""
 
-    def __init__(self, base_channels: int = 32):
+    def __init__(self, base_channels: int = 64):
         super().__init__()
         if base_channels <= 0:
             raise ValueError("基础通道数必须大于 0")
@@ -94,16 +94,22 @@ def train(
     train_manifest,
     validation_manifest,
     output_dir,
+    *,
     device="cpu",
-    epochs: int = 20,
-    steps_per_epoch: int = 100,
-    batch_size: int = 4,
-    patch_size: int = 256,
-    learning_rate: float = 1e-3,
-    base_channels: int = 32,
-    patience: int = 5,
-    seed: int = 20260728,
-    show_progress = True
+    epochs: int,
+    steps_per_epoch: int,
+    batch_size: int,
+    patch_size: int,
+    learning_rate: float,
+    base_channels: int,
+    patience: int,
+    min_delta_relative: float,
+    use_amp: bool,
+    inference_mode: str,
+    inference_tile_size: int,
+    inference_overlap: int,
+    seed: int,
+    show_progress=True,
 ):
     """训练一次 U-Net，并返回最佳模型检查点路径。
 
@@ -119,14 +125,23 @@ def train(
     if not train_pairs or not validation_pairs:
         raise ValueError("训练集和验证集不能为空")
 
+    device = torch.device(device)
+    if not 0.0 <= min_delta_relative < 1.0:
+        raise ValueError("min_delta_relative must be in [0, 1)")
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True
+    amp_enabled = bool(use_amp and device.type == "cuda")
+
     model = UNetSmall(base_channels=base_channels).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
     generator = torch.Generator().manual_seed(seed)
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output_dir / "unet_small_best.pt"
     best_validation_loss = float("inf")
+    patience_reference_loss = float("inf")
     epochs_without_improvement = 0
 
     for epoch in range(epochs):
@@ -134,25 +149,36 @@ def train(
             model,
             train_pairs,
             optimizer,
+            scaler,
+            amp_enabled,
             device,
             steps_per_epoch,
             batch_size,
             patch_size,
             generator,
             description=f"U-Net 第 {epoch + 1}/{epochs} 轮",
-            show_progress=show_progress
+            show_progress=show_progress,
         )
         validation_loss = _validation_loss(
             model,
             validation_pairs,
             device,
-            patch_size,
+            inference_mode=inference_mode,
+            tile_size=inference_tile_size,
+            overlap=inference_overlap,
         )
+        if not np.isfinite(validation_loss):
+            raise FloatingPointError("U-Net validation loss is not finite")
 
-        if validation_loss < best_validation_loss:
+        is_best = validation_loss < best_validation_loss
+        meaningful_improvement = (
+            not np.isfinite(patience_reference_loss)
+            or validation_loss
+            < patience_reference_loss * (1.0 - min_delta_relative)
+        )
+        if is_best:
             best_validation_loss = validation_loss
             best_epoch = epoch + 1
-            epochs_without_improvement = 0
             torch.save(
                 {
                     "model_state": {
@@ -163,32 +189,61 @@ def train(
                     "validation_loss": float(validation_loss),
                     "epoch": int(best_epoch),
                     "seed": int(seed),
+                    "training_config": {
+                        "epochs": int(epochs),
+                        "steps_per_epoch": int(steps_per_epoch),
+                        "batch_size": int(batch_size),
+                        "patch_size": int(patch_size),
+                        "learning_rate": float(learning_rate),
+                        "base_channels": int(base_channels),
+                        "patience": int(patience),
+                        "min_delta_relative": float(min_delta_relative),
+                        "amp_enabled": bool(amp_enabled),
+                    },
+                    "inference_config": {
+                        "mode": str(inference_mode),
+                        "tile_size": int(inference_tile_size),
+                        "overlap": int(inference_overlap),
+                    },
                 },
                 checkpoint_path,
             )
+
+        if meaningful_improvement:
+            patience_reference_loss = validation_loss
+            epochs_without_improvement = 0
         else:
             epochs_without_improvement += 1
             if epochs_without_improvement >= patience:
                 break
 
+    if not checkpoint_path.is_file():
+        raise RuntimeError("U-Net training did not produce a checkpoint")
     return checkpoint_path
 
 
 def predict(
     checkpoint,
-    path,
+    observed,
+    *,
     device="cpu",
-    tile_size: int = 256,
-    overlap: int = 32,
+    inference_mode: str,
+    tile_size: int,
+    overlap: int,
+    return_info: bool = False,
 ):
-    """加载检查点，对一张图像预测背景并返回二维数组。"""
+    """Load one frozen checkpoint and predict from an observed array only."""
     model, _ = load_checkpoint_model(checkpoint, device)
-    observed_array = (
-        utils.load_gray_image(path)
-        if isinstance(path, (str, Path))
-        else np.asarray(path, dtype=np.float32)
+    observed_array = utils.load_observed(observed)
+    return predict_with_model(
+        model,
+        observed_array,
+        device=device,
+        inference_mode=inference_mode,
+        tile_size=tile_size,
+        overlap=overlap,
+        return_info=return_info,
     )
-    return predict_with_model(model, observed_array, device, tile_size, overlap)
 
 
 def load_checkpoint_model(checkpoint, device="cpu"):
@@ -197,7 +252,7 @@ def load_checkpoint_model(checkpoint, device="cpu"):
     if "model_state" not in checkpoint_data:
         raise ValueError("检查点格式不受支持")
 
-    base_channels = int(checkpoint_data.get("base_channels", 32))
+    base_channels = int(checkpoint_data.get("base_channels", 64))
     model = UNetSmall(base_channels=base_channels)
     model.load_state_dict(checkpoint_data["model_state"])
     model.to(device)
@@ -208,24 +263,36 @@ def load_checkpoint_model(checkpoint, device="cpu"):
 def predict_with_model(
     model,
     observed,
+    *,
     device="cpu",
-    tile_size: int = 256,
-    overlap: int = 32,
+    inference_mode: str,
+    tile_size: int,
+    overlap: int,
+    return_info: bool = False,
 ):
-    """使用已经加载的模型预测背景，不进行训练。
-
-    返回二维浮点数组，尺寸与输入图像完全相同。
-    """
-    observed = np.asarray(observed, dtype=np.float32)
-    return _predict_background(model, observed, device, tile_size, overlap)
+    """Predict background with full-image preference and a frozen tiled fallback."""
+    observed = utils.load_observed(observed)
+    prediction, mode_used = _predict_background(
+        model,
+        observed,
+        device,
+        inference_mode=inference_mode,
+        tile_size=tile_size,
+        overlap=overlap,
+    )
+    if return_info:
+        return prediction, {"inference_mode_used": mode_used}
+    return prediction
 
 
 def single_predict(
     checkpoint,
     input_path,
+    *,
     device="cpu",
-    tile_size: int = 256,
-    overlap: int = 32,
+    inference_mode: str,
+    tile_size: int,
+    overlap: int,
 ):
     """使用检查点处理一张图像，返回输入图、背景图和残差图。"""
     observed = utils.load_gray_image(input_path)
@@ -233,10 +300,11 @@ def single_predict(
         checkpoint,
         observed,
         device=device,
+        inference_mode=inference_mode,
         tile_size=tile_size,
         overlap=overlap,
     )
-    return observed, predicted, observed - predicted
+    return observed, predicted, utils.reconstruct_residual(observed, predicted)
 
 
 def _load_pairs(manifest):
@@ -248,8 +316,8 @@ def _load_pairs(manifest):
         else:
             observed_path, background_path = item
 
-        observed = utils.load_gray_image(observed_path)
-        background_true = utils.load_gray_image(background_path)
+        observed = _load_training_array(observed_path)
+        background_true = _load_training_array(background_path)
         if observed.ndim != 2 or background_true.ndim != 2:
             raise ValueError("输入图和真实背景图都必须是二维灰度数组")
         if observed.shape != background_true.shape:
@@ -260,10 +328,24 @@ def _load_pairs(manifest):
     return pairs
 
 
+
+
+def _load_training_array(value):
+    """Load a formal U-Net training tensor without clipping synthetic float TIFFs."""
+    if isinstance(value, (str, Path)):
+        return utils.load_float_tiff(value)
+    array = np.asarray(value, dtype=np.float32)
+    if array.ndim != 2 or not np.isfinite(array).all():
+        raise ValueError("训练图像必须是 finite 2-D float 数组")
+    return array.astype(np.float32, copy=False)
+
+
 def _run_training_steps(
     model,
     pairs,
     optimizer,
+    scaler,
+    amp_enabled,
     device,
     steps,
     batch_size,
@@ -284,11 +366,17 @@ def _run_training_steps(
         batch_observed = batch_observed.to(device)
         batch_target = batch_target.to(device)
 
-        prediction = model(batch_observed)
-        training_loss = torch.mean(torch.abs(prediction - batch_target))
         optimizer.zero_grad(set_to_none=True)
-        training_loss.backward()
-        optimizer.step()
+        with torch.autocast(
+            device_type="cuda",
+            dtype=torch.float16,
+            enabled=amp_enabled,
+        ):
+            prediction = model(batch_observed)
+            training_loss = torch.mean(torch.abs(prediction - batch_target))
+        scaler.scale(training_loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
 
 
 def _sample_batch(pairs, batch_size, patch_size, generator):
@@ -323,21 +411,87 @@ def _pad_to_patch(image: np.ndarray, patch_size: int) -> np.ndarray:
     return np.pad(image, ((0, pad_y), (0, pad_x)), mode=mode)
 
 
-def _validation_loss(model, pairs, device, tile_size):
-    overlap = min(32, tile_size // 4)
-    losses = [
-        np.mean(np.abs(_predict_background(model, observed, device, tile_size, overlap) - target))
-        for observed, target in pairs
-    ]
+def _validation_loss(
+    model,
+    pairs,
+    device,
+    inference_mode,
+    tile_size,
+    overlap,
+):
+    losses = []
+    for observed, target in pairs:
+        prediction, _ = _predict_background(
+            model,
+            observed,
+            device,
+            inference_mode=inference_mode,
+            tile_size=tile_size,
+            overlap=overlap,
+        )
+        losses.append(np.mean(np.abs(prediction - target)))
     return float(np.mean(losses))
 
 
-def _predict_background(model, observed, device, tile_size, overlap):
+def _predict_background(
+    model,
+    observed,
+    device,
+    inference_mode="tiled",
+    tile_size=256,
+    overlap=64,
+):
     observed = np.asarray(observed, dtype=np.float32)
-    if observed.ndim != 2:
-        raise ValueError("输入图必须是二维灰度数组")
+    if observed.ndim != 2 or not np.isfinite(observed).all():
+        raise ValueError("输入图必须是 finite 2-D float array")
+    mode = str(inference_mode).lower()
+    if mode not in {"auto", "full", "tiled"}:
+        raise ValueError("inference_mode must be one of: auto, full, tiled")
+    device = torch.device(device)
+
+    if mode in {"auto", "full"}:
+        try:
+            return _predict_full_image(model, observed, device), "full"
+        except RuntimeError as exc:
+            is_oom = device.type == "cuda" and "out of memory" in str(exc).lower()
+            if mode == "full" or not is_oom:
+                raise
+            torch.cuda.empty_cache()
+
+    return _predict_tiled(model, observed, device, tile_size, overlap), "tiled"
+
+
+def _predict_full_image(model, observed, device):
+    original_height, original_width = observed.shape
+    padded = _pad_to_multiple(observed, 16)
+    tensor = (
+        torch.from_numpy(np.ascontiguousarray(padded))
+        .unsqueeze(0)
+        .unsqueeze(0)
+        .to(device)
+    )
+    model.eval()
+    with torch.no_grad():
+        prediction = model(tensor).squeeze(0).squeeze(0).cpu().numpy()
+    return prediction[:original_height, :original_width].astype(np.float32, copy=False)
+
+
+def _pad_to_multiple(image: np.ndarray, multiple: int) -> np.ndarray:
+    if multiple <= 0:
+        raise ValueError("multiple must be positive")
+    pad_y = (-image.shape[0]) % multiple
+    pad_x = (-image.shape[1]) % multiple
+    if pad_y == 0 and pad_x == 0:
+        return image
+    mode = "reflect" if pad_y < image.shape[0] and pad_x < image.shape[1] else "edge"
+    return np.pad(image, ((0, pad_y), (0, pad_x)), mode=mode)
+
+
+def _predict_tiled(model, observed, device, tile_size, overlap):
     if tile_size < 16:
         raise ValueError("推理图块边长至少需要 16")
+    if tile_size % 16 != 0:
+        raise ValueError("推理图块边长必须是 16 的整数倍")
     if not 0 <= overlap < tile_size:
         raise ValueError("重叠宽度必须位于 [0, 推理图块边长) 范围内")
 
