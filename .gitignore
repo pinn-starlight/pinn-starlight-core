@@ -8,10 +8,8 @@ experiments/output
 experiments/outputs/
 
 #docs
-docs/pdf
-docs/.obsidian
+docs
 logs
-docs/编写
 
 # python
 __pycache__/
