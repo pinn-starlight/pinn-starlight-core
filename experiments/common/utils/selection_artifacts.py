@@ -49,6 +49,7 @@ FORMAL_SOURCE_DEPENDENCIES = tuple(
     dict.fromkeys(
         (
             "experiments/configs/formal_experiment.py",
+            "experiments/configs/split_protocols.py",
             "experiments/common/utils/selection_artifacts.py",
             "experiments/common/utils/metrics.py",
             "experiments/common/data/generate_synthetic.py",
@@ -59,6 +60,10 @@ FORMAL_SOURCE_DEPENDENCIES = tuple(
             "experiments/scripts/e2/run.py",
             "experiments/scripts/e3/run.py",
             "experiments/scripts/e4/run.py",
+            "experiments/common/baselines/decoupled_gradient_pinn.py",
+            "experiments/scripts/final_pinn/common.py",
+            "experiments/scripts/final_pinn/stage_a.py",
+            "experiments/scripts/final_pinn/aggregate_cv5.py",
         )
         + tuple(
             path

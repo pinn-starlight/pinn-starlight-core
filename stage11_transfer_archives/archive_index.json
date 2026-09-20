@@ -1,0 +1,528 @@
+{
+  "schema": 2,
+  "project_root_name": "stage11",
+  "phases": [
+    {
+      "name": "P00_core",
+      "description": "source/config/text/provenance/runtime logs"
+    },
+    {
+      "name": "P01_synthetic_scientific",
+      "description": "synthetic_formal + synthetic_stage_b scientific content"
+    },
+    {
+      "name": "P02_formal_predictions",
+      "description": "formal background_pred.tif scientific predictions"
+    },
+    {
+      "name": "P03_models",
+      "description": "formal/selection checkpoints and final network states"
+    },
+    {
+      "name": "P04_selection_predictions",
+      "description": "selection-stage background predictions"
+    },
+    {
+      "name": "P05_secondary_predictions",
+      "description": "E3/E4/other non-primary scientific predictions"
+    },
+    {
+      "name": "P06_derived_duplicates",
+      "description": "server PNG previews + observed/residual TIFF duplicates"
+    },
+    {
+      "name": "P07_remaining",
+      "description": "remaining non-raw project result binaries"
+    }
+  ],
+  "archives": [
+    {
+      "archive_name": "B001_P00_core_part001.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P00_core",
+      "part": 1,
+      "file_count": 3691,
+      "uncompressed_bytes": 209944010,
+      "archive_bytes": 48551443,
+      "sha256": "5975774051ff18de0ebdeef4824dfec41dee97b6e3adb689f0dd524bb5554294"
+    },
+    {
+      "archive_name": "B001_P01_synthetic_scientific_part001.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P01_synthetic_scientific",
+      "part": 1,
+      "file_count": 79,
+      "uncompressed_bytes": 2147345452,
+      "archive_bytes": 1860413399,
+      "sha256": "294a117b357d0fbdb3da6c20871b323834e2bc3c66c7500f8daf8732145fe35e"
+    },
+    {
+      "archive_name": "B001_P01_synthetic_scientific_part002.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P01_synthetic_scientific",
+      "part": 2,
+      "file_count": 96,
+      "uncompressed_bytes": 2111167820,
+      "archive_bytes": 1786613041,
+      "sha256": "5fe5cfac6fe8523e0b011d4e67a008838cd2b1239c771c3b3cd29be55ca86932"
+    },
+    {
+      "archive_name": "B001_P01_synthetic_scientific_part003.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P01_synthetic_scientific",
+      "part": 3,
+      "file_count": 71,
+      "uncompressed_bytes": 2146747950,
+      "archive_bytes": 1875956080,
+      "sha256": "3b7c83949aa2a54ffc7c174acc06066cc0206351f0f8546eb3c3982752784f06"
+    },
+    {
+      "archive_name": "B001_P01_synthetic_scientific_part004.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P01_synthetic_scientific",
+      "part": 4,
+      "file_count": 70,
+      "uncompressed_bytes": 2112127617,
+      "archive_bytes": 1869769999,
+      "sha256": "3f44466b739e3b86561f4492662441d9080facd585bba802d361341b249a681c"
+    },
+    {
+      "archive_name": "B001_P01_synthetic_scientific_part005.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P01_synthetic_scientific",
+      "part": 5,
+      "file_count": 71,
+      "uncompressed_bytes": 2146319150,
+      "archive_bytes": 1842029051,
+      "sha256": "4b9bfa2edd91aa3ce7b118ce066fdfd8a106dd10b4cb9249dfe22c18b4e9817f"
+    },
+    {
+      "archive_name": "B001_P01_synthetic_scientific_part006.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P01_synthetic_scientific",
+      "part": 6,
+      "file_count": 34,
+      "uncompressed_bytes": 982130708,
+      "archive_bytes": 843657961,
+      "sha256": "f4dc31730a166b7e757f177a4d65d56696c9998e0442731ade2915676a8eebda"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part001.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 1,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1838667159,
+      "sha256": "9c76a8112615905a86b4e889c3315352387f905eeaa860d20db087529010164d"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part002.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 2,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1820177783,
+      "sha256": "c9aac32639e75f4efa5a79f14d6c8f078cd62983c271e54f7259f8ec437db37e"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part003.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 3,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1823534760,
+      "sha256": "dc781a7431ddd4c60e02cd05460ccc9a338622b29422be0f07d4597e2259a5a7"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part004.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 4,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1873983641,
+      "sha256": "2b6b23b1edee3f45e1f0221f7f3bce963a5ac714e4888d8d5758334fd5f2074d"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part005.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 5,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1826486649,
+      "sha256": "f5f9b2001d8ff0f824e49b800d7566382ad216cbd9bb8e1ac8ba6030d401971d"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part006.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 6,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1832053887,
+      "sha256": "d90416fcae592d14a5824e039355ece04c42a42ac1eae4ca5287a678f90bed1a"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part007.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 7,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1811076094,
+      "sha256": "7e3755172a96de209fb450b45fb8a62355c9a4cf4cc64d5ac5b2c887783ac78d"
+    },
+    {
+      "archive_name": "B001_P02_formal_predictions_part008.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P02_formal_predictions",
+      "part": 8,
+      "file_count": 27,
+      "uncompressed_bytes": 981960624,
+      "archive_bytes": 840820976,
+      "sha256": "128cd0bb433f6e9d933ed848a4fc698f0ef171695a5c8ace18da6a348b2fbc84"
+    },
+    {
+      "archive_name": "B001_P03_models_part001.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P03_models",
+      "part": 1,
+      "file_count": 269,
+      "uncompressed_bytes": 2129750825,
+      "archive_bytes": 1962796894,
+      "sha256": "799b77d061e6cf34e33a0bf540bf22f595a69dc6f00fb4aab4879388553d8ed9"
+    },
+    {
+      "archive_name": "B001_P03_models_part002.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P03_models",
+      "part": 2,
+      "file_count": 60,
+      "uncompressed_bytes": 502724132,
+      "archive_bytes": 463399767,
+      "sha256": "75584898c3126faa506b5930576dca1b3f2415edd322201fe7b3138a7186956f"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part001.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 1,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1848844755,
+      "sha256": "7925758df4101fe45c8781306112b60e0288beef66c0a573b690926384845f36"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part002.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 2,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1842992345,
+      "sha256": "d5a98fc7d97d8af2bca29808c334e3ed8fac2a5014f809102e6f0ae76dd0c622"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part003.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 3,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1840999878,
+      "sha256": "873dd6375210957adc56fbdee23ec84da07f4d1911295656d9676ccff5aabda6"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part004.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 4,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1832989021,
+      "sha256": "dd063e54975bf75364e6715ff1ad3f07d2949bc359040cadf851f6628a738b02"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part005.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 5,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1853201639,
+      "sha256": "0d008ce7d2efec8e3c9d5b2b5ffab00167c3c997426065575dcb0d7f6f7bffb5"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part006.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 6,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1863713006,
+      "sha256": "fde45c6276449142732cea2ecc9784bb64f44a97daa01423c7382e55deacf27d"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part007.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 7,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1839044256,
+      "sha256": "17b858ae0928bab13598cb6c5686ba3a07f2248153c158f82e00c37391b9c44b"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part008.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 8,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1831571540,
+      "sha256": "9335a290a49aa95fc328b6622f4e79bcaa903a7c4188f1c0104045a35a8a36f4"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part009.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 9,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1840167963,
+      "sha256": "4cf01a90997cf70ccc0ab7ffd4c8ac0a41426adb90a5ea7f8699ad27ceb37d53"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part010.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 10,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1844895393,
+      "sha256": "985b54660c518b0dbb9ef3aa913a8d5189e3c40458dc37b09c15811cfda25a05"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part011.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 11,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1846057251,
+      "sha256": "4008adf3c6407daf8865b5a79045db20324e726970798a12a6435ea452efe72d"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part012.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 12,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1845036080,
+      "sha256": "46a762dc499ff1eaace1556ab99c1b0cba8988ece722553eac6a37d1e5959b46"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part013.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 13,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1841369501,
+      "sha256": "28a399cee354664ac500561295486b1332699d684e3298e08e474f7019da8f4c"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part014.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 14,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1804398613,
+      "sha256": "35782de3ca078ddd2b84f5976c4f8246385e1579403b5835e5f3c630896d1450"
+    },
+    {
+      "archive_name": "B001_P04_selection_predictions_part015.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P04_selection_predictions",
+      "part": 15,
+      "file_count": 56,
+      "uncompressed_bytes": 2036659072,
+      "archive_bytes": 1700023335,
+      "sha256": "df2b81e3237dbd7832564cbd1b3e1d224674be5362919dd2054a7c87c12891b3"
+    },
+    {
+      "archive_name": "B001_P05_secondary_predictions_part001.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P05_secondary_predictions",
+      "part": 1,
+      "file_count": 59,
+      "uncompressed_bytes": 2145765808,
+      "archive_bytes": 1845719169,
+      "sha256": "0407eca01a6066a0c91b5aea75c357a9b523f9234a6bb0a796b87455798e6f02"
+    },
+    {
+      "archive_name": "B001_P05_secondary_predictions_part002.zip",
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "phase": "P05_secondary_predictions",
+      "part": 2,
+      "file_count": 77,
+      "uncompressed_bytes": 1225552624,
+      "archive_bytes": 998454662,
+      "sha256": "a67c3d4e04a850ae10590aac9ac02a54847b75d0501153dd8201c73e9c9dcacf"
+    },
+    {
+      "archive_name": "B002_P00_core_part001.zip",
+      "batch": 2,
+      "label": "e4_five_method_refresh",
+      "phase": "P00_core",
+      "part": 1,
+      "file_count": 3969,
+      "uncompressed_bytes": 115702517,
+      "archive_bytes": 44009742,
+      "sha256": "405fc0faeb8ec65a5f5fcece41184807ab2fe30f59750275da8bb3d4c6dc3225"
+    },
+    {
+      "archive_name": "B002_P05_secondary_predictions_part001.zip",
+      "batch": 2,
+      "label": "e4_five_method_refresh",
+      "phase": "P05_secondary_predictions",
+      "part": 1,
+      "file_count": 164,
+      "uncompressed_bytes": 3995932840,
+      "archive_bytes": 3365481785,
+      "sha256": "ee7efc99cd1ca93e8a58401c6c10f87ae67116b3b92aaa8081fd9261b5a31d15"
+    }
+  ],
+  "batches": [
+    {
+      "batch": 1,
+      "label": "3090_cv5_final",
+      "time_unix": 1789204891.4641905,
+      "environment": {
+        "label": "3090_cv5_final",
+        "time_unix": 1789202755.440699,
+        "platform": "Linux-5.15.0-85-generic-x86_64-with-glibc2.35",
+        "python": "3.11.16 (main, Sep  2 2026, 23:39:52) [GCC 15.3.0]",
+        "executable": "/workspace/stage11/.pixi/envs/remote/bin/python",
+        "project_root": "/workspace/stage11",
+        "torch": "2.14.0+cu126",
+        "torch_cuda": "12.6",
+        "cuda_available": true,
+        "cuda_device_count": 2,
+        "cuda_devices": [
+          "NVIDIA GeForce RTX 3090",
+          "NVIDIA GeForce RTX 3090"
+        ],
+        "nvidia_smi": "Sat Sep 12 08:45:56 2026       \n+---------------------------------------------------------------------------------------+\n| NVIDIA-SMI 535.104.05             Driver Version: 535.104.05   CUDA Version: 12.2     |\n|-----------------------------------------+----------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |\n|                                         |                      |               MIG M. |\n|=========================================+======================+======================|\n|   0  NVIDIA GeForce RTX 3090        Off | 00000000:01:00.0  On |                  N/A |\n| 42%   30C    P8              25W / 350W |     72MiB / 24576MiB |      0%      Default |\n|                                         |                      |                  N/A |\n+-----------------------------------------+----------------------+----------------------+\n|   1  NVIDIA GeForce RTX 3090        Off | 00000000:05:00.0 Off |                  N/A |\n|100%   87C    P2             250W / 350W |   2641MiB / 24576MiB |     88%      Default |\n|                                         |                      |                  N/A |\n+-----------------------------------------+----------------------+----------------------+\n                                                                                         \n+---------------------------------------------------------------------------------------+\n| Processes:                                                                            |\n|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |\n|        ID   ID                                                             Usage      |\n|=======================================================================================|\n+---------------------------------------------------------------------------------------+\n",
+        "git_status": "<unavailable: FileNotFoundError: [Errno 2] No such file or directory: 'git'>\n",
+        "git_rev_parse": "<unavailable: FileNotFoundError: [Errno 2] No such file or directory: 'git'>\n",
+        "pixi_list": "Environment: remote\nInstalled for: linux-64\nName                         Version             Build                        Size  Kind   Source\n_openmp_mutex                4.5                 20_gnu                  28.27 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\naiohappyeyeballs             2.7.1                                       39.07 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\naiohttp                      3.14.3                                       6.17 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\naiosignal                    1.4.0                                       16.79 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nanyio                        4.15.1                                     526.58 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nargon2_cffi                  25.1.0                                      33.86 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nargon2_cffi_bindings         26.1.0                                      64.07 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\narrow                        1.4.0                                      298.43 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nastropy                      8.0.1                                       35.36 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nastropy_iers_data            0.2026.9.7.0.56.14                           8.53 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nasttokens                    3.0.2                                       79.01 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nasync_lru                    2.3.0                                       22.48 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nattrs                        26.1.0                                     228.21 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nbabel                        2.18.0                                      29.48 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nbeautifulsoup4               4.15.0                                     396.96 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nbleach                       6.4.0                                      649.42 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nbzip2                        1.0.8               hda65f42_10            251.77 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nca-certificates              2026.7.22           hbd8a1cb_0             128.69 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\ncertifi                      2026.7.22                                  243.09 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncffi                         2.1.1                                      701.96 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncharset_normalizer           3.5.1                                      729.05 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nclick                        8.5.0                                      437.23 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncomm                         0.2.3                                       17.32 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncontourpy                    1.3.3                                        1.02 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncuda_bindings                12.9.7                                      34.69 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncuda_pathfinder              1.8.1                                      183.42 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncuda_toolkit                 12.6.3                                       8.70 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ncycler                       0.12.1                                      22.08 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ndebugpy                      1.8.21                                      26.59 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ndefusedxml                   0.7.1                                       67.04 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ndocstring_parser             0.18.0                                      71.71 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nexecuting                    2.2.1                                       93.21 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nfastjsonschema               2.22.2                                      91.40 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nfilelock                     3.32.6                                     347.26 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nfonttools                    4.65.0                                      22.26 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nfqdn                         1.5.1                                       23.23 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nfrozenlist                   1.8.0                                      769.54 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nfsspec                       2026.7.0                                   734.80 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nh11                          0.16.0                                     101.50 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nhf_xet                       1.6.0                                       11.93 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nhttpcore                     1.0.9                                      281.27 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nhttpx                        0.28.1                                     288.38 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nhuggingface_hub              1.31.0                                       2.97 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nicu                          78.3                py310h44b86e0_2         13.79 MiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nidna                         3.19                                       329.32 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nimageio                      2.37.4                                       1.11 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nipykernel                    7.3.0                                      358.32 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nipython                      9.17.1                                       1.96 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nipython_pygments_lexers      1.1.1                                       22.58 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nipywidgets                   8.1.9                                      400.34 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nisoduration                  20.11.0                                     23.88 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njedi                         0.20.0                                      13.90 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njinja2                       3.1.6                                      485.25 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njson5                        0.15.0                                     131.97 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njsonargparse                 4.52.0                                     660.60 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njsonpointer                  3.1.1                                       16.64 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njsonschema                   4.26.0                                     464.92 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njsonschema_specifications    2025.9.1                                    46.15 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter                      1.1.1                                        3.89 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_builder              1.2.3                                        2.62 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_client               8.10.0                                     353.13 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_console              6.6.3                                       64.30 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_core                 5.9.1                                       88.28 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_events               0.12.1                                      46.36 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_lsp                  2.3.1                                      247.93 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_server               2.21.0                                       1.64 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyter_server_terminals     0.5.4                                       30.50 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyterlab                   4.6.3                                       39.45 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyterlab_pygments          0.3.0                                       37.20 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyterlab_server            2.28.0                                     183.32 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\njupyterlab_widgets           3.0.17                                     714.82 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nkiwisolver                   1.5.1                                        5.33 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nlark                         1.3.1                                      349.59 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nlazy_loader                  0.5                                         18.41 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nld_impl_linux-64             2.46.1              default_hbd61a6d_102   727.83 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibexpat                     2.8.1               hecca717_1              76.03 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibffi                       3.7.0               h81df57d_1              66.41 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibgcc                       16.2.0              ha9f2e26_4               1.01 MiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibgomp                      16.2.0              he0feb66_4             624.97 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nliblzma                      5.8.3               hb03c661_1             110.35 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibnsl                       2.0.1               hb9d3cd8_1              32.94 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibpython                    3.11.16             h0c77377_2_cpython       7.47 MiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibsqlite                    3.53.4              h13e7031_1             951.51 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibstdcxx                    16.2.0              h934c35e_4               6.31 MiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibuuid                      2.42.3              hcfc3c73_0              39.06 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibxcrypt                    4.4.38              h280c20c_0              99.57 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlibzlib                      1.3.2               h25fd6f3_3              62.22 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nlightning                    2.6.6                                        2.80 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nlightning_utilities          0.15.3                                      83.36 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nmarkupsafe                   3.0.3                                       65.48 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nmatplotlib                   3.11.1                                      24.35 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nmatplotlib_inline            0.2.2                                       20.87 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nmistune                      3.3.4                                      196.74 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nmpmath                       1.3.0                                        1.86 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nmultidict                    6.8.0                                      931.41 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnbclient                     0.11.0                                      79.20 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnbconvert                    7.17.1                                     925.00 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnbformat                     5.11.1                                     282.99 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nncurses                      6.6                 hdb14827_1             889.84 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nnest_asyncio2                1.7.2                                       21.44 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnetworkx                     3.6.1                                        6.71 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnotebook                     7.6.2                                       16.12 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnotebook_shim                0.2.4                                       33.97 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnumpy                        2.4.6                                       54.70 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnumpy_typing_compat          20251206.2.4                                12.33 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cublas_cu12           12.6.4.1                                   572.93 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cuda_cupti_cu12       12.6.80                                     33.24 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cuda_nvrtc_cu12       12.6.85                                     61.18 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cuda_runtime_cu12     12.6.77                                      4.45 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cudnn_cu12            9.10.2.21                                 1004.81 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cufft_cu12            11.3.0.4                                   268.12 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cufile_cu12           1.11.1.6                                     3.03 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_curand_cu12           10.3.7.77                                   94.07 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cusolver_cu12         11.7.1.2                                   232.35 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cusparse_cu12         12.5.4.2                                   280.36 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_cusparselt_cu12       0.7.1                                      431.08 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_nccl_cu12             2.29.3                                     376.62 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_nvjitlink_cu12        12.9.86                                     91.57 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_nvshmem_cu12          3.4.5                                      194.72 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nnvidia_nvtx_cu12             12.6.77                                    360.95 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nopenssl                      3.6.4               h781a0a9_0               3.05 MiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\noptype                       0.17.1                                     223.73 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\noverrides                    7.7.0                                       54.57 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npackaging                    26.3                                       487.48 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npandocfilters                1.5.1                                       19.69 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nparso                        0.8.7                                      346.75 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npexpect                      4.9.0                                      186.87 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nphotutils                    3.0.0                                        6.14 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npillow                       12.3.0                                      18.73 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npinn_starlight_core                                                     178.25 GiB  pypi   ./\nplatformdirs                 4.11.8                                     126.50 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nprometheus_client            0.26.0                                     208.36 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nprompt_toolkit               3.0.53                                       1.33 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npropcache                    0.5.2                                      177.18 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npsutil                       7.2.2                                      508.43 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nptyprocess                   0.7.0                                       38.97 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npure_eval                    0.2.4                                       32.27 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npycparser                    3.0                                        198.97 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npyerfa                       2.0.1.5                                      2.94 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npygments                     2.21.0                                       4.41 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npyparsing                    3.3.2                                      453.13 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npython                       3.11.16             h5f976f7_2_cpython      22.10 MiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\npython_dateutil              2.9.0.post0                                431.23 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npython_json_logger           4.2.0                                       38.81 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npytorch_lightning            2.6.6                                        2.80 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npyyaml                       6.0.3                                        2.74 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\npyzmq                        27.2.0                                       2.92 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nrawpy                        0.27.0                                       8.00 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nreadline                     8.3                 hd6e31c0_1             340.72 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\nreferencing                  0.37.0                                     112.66 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nrequests                     2.34.2                                     228.90 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nrfc3339_validator            0.1.4                                        4.51 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nrfc3986_validator            0.1.1                                        7.90 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nrfc3987_syntax               1.1.0                                       17.99 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nrpds_py                      2026.6.3                                   988.82 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nsafetensors                  0.8.0                                        1.28 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nscikit_image                 0.26.0                                      28.28 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nscipy                        1.17.1                                     109.01 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nscipy_stubs                  1.17.1.5                                     2.94 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nsegmentation_models_pytorch  0.5.0                                      534.06 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nsend2trash                   2.1.0                                       33.83 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nsetuptools                   84.0.0                                       2.65 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nsix                          1.17.0                                      37.08 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nsoupsieve                    2.9.2                                      140.85 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nstack_data                   0.6.3                                       73.54 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nsympy                        1.14.0                                      25.60 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nterminado                    0.18.1                                      32.54 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntifffile                     2026.3.3                                     1.04 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntimm                         1.0.29                                       8.88 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntinycss2                     1.5.1                                      106.57 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntk                           8.6.13              noxft_h1df4ec4_4         3.40 MiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\ntorch                        2.14.0+cu126                                           pypi   https://download.pytorch.org/whl/cu126\ntorchmetrics                 1.9.0                                        3.41 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntorchvision                  0.29.0+cu126                                           pypi   https://download.pytorch.org/whl/cu126\ntornado                      6.5.8                                        1.59 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntqdm                         4.66.5                                     219.55 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntraitlets                    5.16.1                                     312.17 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntriton                       3.8.0                                      892.79 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntypeshed_client              2.13.0                                       2.83 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntyping_extensions            4.16.0                                     178.48 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\ntzdata                       2026c               h151e31d_0             116.06 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\ntzdata                       2026.3                                     568.40 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nuri_template                 1.3.0                                       37.14 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nurllib3                      2.7.0                                      422.25 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nwcwidth                      0.8.3                                        1.76 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nwebcolors                    25.10.0                                     44.41 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nwebencodings                 0.6.1                                       27.63 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nwebsocket_client             1.9.2                                      354.79 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nwidgetsnbextension           4.0.16                                       8.81 MiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nyarl                         1.24.5                                     333.08 KiB  pypi   https://mirrors.ustc.edu.cn/pypi/simple\nzstd                         1.5.7               hb78ec9c_7             587.21 KiB  conda  https://mirrors.ustc.edu.cn/anaconda/cloud/conda-forge\n"
+      },
+      "archive_names": [
+        "B001_P00_core_part001.zip",
+        "B001_P01_synthetic_scientific_part001.zip",
+        "B001_P01_synthetic_scientific_part002.zip",
+        "B001_P01_synthetic_scientific_part003.zip",
+        "B001_P01_synthetic_scientific_part004.zip",
+        "B001_P01_synthetic_scientific_part005.zip",
+        "B001_P01_synthetic_scientific_part006.zip",
+        "B001_P02_formal_predictions_part001.zip",
+        "B001_P02_formal_predictions_part002.zip",
+        "B001_P02_formal_predictions_part003.zip",
+        "B001_P02_formal_predictions_part004.zip",
+        "B001_P02_formal_predictions_part005.zip",
+        "B001_P02_formal_predictions_part006.zip",
+        "B001_P02_formal_predictions_part007.zip",
+        "B001_P02_formal_predictions_part008.zip",
+        "B001_P03_models_part001.zip",
+        "B001_P03_models_part002.zip",
+        "B001_P04_selection_predictions_part001.zip",
+        "B001_P04_selection_predictions_part002.zip",
+        "B001_P04_selection_predictions_part003.zip",
+        "B001_P04_selection_predictions_part004.zip",
+        "B001_P04_selection_predictions_part005.zip",
+        "B001_P04_selection_predictions_part006.zip",
+        "B001_P04_selection_predictions_part007.zip",
+        "B001_P04_selection_predictions_part008.zip",
+        "B001_P04_selection_predictions_part009.zip",
+        "B001_P04_selection_predictions_part010.zip",
+        "B001_P04_selection_predictions_part011.zip",
+        "B001_P04_selection_predictions_part012.zip",
+        "B001_P04_selection_predictions_part013.zip",
+        "B001_P04_selection_predictions_part014.zip",
+        "B001_P04_selection_predictions_part015.zip",
+        "B001_P05_secondary_predictions_part001.zip",
+        "B001_P05_secondary_predictions_part002.zip"
+      ]
+    },
+    {
+      "batch": 2,
+      "label": "e4_five_method_refresh",
+      "time_unix": 1789245990.761808,
+      "environment": {
+        "label": "e4_five_method_refresh",
+        "time_unix": 1789245899.6576827,
+        "platform": "Linux-5.15.0-85-generic-x86_64-with-glibc2.35",
+        "python": "3.11.10 | packaged by conda-forge | (main, Oct 16 2024, 01:27:36) [GCC 13.3.0]",
+        "executable": "/opt/conda/bin/python",
+        "project_root": "/workspace/stage11",
+        "torch": "2.5.1+cu121",
+        "torch_cuda": "12.1",
+        "cuda_available": true,
+        "cuda_device_count": 2,
+        "cuda_devices": [
+          "NVIDIA GeForce RTX 3090",
+          "NVIDIA GeForce RTX 3090"
+        ],
+        "nvidia_smi": "Sat Sep 12 20:45:00 2026       \n+---------------------------------------------------------------------------------------+\n| NVIDIA-SMI 535.104.05             Driver Version: 535.104.05   CUDA Version: 12.2     |\n|-----------------------------------------+----------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |\n|                                         |                      |               MIG M. |\n|=========================================+======================+======================|\n|   0  NVIDIA GeForce RTX 3090        Off | 00000000:01:00.0  On |                  N/A |\n|100%   66C    P8              36W / 350W |     72MiB / 24576MiB |      0%      Default |\n|                                         |                      |                  N/A |\n+-----------------------------------------+----------------------+----------------------+\n|   1  NVIDIA GeForce RTX 3090        Off | 00000000:05:00.0 Off |                  N/A |\n| 39%   25C    P8              21W / 350W |     14MiB / 24576MiB |      0%      Default |\n|                                         |                      |                  N/A |\n+-----------------------------------------+----------------------+----------------------+\n                                                                                         \n+---------------------------------------------------------------------------------------+\n| Processes:                                                                            |\n|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |\n|        ID   ID                                                             Usage      |\n|=======================================================================================|\n+---------------------------------------------------------------------------------------+\n",
+        "git_status": "<unavailable: FileNotFoundError: [Errno 2] No such file or directory: 'git'>\n",
+        "git_rev_parse": "<unavailable: FileNotFoundError: [Errno 2] No such file or directory: 'git'>\n",
+        "pixi_list": "Error:   × no platform supported by environment 'default' matches the current system\n\n"
+      },
+      "archive_names": [
+        "B002_P00_core_part001.zip",
+        "B002_P05_secondary_predictions_part001.zip"
+      ]
+    }
+  ]
+}

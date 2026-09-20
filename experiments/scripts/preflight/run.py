@@ -77,6 +77,11 @@ def _check_generated_synthetic():
         SYNTHETIC_DATA_CONFIG["protocol_version"]
     ):
         raise ValueError("synthetic dataset protocol version is not Stage 10")
+    protocol_split = protocol.get("base_split", {})
+    if protocol_split != generator.FIXED_BASE_SPLIT:
+        raise ValueError(
+            "synthetic dataset base split does not match the active ordinary/CV fold protocol"
+        )
     model = protocol.get("observation_model", {})
     if model.get("additional_synthetic_noise") is not False:
         raise ValueError("Stage-10 main benchmark must not inject extra synthetic noise")
@@ -100,6 +105,14 @@ def _check_generated_synthetic():
         raise ValueError("formal synthetic background types do not match Stage-10 protocol")
     if set(row["intensity_level"] for row in rows) != set(generator.INTENSITY_LEVELS):
         raise ValueError("formal synthetic intensity levels do not match Stage-10 protocol")
+    for row in rows:
+        base_id = str(row.get("base_id", ""))
+        expected_split = generator.FIXED_BASE_SPLIT.get(base_id)
+        if expected_split is None or row.get("split") != expected_split:
+            raise ValueError(
+                f"formal synthetic row split mismatch for {base_id}: "
+                f"{row.get('split')} != {expected_split}"
+            )
 
     forbidden = {"noise_std", "noise_seed"}
     checked_native_audits = set()
@@ -110,6 +123,12 @@ def _check_generated_synthetic():
             path = utils.to_absolute_path(row[key])
             if not path.is_file():
                 raise FileNotFoundError(f"formal synthetic file missing: {path}")
+
+        # Before the fold/global lock, test rows are checked only for manifest/path
+        # integrity.  Scientific test arrays are deliberately left unopened.
+        if row["split"] == "test":
+            continue
+
         sample = utils.load_synthetic_sample(row)
         identity = float(
             np.max(
@@ -157,6 +176,8 @@ def _check_generated_synthetic():
         "rows": len(rows),
         "split_counts": dict(split_counts),
         "native_audits": len(checked_native_audits),
+        "numeric_arrays_checked_before_lock": "train+validation_only",
+        "test_arrays_opened_before_lock": False,
     }
 
 
@@ -174,6 +195,8 @@ def main():
     if synthetic["state"] == "not_generated":
         print("Next: rebuild the Stage-10 synthetic dataset with --force, then preflight again.")
     else:
+        print("pre-lock numeric arrays checked: train + validation only")
+        print("test arrays opened before lock: False")
         print(
             "Next: optional E0 smoke; rerun all four pre-test selectors; rebuild the "
             "Global Configuration Lock; then run E2/E3/E4. Stage-9 artifacts are invalid."

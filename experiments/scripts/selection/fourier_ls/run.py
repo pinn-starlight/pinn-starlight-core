@@ -1,4 +1,4 @@
-"""Select Stage-10 Fourier-LS lambda_LS and sparse weight on validation only."""
+"""Select Stage-10 cosine-domain LS lambda_LS and sparse weight on validation only."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def select_hyperparameters(
 
     total = (len(lambdas) + 1 + len(sparse_candidates)) * len(samples)
     progress = (
-        tqdm(total=total, desc="Fourier-LS Stage-10 selection", unit="fit", leave=True)
+        tqdm(total=total, desc="Cosine-LS Stage-10 selection", unit="fit", leave=True)
         if show_progress
         else None
     )
@@ -137,7 +137,7 @@ def _evaluate_candidate(
             return_info=True,
             show_progress=show_inner_progress,
             progress_desc=(
-                f"Fourier-LS λ={float(lambda_ls):g} μ={float(sparse_weight):g} "
+                f"Cosine-LS λ={float(lambda_ls):g} μ={float(sparse_weight):g} "
                 f"[{sample_index}/{len(samples)}]"
             ),
             backend=backend,
@@ -180,15 +180,15 @@ def _selection_key(row):
 
 
 def main(*, force: bool = False, backend=None, fft_workers=None):
-    print("Fourier-LS Stage-10 validation selection")
+    print("Cosine-LS Stage-10 validation selection")
     resolved_backend = fourier_ls._resolve_backend(backend)
     resolved_workers = (
         fourier_ls._resolve_fft_workers(fft_workers) if resolved_backend == "cpu" else 0
     )
     print(
-        "Fourier-LS execution:",
+        "Cosine-LS execution:",
         f"backend={resolved_backend}",
-        f"dtype=float64/complex128",
+        f"dtype=float64",
         f"fft_workers={resolved_workers}",
     )
     output_root = utils.prepare_output_root(OUTPUT_ROOT, force=force)
@@ -230,16 +230,16 @@ def main(*, force: bool = False, backend=None, fft_workers=None):
                 "selected at the chosen lambda"
             ),
             "execution_backend": resolved_backend,
-            "numeric_dtype": "float64/complex128",
+            "numeric_dtype": "float64",
             "fft_workers": resolved_workers,
-            "spectral_profile": "cached_parseval_gram",
+            "spectral_profile": "cached_dct_parseval_gram",
         },
     )
     utils.save_rows_csv(output_root / "lambda_candidates.csv", details["lambda_candidates"])
     utils.save_rows_csv(output_root / "sparse_candidates.csv", details["sparse_candidates"])
     utils.write_json(ARTIFACT_PATH, artifact)
     print(
-        "Fourier-LS selected:",
+        "Cosine-LS selected:",
         f"lambda_LS={selected['lambda_ls']}",
         f"sparse_weight={selected['sparse_weight']}",
         ARTIFACT_PATH,

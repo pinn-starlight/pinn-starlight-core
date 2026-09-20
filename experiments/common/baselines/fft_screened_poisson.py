@@ -1,12 +1,15 @@
-"""Stage-10 Fourier-LS physics-matched classical baseline.
+"""Stage-10 cosine-domain least-squares screened-Poisson baseline.
 
-For fixed geometry the screened-Poisson background is solved analytically in
-Fourier space.  The non-negative effective-forcing weights are *profiled out*
-exactly by enumerating all 2^K active sets (K=3).  Geometry is refined with a
-small bounded block-coordinate Powell search, one component at a time.
+For fixed geometry the screened-Poisson background is solved analytically on a
+pixel-centred grid with a zero-normal-derivative (Neumann) boundary condition.
+The corresponding discrete Laplacian is diagonalized by an orthonormal DCT-II.
+The non-negative effective-forcing weights are profiled out exactly by
+enumerating all 2^K active sets (K=3), while geometry is refined with a small
+bounded block-coordinate Powell search.
 
-The source term is a signed effective forcing S_city, not a physical
-non-negative city-radiance image.
+The source term is a signed effective forcing, not a physical non-negative
+city-radiance image.  The historical internal module name is retained for
+compatibility, but the paper-facing method is cosine-domain least squares.
 """
 
 from __future__ import annotations
@@ -66,7 +69,7 @@ def estimate_background(
     *,
     return_info: bool = False,
     show_progress: bool = False,
-    progress_desc: str = "Fourier-LS profile BCD",
+    progress_desc: str = "Cosine-LS profile BCD",
     backend: str | None = None,
     fft_workers: int | None = None,
 ):
@@ -102,14 +105,14 @@ def _estimate_background_with_settings(
     ftol: float = POWELL_FTOL,
     return_info: bool = False,
     show_progress: bool = False,
-    progress_desc: str = "Fourier-LS profile BCD",
+    progress_desc: str = "Cosine-LS profile BCD",
     backend: str | None = None,
     fft_workers: int | None = None,
 ):
-    """Full-resolution Fourier-LS with cached spectral profiling.
+    """Full-resolution cosine-domain LS with cached spectral profiling.
 
     The optimization problem and Powell budget are unchanged from Stage 10.
-    The acceleration is implementation-only: invariant Fourier terms are cached,
+    The acceleration is implementation-only: invariant cosine-domain terms are cached,
     only the component currently varied by Powell is rebuilt, and the quadratic
     profile objective is evaluated from Parseval-domain Gram terms.
     """
@@ -134,6 +137,7 @@ def _estimate_background_with_settings(
         winsor_percentile=WINSOR_PERCENTILE,
         low_pass_sigma_fraction=LOW_PASS_SIGMA_FRACTION,
         min_center_distance=MIN_CENTER_DISTANCE,
+        coordinate_mode="pixel_center",
     )
     geometry = np.column_stack(
         [
@@ -348,14 +352,15 @@ def _estimate_background_with_settings(
         "completed_sweeps": int(completed_sweeps),
         "component_optimizations": component_records,
         "optimizer": dict(_OPTIMIZER),
-        "boundary_condition": "periodic",
-        "coordinate_system": "normalized_xy_minus1_to_1",
+        "boundary_condition": "neumann_zero_normal_derivative",
+        "spectral_transform": "dct_ii_ortho",
+        "coordinate_system": "normalized_pixel_centers_minus1_to_1",
         "background_below_zero_fraction": float(np.mean(background < 0.0)),
         "background_above_one_fraction": float(np.mean(background > 1.0)),
         "compute_backend": str(workspace["backend"]),
-        "numeric_dtype": "float64/complex128",
+        "numeric_dtype": "float64",
         "fft_workers": int(workspace.get("fft_workers", 0)),
-        "spectral_profile": "cached_parseval_gram",
+        "spectral_profile": "cached_dct_parseval_gram",
         "runtime_s": float(runtime_s),
     }
     if return_info:
@@ -479,6 +484,7 @@ def validate_frozen_config(config: dict) -> tuple[float, float]:
         "low_pass_sigma_fraction",
         "min_center_distance",
         "center_refinement",
+        "coordinate_rule",
     ):
         if not _same_value(center.get(key), expected_center.get(key)):
             raise ValueError(f"Frozen Fourier-LS center setting mismatch: {key}")
@@ -496,6 +502,7 @@ def validate_frozen_config(config: dict) -> tuple[float, float]:
             raise ValueError(f"Frozen Fourier-LS optimizer setting mismatch: {key}")
     for key in (
         "boundary_condition",
+        "spectral_transform",
         "coordinate_system",
         "scientific_output_clipping",
         "deterministic",
@@ -531,13 +538,13 @@ def _resolve_backend(backend=None):
     }
     requested = aliases.get(requested, requested)
     if requested not in {"auto", "cpu", "cuda"}:
-        raise ValueError("Fourier-LS backend must be one of: auto, cpu, cuda")
+        raise ValueError("Cosine-LS backend must be one of: auto, cpu, cuda")
     cuda_available = bool(torch is not None and torch.cuda.is_available())
     if requested == "auto":
         return "cuda" if cuda_available else "cpu"
     if requested == "cuda" and not cuda_available:
         raise RuntimeError(
-            "Fourier-LS CUDA backend requested but torch.cuda.is_available() is false"
+            "Cosine-LS CUDA backend requested but torch.cuda.is_available() is false"
         )
     return requested
 
@@ -555,6 +562,68 @@ def _resolve_fft_workers(fft_workers=None):
     return workers
 
 
+def _dct_1d_torch(values, dim=-1):
+    """Orthonormal DCT-II implemented with torch.fft for CUDA/CPU tensors."""
+    if torch is None:
+        raise RuntimeError("torch is unavailable")
+    values = values.movedim(dim, -1)
+    shape = values.shape
+    n = int(shape[-1])
+    flat = values.contiguous().reshape(-1, n)
+    reordered = torch.cat((flat[:, ::2], flat[:, 1::2].flip((1,))), dim=1)
+    spectrum = torch.fft.fft(reordered, dim=1)
+    k = -torch.arange(n, dtype=values.dtype, device=values.device) * math.pi / (2.0 * n)
+    transformed = spectrum.real * torch.cos(k)[None, :] - spectrum.imag * torch.sin(k)[None, :]
+    transformed[:, 0] /= (math.sqrt(n) * 2.0)
+    if n > 1:
+        transformed[:, 1:] /= (math.sqrt(n / 2.0) * 2.0)
+    transformed = 2.0 * transformed
+    return transformed.reshape(shape).movedim(-1, dim)
+
+
+def _idct_1d_torch(values, dim=-1):
+    """Inverse of :func:`_dct_1d_torch` (orthonormal DCT-III)."""
+    if torch is None:
+        raise RuntimeError("torch is unavailable")
+    values = values.movedim(dim, -1)
+    shape = values.shape
+    n = int(shape[-1])
+    coeff = values.contiguous().reshape(-1, n) / 2.0
+    coeff[:, 0] *= math.sqrt(n) * 2.0
+    if n > 1:
+        coeff[:, 1:] *= math.sqrt(n / 2.0) * 2.0
+    k = torch.arange(n, dtype=values.dtype, device=values.device) * math.pi / (2.0 * n)
+    cos_k = torch.cos(k)[None, :]
+    sin_k = torch.sin(k)[None, :]
+    imag_seed = torch.cat((coeff[:, :1] * 0.0, -coeff.flip((1,))[:, :-1]), dim=1)
+    real_part = coeff * cos_k - imag_seed * sin_k
+    imag_part = coeff * sin_k + imag_seed * cos_k
+    spectrum = torch.complex(real_part, imag_part)
+    reordered = torch.fft.ifft(spectrum, dim=1).real
+    output = torch.zeros_like(reordered)
+    output[:, ::2] = reordered[:, : n - n // 2]
+    output[:, 1::2] = reordered.flip((1,))[:, : n // 2]
+    return output.reshape(shape).movedim(-1, dim)
+
+
+def _dct2_torch(values):
+    return _dct_1d_torch(_dct_1d_torch(values, dim=-1), dim=-2)
+
+
+def _idct2_torch(values):
+    return _idct_1d_torch(_idct_1d_torch(values, dim=-1), dim=-2)
+
+
+def _pixel_center_axis_numpy(size):
+    size = int(size)
+    return -1.0 + (np.arange(size, dtype=np.float64) + 0.5) * (2.0 / size)
+
+
+def _pixel_center_axis_torch(size, device):
+    size = int(size)
+    return -1.0 + (torch.arange(size, dtype=torch.float64, device=device) + 0.5) * (2.0 / size)
+
+
 def _prepare_workspace(observed, lambda_ls, alpha, *, backend=None, fft_workers=None):
     image = np.asarray(observed, dtype=np.float64)
     backend = _resolve_backend(backend)
@@ -562,13 +631,12 @@ def _prepare_workspace(observed, lambda_ls, alpha, *, backend=None, fft_workers=
     n_pixels = float(height * width)
     if backend == "cpu":
         workers = _resolve_fft_workers(fft_workers)
-        image_spectrum = fft.rfft2(image, workers=workers)
+        image_spectrum = fft.dctn(image, type=2, norm="ortho", workers=workers)
         screened_operator = _screened_operator_symbol(image.shape, alpha)
         denominator = 1.0 + float(lambda_ls) * screened_operator**2
         b0_spectrum = image_spectrum / denominator
         d0_spectrum = b0_spectrum - image_spectrum
         p0_spectrum = screened_operator * b0_spectrum
-        rfft_weights = _rfft_x_weights_numpy(width)
         workspace = {
             "backend": "cpu",
             "fft_workers": workers,
@@ -584,15 +652,14 @@ def _prepare_workspace(observed, lambda_ls, alpha, *, backend=None, fft_workers=
             "p0_spectrum": p0_spectrum,
             "transfer_b": -float(lambda_ls) * screened_operator / denominator,
             "transfer_p": 1.0 / denominator,
-            "rfft_weights": rfft_weights,
-            "x_axis": np.linspace(-1.0, 1.0, width, dtype=np.float64)[None, :],
-            "y_axis": np.linspace(-1.0, 1.0, height, dtype=np.float64)[:, None],
-            "canonical_axis": np.linspace(-1.0, 1.0, RMS_GRID_SIZE, dtype=np.float64),
+            "x_axis": _pixel_center_axis_numpy(width)[None, :],
+            "y_axis": _pixel_center_axis_numpy(height)[:, None],
+            "canonical_axis": _pixel_center_axis_numpy(RMS_GRID_SIZE),
         }
     else:
         device = torch.device("cuda")
         image_tensor = torch.as_tensor(image, dtype=torch.float64, device=device)
-        image_spectrum = torch.fft.rfft2(image_tensor)
+        image_spectrum = _dct2_torch(image_tensor)
         screened_operator = _screened_operator_symbol_torch(image.shape, alpha, device)
         denominator = 1.0 + float(lambda_ls) * screened_operator.square()
         b0_spectrum = image_spectrum / denominator
@@ -614,12 +681,9 @@ def _prepare_workspace(observed, lambda_ls, alpha, *, backend=None, fft_workers=
             "p0_spectrum": p0_spectrum,
             "transfer_b": -float(lambda_ls) * screened_operator / denominator,
             "transfer_p": 1.0 / denominator,
-            "rfft_weights": _rfft_x_weights_torch(width, device),
-            "x_axis": torch.linspace(-1.0, 1.0, width, dtype=torch.float64, device=device)[None, :],
-            "y_axis": torch.linspace(-1.0, 1.0, height, dtype=torch.float64, device=device)[:, None],
-            "canonical_axis": torch.linspace(
-                -1.0, 1.0, RMS_GRID_SIZE, dtype=torch.float64, device=device
-            ),
+            "x_axis": _pixel_center_axis_torch(width, device)[None, :],
+            "y_axis": _pixel_center_axis_torch(height, device)[:, None],
+            "canonical_axis": _pixel_center_axis_torch(RMS_GRID_SIZE, device),
         }
     workspace["q_kernel"] = (
         workspace["transfer_b"] * workspace["transfer_b"]
@@ -645,52 +709,31 @@ def _prepare_workspace(observed, lambda_ls, alpha, *, backend=None, fft_workers=
     return workspace
 
 
-def _rfft_x_weights_numpy(width):
-    size = int(width) // 2 + 1
-    weights = np.full((1, size), 2.0, dtype=np.float64)
-    weights[0, 0] = 1.0
-    if int(width) % 2 == 0:
-        weights[0, -1] = 1.0
-    return weights
-
-
-def _rfft_x_weights_torch(width, device):
-    size = int(width) // 2 + 1
-    weights = torch.full((1, size), 2.0, dtype=torch.float64, device=device)
-    weights[0, 0] = 1.0
-    if int(width) % 2 == 0:
-        weights[0, -1] = 1.0
-    return weights
-
-
 def _spectral_mean_inner(workspace, left, right, *, kernel=None):
-    scale = workspace["n_pixels"] ** 2
+    # Orthonormal DCT-II preserves the Euclidean inner product (Parseval).
+    scale = workspace["n_pixels"]
     if workspace["backend"] == "cpu":
-        product = np.real(np.conj(left) * right)
+        product = np.asarray(left, dtype=np.float64) * np.asarray(right, dtype=np.float64)
         if kernel is not None:
-            product = product * kernel
-        value = np.sum(workspace["rfft_weights"] * product, dtype=np.float64)
-        return float(value / scale)
-    product = torch.real(torch.conj(left) * right)
+            product = product * np.asarray(kernel, dtype=np.float64)
+        return float(np.sum(product, dtype=np.float64) / scale)
+    product = left * right
     if kernel is not None:
         product = product * kernel
-    value = torch.sum(workspace["rfft_weights"] * product)
-    return float((value / scale).item())
+    return float((torch.sum(product) / scale).item())
 
 
 def _screened_operator_symbol_torch(shape, alpha, device):
     height, width = (int(shape[0]), int(shape[1]))
-    hx = 2.0 / (width - 1)
-    hy = 2.0 / (height - 1)
-    frequency_y = torch.fft.fftfreq(
-        height, d=1.0, dtype=torch.float64, device=device
-    )[:, None]
-    frequency_x = torch.fft.rfftfreq(
-        width, d=1.0, dtype=torch.float64, device=device
-    )[None, :]
+    if height < 2 or width < 2:
+        raise ValueError("shape must be at least 2x2")
+    hx = 2.0 / width
+    hy = 2.0 / height
+    q = torch.arange(height, dtype=torch.float64, device=device)[:, None]
+    p = torch.arange(width, dtype=torch.float64, device=device)[None, :]
     laplacian_symbol = (
-        -4.0 * torch.sin(math.pi * frequency_y).square() / (hy * hy)
-        -4.0 * torch.sin(math.pi * frequency_x).square() / (hx * hx)
+        -4.0 * torch.sin(math.pi * q / (2.0 * height)).square() / (hy * hy)
+        -4.0 * torch.sin(math.pi * p / (2.0 * width)).square() / (hx * hx)
     )
     return laplacian_symbol - float(alpha)
 
@@ -817,14 +860,16 @@ def _build_forcing_component_torch(workspace, row, *, alpha):
 def _component_state_from_array(workspace, component, *, scale):
     if workspace["backend"] == "cpu":
         array = np.asarray(component, dtype=np.float64)
-        component_spectrum = fft.rfft2(array, workers=workspace["fft_workers"])
+        component_spectrum = fft.dctn(
+            array, type=2, norm="ortho", workers=workspace["fft_workers"]
+        )
     else:
         with torch.no_grad():
             if isinstance(component, np.ndarray):
                 component = torch.as_tensor(
                     component, dtype=torch.float64, device=workspace["device"]
                 )
-            component_spectrum = torch.fft.rfft2(component)
+            component_spectrum = _dct2_torch(component)
     return {
         "component_spectrum": component_spectrum,
         "scale": float(scale),
@@ -914,9 +959,10 @@ def _reconstruct_background(workspace, states, weights):
             workspace["b0_spectrum"]
             + workspace["transfer_b"] * forcing_spectrum
         )
-        return fft.irfft2(
+        return fft.idctn(
             spectrum,
-            s=workspace["shape"],
+            type=2,
+            norm="ortho",
             workers=workspace["fft_workers"],
         )
     with torch.no_grad():
@@ -929,7 +975,7 @@ def _reconstruct_background(workspace, states, weights):
             workspace["b0_spectrum"]
             + workspace["transfer_b"] * forcing_spectrum
         )
-        result = torch.fft.irfft2(spectrum, s=workspace["shape"])
+        result = _idct2_torch(spectrum)
         return result.detach().cpu().numpy().astype(np.float64, copy=False)
 
 
@@ -939,30 +985,32 @@ def _synchronize_workspace(workspace):
 
 
 def _screened_operator_symbol(shape, alpha):
+    """DCT-II eigenvalues for a pixel-centred Neumann screened Laplacian."""
     height, width = (int(shape[0]), int(shape[1]))
     if height < 2 or width < 2:
         raise ValueError("shape must be at least 2x2")
-    hx = 2.0 / (width - 1)
-    hy = 2.0 / (height - 1)
-    frequency_y = fft.fftfreq(height)[:, None]
-    frequency_x = fft.rfftfreq(width)[None, :]
+    hx = 2.0 / width
+    hy = 2.0 / height
+    q = np.arange(height, dtype=np.float64)[:, None]
+    p = np.arange(width, dtype=np.float64)[None, :]
     laplacian_symbol = (
-        -4.0 * np.sin(np.pi * frequency_y) ** 2 / (hy * hy)
-        -4.0 * np.sin(np.pi * frequency_x) ** 2 / (hx * hx)
+        -4.0 * np.sin(np.pi * q / (2.0 * height)) ** 2 / (hy * hy)
+        -4.0 * np.sin(np.pi * p / (2.0 * width)) ** 2 / (hx * hx)
     )
     return laplacian_symbol - float(alpha)
 
 
 def _apply_screened_operator(image, alpha):
+    """Apply the pixel-centred Neumann finite-difference operator in space."""
     array = np.asarray(image, dtype=np.float64)
     height, width = array.shape
-    hx = 2.0 / (width - 1)
-    hy = 2.0 / (height - 1)
+    hx = 2.0 / width
+    hy = 2.0 / height
+    padded = np.pad(array, ((1, 1), (1, 1)), mode="edge")
+    center = padded[1:-1, 1:-1]
     laplacian = (
-        (np.roll(array, -1, axis=1) - 2.0 * array + np.roll(array, 1, axis=1))
-        / (hx * hx)
-        + (np.roll(array, -1, axis=0) - 2.0 * array + np.roll(array, 1, axis=0))
-        / (hy * hy)
+        (padded[1:-1, 2:] - 2.0 * center + padded[1:-1, :-2]) / (hx * hx)
+        + (padded[2:, 1:-1] - 2.0 * center + padded[:-2, 1:-1]) / (hy * hy)
     )
     return laplacian - float(alpha) * array
 
@@ -970,7 +1018,7 @@ def _apply_screened_operator(image, alpha):
 def _validate_observed(observed):
     if not isinstance(observed, np.ndarray):
         raise TypeError(
-            "formal Fourier-LS input must be an observed np.ndarray; "
+            "formal cosine-LS input must be an observed np.ndarray; "
             "load files in the experiment/data layer before calling the Method"
         )
     image = np.asarray(observed, dtype=np.float32)

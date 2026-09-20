@@ -59,7 +59,7 @@ def _load_gray_image(loader: ImageLoader):
 
 
 class EffectiveForcingMixture(nn.Module):
-    """Sparse K-component signed forcing model shared conceptually with Fourier-LS.
+    """Sparse K-component signed forcing model shared conceptually with cosine-domain LS.
 
     The components are *effective forcing templates*, not direct non-negative
     urban radiance measurements. Each template may have a negative lobe after

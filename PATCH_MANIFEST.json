@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "patch": "stage11_forced_reference_metric_backfill_patch_v1.zip",
+  "files": [
+    {
+      "path": "tools/backfill_forced_reference_metrics.py",
+      "sha256": "82bb791b7ade0e549bbaa6e5f46817b411277f6aa2661453315e09bf9df8cf7d",
+      "size": 16678
+    },
+    {
+      "path": "run_forced_reference_backfill.sh",
+      "sha256": "45aaff1e346e640a510826d12007169e2460f7e512e98f44bc3c55651e872a25",
+      "size": 1320
+    },
+    {
+      "path": "README_FORCED_REFERENCE_BACKFILL.md",
+      "sha256": "a090fc7eaf2b553a89bd29bd7fa6c5d255b2a2e2fbab58483a66c7e23964de6b",
+      "size": 2877
+    }
+  ]
+}

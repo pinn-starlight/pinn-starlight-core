@@ -34,6 +34,7 @@ from experiments.common.data.synthetic_backgrounds import (
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 from experiments.configs.formal_experiment import SYNTHETIC_DATA_CONFIG
+from experiments.configs.split_protocols import active_base_split
 from pinn_starlight_core.data.image_loader import ImageLoader
 
 
@@ -54,13 +55,9 @@ INTENSITY_LEVELS = {
 }
 
 # The split is part of the experiment protocol, not a generator side effect.
-FIXED_BASE_SPLIT = {
-    "clean_single_003": "train",
-    "clean_stack_002": "train",
-    "clean_stack_001": "train",
-    "clean_single_002": "validation",
-    "clean_single_001": "test",
-}
+# Default imports use the ordinary fixed split; CV subprocesses select one fold
+# through PINN_STARLIGHT_SPLIT_MODE=cv5 and PINN_STARLIGHT_CV_FOLD.
+FIXED_BASE_SPLIT = active_base_split()
 
 
 def load_clean_image(input_file, center_crop_size=0):

@@ -1,0 +1,9 @@
+batch=B002
+label=e4_five_method_refresh
+created_archives=2
+new_files=4133
+new_uncompressed_gib=3.829
+
+You may transfer and then delete the Bxxx_*.zip files from the server.
+Do NOT delete archive_state.json/index/inventory until the very end.
+The incremental state prevents already-exported source files from being repacked.

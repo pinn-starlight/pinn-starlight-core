@@ -1,10 +1,10 @@
-"""Single source of truth for the Stage-10 formal experiment configuration.
+"""Single source of truth for the Stage11 formal experiment configuration.
 
 Stage 10 changes the *benchmark semantics* and the physics-matched forcing model.  The camera-acquired reference is first
 flattened with a fixed method-independent low-frequency background estimator;
 synthetic skyglow is then added without any extra Gaussian/Poisson noise.
 
-PINN and Fourier-LS share the same observed-only candidate-centre rule and the
+PINN and cosine-domain LS share the same observed-only candidate-centre rule and the
 same sparse signed effective-forcing family.  They still solve different
 optimization problems.
 """
@@ -14,7 +14,7 @@ from __future__ import annotations
 from copy import deepcopy
 import math
 
-FORMAL_CONFIG_SCHEMA_VERSION = 3
+FORMAL_CONFIG_SCHEMA_VERSION = 5
 FORMAL_SEEDS = (20260728, 20260729, 20260730)
 FORMAL_METHODS = ("fft_gaussian", "fourier_ls", "unet_small", "pinn")
 
@@ -27,7 +27,9 @@ FORMAL_EXECUTION_CONFIG = {
     "benchmark_device": "cuda:0",
     "pinn_laplacian_backend": "autograd",
     "fourier_ls_backend": "cuda",
-    "fourier_ls_numeric_dtype": "float64/complex128",
+    "fourier_ls_numeric_dtype": "float64",
+    "fourier_ls_transform": "DCT-II (orthonormal)",
+    "fourier_ls_boundary": "zero_normal_derivative_neumann",
     "unet_training_memory_format": "nchw_contiguous",
     "unet_optimizer": "Adam",
     "unet_fused_adam": False,
@@ -170,6 +172,7 @@ FOURIER_LS_CONFIG = {
             ],
             "min_center_distance": _FORCING_COMMON["forcing_min_center_distance"],
             "center_refinement": _FORCING_COMMON["forcing_center_refinement"],
+            "coordinate_rule": "observed_pixels_mapped_to_normalized_pixel_centers",
         },
         "forcing": {
             "family": "signed_effective_forcing_q_times_elliptical_gaussian",
@@ -206,11 +209,69 @@ FOURIER_LS_CONFIG = {
             "ftol": 1e-4,
             "weight_profile": "enumerate_all_2^K_nonnegative_active_sets",
         },
-        "boundary_condition": "periodic",
-        "coordinate_system": "normalized_xy_minus1_to_1",
+        "boundary_condition": "neumann_zero_normal_derivative",
+        "spectral_transform": "dct_ii_ortho",
+        "coordinate_system": "normalized_pixel_centers_minus1_to_1",
         "scientific_output_clipping": False,
         "deterministic": True,
     },
+}
+
+
+# Stage11 frozen follow-up method.
+#
+# This method is a post-Stage10 mechanism-driven confirmation branch.  Its
+# configuration is fixed before Stage11 test execution and is NOT selected on
+# the current test split.  It is intentionally kept separate from FORMAL_METHODS
+# so the historical four-method benchmark remains auditable as originally
+# defined, while Stage11 adds a paired data-only vs improved-PINN confirmation.
+FINAL_PINN_FOLLOWUP_CONFIG = {
+    "paper_name": "decoupled_gradient_coordinated_PINN",
+    "status": "frozen_posthoc_followup_for_stage11_confirmation",
+    "development_scope": "designed_from_prior_training-field_mechanism_diagnostics",
+    "test_truth_usage": False,
+    "stage1": {
+        "hidden_dims": [256, 64],
+        "steps": 20000,
+        "batch_size": 8192,
+        "model_lr": 1e-3,
+        "alpha": 0.5,
+        "prediction_batch_size": 65536,
+        "log_every": 100,
+        **_FORCING_COMMON,
+        "center_warmup_steps": 1000,
+        "center_refinement_enabled": True,
+        # Explicitly data-only in Stage 1.
+        "physics_weight": 0.0,
+        "sparse_weight": 0.0,
+        "forcing_lr": 1e-3,
+    },
+    "stage2": {
+        "mode": "fixed_geometry_nonnegative_least_squares",
+        "prefit_points": 32768,
+        "fit_fraction": 0.80,
+        "geometry_refinement": False,
+        "uses_true_background": False,
+        "target": "Q0 = alpha * B0 - Laplacian(B0)",
+    },
+    "stage3": {
+        "steps": 5000,
+        "model_lr": 2e-4,
+        "rho": 0.10,
+        "lambda_min": 0.0,
+        "lambda_max": 2e-2,
+        "ramp_steps": 2000,
+        "conflict_projection": True,
+        "sparse_weight": 0.0,
+        "neumann_boundary_loss": False,
+        "gradient_balance_reference": "projected_regularizer_gradient",
+        "laplacian_backend": "analytic_chain_rule_verified_against_autograd",
+        "log_every": 100,
+    },
+    # One predeclared seed keeps the five-fold confirmation computationally
+    # manageable. Control and improved method share the same Stage-1 state and
+    # Stage-3 batch sequence for paired comparison.
+    "test_seeds": [FORMAL_SEEDS[0]],
 }
 
 UNET_CONFIG = {
@@ -220,6 +281,8 @@ UNET_CONFIG = {
         "steps_per_epoch": 100,
         "batch_size": 4,
         "base_channels": 64,
+        "conv_padding": 1,
+        "conv_padding_mode": "zeros",
         "learning_rate": 1e-3,
         "patience": 3,
         "min_delta_relative": 0.002,
@@ -247,6 +310,7 @@ FORMAL_EXPERIMENT_CONFIG = {
     "fft_gaussian": GAUSSIAN_CONFIG,
     "fourier_ls": FOURIER_LS_CONFIG,
     "unet_small": UNET_CONFIG,
+    "final_pinn_followup": FINAL_PINN_FOLLOWUP_CONFIG,
 }
 
 

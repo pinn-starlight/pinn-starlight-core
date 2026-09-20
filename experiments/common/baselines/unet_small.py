@@ -24,13 +24,25 @@ from experiments.common.utils import experiment_utils as utils
 # TODO:需要让学长检查一下
 
 class _ConvBlock(nn.Sequential):
-    """两个三乘三卷积和两个 ReLU 激活层。"""
+    """两个三乘三卷积和两个 ReLU；正式基线固定 1 像素零填充。"""
 
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                padding=1,
+                padding_mode="zeros",
+            ),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.Conv2d(
+                out_channels,
+                out_channels,
+                kernel_size=3,
+                padding=1,
+                padding_mode="zeros",
+            ),
             nn.ReLU(inplace=True),
         )
 

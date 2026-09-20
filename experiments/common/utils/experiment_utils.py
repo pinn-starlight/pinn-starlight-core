@@ -22,9 +22,17 @@ from experiments.configs.formal_experiment import (
     FOURIER_LS_CONFIG,
     formal_config_snapshot,
 )
+from experiments.configs.split_protocols import active_protocol_from_env
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-OUTPUT_ROOT = PROJECT_ROOT / "experiments/outputs"
+BASE_OUTPUT_ROOT = PROJECT_ROOT / "experiments/outputs"
+SPLIT_MODE, CV_FOLD = active_protocol_from_env()
+if SPLIT_MODE == "standard":
+    OUTPUT_ROOT = BASE_OUTPUT_ROOT
+    OUTPUT_NAMESPACE = "standard"
+else:
+    OUTPUT_ROOT = BASE_OUTPUT_ROOT / "cv5" / f"fold_{CV_FOLD}"
+    OUTPUT_NAMESPACE = f"cv5/fold_{CV_FOLD}"
 
 
 def _resolve_data_root() -> Path:
@@ -63,7 +71,11 @@ REAL_HIGH_POLLUTION_ROOT = COLLECTION_ROOT / "real_high_pollution"
 # ``collections/synthetic`` is the legacy 10-sample set in the user's current
 # data tree. Formal Stage-7+ data are isolated in a new directory.
 LEGACY_SYNTHETIC_ROOT = COLLECTION_ROOT / "synthetic"
-SYNTHETIC_ROOT = COLLECTION_ROOT / "synthetic_formal"
+SYNTHETIC_DATA_ROOT = COLLECTION_ROOT / "synthetic_formal"
+if SPLIT_MODE == "standard":
+    SYNTHETIC_ROOT = SYNTHETIC_DATA_ROOT
+else:
+    SYNTHETIC_ROOT = SYNTHETIC_DATA_ROOT / "cv5" / f"fold_{CV_FOLD}"
 SYNTHETIC_MANIFEST = SYNTHETIC_ROOT / "manifest.csv"
 SELECTION_ROOT = OUTPUT_ROOT / "selection"
 PINN_SELECTION_ROOT = SELECTION_ROOT / "pinn"
@@ -294,6 +306,14 @@ def load_global_configuration_lock(
     if require_formal_ready:
         if int(lock.get("schema_version", 0)) < 5:
             raise ValueError("Stage-10 formal test requires Global Lock schema >= 5")
+        split_protocol = lock.get("split_protocol", {})
+        if split_protocol:
+            if split_protocol.get("mode") != SPLIT_MODE or split_protocol.get("cv_fold") != CV_FOLD:
+                raise ValueError(
+                    "Global Configuration Lock belongs to a different split context: "
+                    f"lock=({split_protocol.get('mode')}, {split_protocol.get('cv_fold')}), "
+                    f"current=({SPLIT_MODE}, {CV_FOLD})"
+                )
         boundary = lock.get("boundary", {})
         if boundary.get("test_arrays_loaded_during_lock") is not False:
             raise RuntimeError("Global Lock must attest that no test arrays were loaded")
@@ -483,15 +503,59 @@ def parameter_count(model):
     return sum(parameter.numel() for parameter in model.parameters())
 
 
+def _cuda_device_index(device):
+    """Return a validated CUDA index, or None for a non-CUDA/unavailable device.
+
+    Some Windows/PyTorch builds reject a ``torch.device`` object in CUDA memory
+    statistics APIs even though tensor operations on the same device work.
+    Normalising to an integer index and using a CUDA-device context makes the
+    instrumentation portable without changing any training computation.
+    """
+    if not torch.cuda.is_available():
+        return None
+    resolved = torch.device(device)
+    if resolved.type != "cuda":
+        return None
+    index = resolved.index
+    if index is None:
+        index = torch.cuda.current_device()
+    index = int(index)
+    if index < 0 or index >= int(torch.cuda.device_count()):
+        raise ValueError(
+            f"CUDA device index {index} is invalid; "
+            f"device_count={torch.cuda.device_count()}"
+        )
+    return index
+
+
 def reset_peak_vram(device):
-    if torch.cuda.is_available() and torch.device(device).type == "cuda":
-        torch.cuda.reset_peak_memory_stats(device)
+    index = _cuda_device_index(device)
+    if index is None:
+        return
+    try:
+        # Prefer a current-device call inside an explicit context. This avoids
+        # a Windows/PyTorch compatibility issue where passing torch.device
+        # directly can raise 'RuntimeError: Invalid device argument'.
+        with torch.cuda.device(index):
+            torch.cuda.reset_peak_memory_stats()
+    except RuntimeError as exc:
+        # Peak-VRAM accounting is diagnostic-only. Never abort the scientific
+        # optimisation solely because a backend does not expose memory stats.
+        if "Invalid device argument" not in str(exc):
+            raise
 
 
 def peak_vram_mb(device):
-    if torch.cuda.is_available() and torch.device(device).type == "cuda":
-        return float(torch.cuda.max_memory_allocated(device) / (1024**2))
-    return None
+    index = _cuda_device_index(device)
+    if index is None:
+        return None
+    try:
+        with torch.cuda.device(index):
+            return float(torch.cuda.max_memory_allocated() / (1024**2))
+    except RuntimeError as exc:
+        if "Invalid device argument" not in str(exc):
+            raise
+        return None
 
 
 def _remove_forced_output(path: Path):

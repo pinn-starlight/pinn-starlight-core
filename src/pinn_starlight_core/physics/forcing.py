@@ -1,7 +1,7 @@
 """Stage-10 shared effective-forcing geometry utilities.
 
 The functions in this module are deliberately independent of synthetic truth.
-Both PINN and Fourier-LS use the same observed-only candidate-centre rule and
+Both PINN and cosine-domain LS use the same observed-only candidate-centre rule and
 same signed forcing template family.
 """
 
@@ -45,12 +45,15 @@ def candidate_centers_from_observed(
     winsor_percentile: float = DEFAULT_WINSOR_PERCENTILE,
     low_pass_sigma_fraction: float = DEFAULT_LOW_PASS_SIGMA_FRACTION,
     min_center_distance: float = DEFAULT_MIN_CENTER_DISTANCE,
+    coordinate_mode: str = "endpoint",
 ):
     """Find up to K separated low-frequency peaks using observed only.
 
     The image used *only for initialization* is winsorized at P99.5 and then
     strongly Gaussian-smoothed. Greedy non-maximum suppression is performed in
     normalized [-1, 1]^2 coordinates, so the rule is resolution-independent.
+    ``coordinate_mode='endpoint'`` preserves the PINN endpoint grid;
+    ``'pixel_center'`` is used by the DCT-II cosine-domain LS discretization.
     """
     image = np.asarray(observed, dtype=np.float64)
     if image.ndim != 2 or min(image.shape) < 2 or not np.isfinite(image).all():
@@ -82,8 +85,14 @@ def candidate_centers_from_observed(
     selected = []
     for flat_index in flat_order:
         y_pixel, x_pixel = np.unravel_index(int(flat_index), low_frequency.shape)
-        x = -1.0 + 2.0 * float(x_pixel) / float(width - 1)
-        y = -1.0 + 2.0 * float(y_pixel) / float(height - 1)
+        if coordinate_mode == "endpoint":
+            x = -1.0 + 2.0 * float(x_pixel) / float(width - 1)
+            y = -1.0 + 2.0 * float(y_pixel) / float(height - 1)
+        elif coordinate_mode == "pixel_center":
+            x = -1.0 + (float(x_pixel) + 0.5) * 2.0 / float(width)
+            y = -1.0 + (float(y_pixel) + 0.5) * 2.0 / float(height)
+        else:
+            raise ValueError("coordinate_mode must be 'endpoint' or 'pixel_center'")
         if all(math.hypot(x - cx, y - cy) >= min_center_distance for cx, cy in selected):
             selected.append((x, y))
             if len(selected) >= max_components:

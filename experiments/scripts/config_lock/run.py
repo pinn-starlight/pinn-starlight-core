@@ -95,9 +95,15 @@ def main(*, force: bool = False):
         for method, spec in SELECTORS.items()
     }
     lock = {
-        "schema_version": 5,
+        "schema_version": 6,
         "lock_state": "FROZEN",
         "formal_test_ready": True,
+        "split_protocol": {
+            "mode": utils.SPLIT_MODE,
+            "cv_fold": utils.CV_FOLD,
+            "output_namespace": utils.OUTPUT_NAMESPACE,
+            "independent_group": "camera_reference_base_id",
+        },
         "boundary": {
             "selection_splits": ["train", "validation"],
             "formal_test_split": "test",
@@ -117,6 +123,9 @@ def main(*, force: bool = False):
             "dataset_protocol_sha256": utils.file_sha256(utils.SYNTHETIC_ROOT / "dataset_protocol.json"),
             "train_sample_ids": [row["sample_id"] for row in train_rows],
             "validation_sample_ids": [row["sample_id"] for row in validation_rows],
+            "test_sample_ids": [
+                row["sample_id"] for row in utils.load_manifest(MANIFEST, split="test")
+            ],
         },
         "selection_artifacts": selection_snapshot,
         "source_provenance": artifacts.source_provenance(
@@ -156,8 +165,8 @@ def main(*, force: bool = False):
     print(
         "Frozen:",
         f"Gaussian sigma={gaussian['sigma']}",
-        f"Fourier-LS lambda_LS={fourier['lambda_ls']}",
-        f"Fourier-LS sparse={fourier['sparse_weight']}",
+        f"Cosine-LS lambda_LS={fourier['lambda_ls']}",
+        f"Cosine-LS sparse={fourier['sparse_weight']}",
         f"U-Net checkpoints={len(unet['checkpoints'])}",
         f"PINN steps={pinn_config['steps']}",
         "formal_test_ready=True",

@@ -1,6 +1,4 @@
-README.md
 pyproject.toml
-src/pinn_starlight_core/__init__.py
 src/pinn_starlight_core/main.py
 src/pinn_starlight_core.egg-info/PKG-INFO
 src/pinn_starlight_core.egg-info/SOURCES.txt

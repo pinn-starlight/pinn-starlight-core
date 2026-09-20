@@ -46,7 +46,7 @@ def run_method(method: str, observed, method_config: dict, **kwargs) -> dict:
             return_info=True,
             backend=FORMAL_EXECUTION_CONFIG["fourier_ls_backend"],
             show_progress=bool(kwargs.get("show_progress", False)),
-            progress_desc=str(kwargs.get("progress_desc", "Fourier-LS Stage-10 profile BCD")),
+            progress_desc=str(kwargs.get("progress_desc", "Cosine-LS Stage-10 profile BCD")),
         )
         extra = {
             "fourier_info": fourier_info,
@@ -77,6 +77,7 @@ def run_method(method: str, observed, method_config: dict, **kwargs) -> dict:
             seed=kwargs["seed"],
             show_progress=True,
             laplacian_backend=FORMAL_EXECUTION_CONFIG["pinn_laplacian_backend"],
+            return_state=bool(kwargs.get("return_state", False)),
         )
         background_pred = pinn_result["background_pred"]
         extra = {
@@ -171,7 +172,7 @@ def main(*, force: bool = False):
                 fourier_config,
                 show_progress=True,
                 progress_desc=(
-                    f"E2 Fourier-LS [{sample_index}/{len(samples)}] "
+                    f"E2 Cosine-LS [{sample_index}/{len(samples)}] "
                     f"{sample['sample_id']}"
                 ),
             ),
@@ -227,6 +228,7 @@ def main(*, force: bool = False):
                     pinn_config,
                     device=device,
                     seed=seed,
+                    return_state=True,
                 ),
             )
             sample_output = output_root / "pinn" / f"seed_{seed}" / sample["sample_id"]
@@ -234,6 +236,15 @@ def main(*, force: bool = False):
             pinn_result = result["pinn_result"]
             utils.save_rows_csv(sample_output / "history.csv", pinn_result["history"])
             utils.write_json(sample_output / "final_parameters.json", _pinn_parameters(pinn_result))
+            if "state" in pinn_result:
+                torch.save(
+                    {
+                        "model_state": pinn_result["state"]["model_state"],
+                        "forcing_state": pinn_result["state"]["forcing_state"],
+                        "step": pinn_result["state"]["step"],
+                    },
+                    sample_output / "final_model_forcing_state.pt",
+                )
             metric_rows.append(_metric_row("pinn", seed, sample, result))
 
     summary = utils.summarize_rows(metric_rows, "method")
