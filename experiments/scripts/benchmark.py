@@ -16,6 +16,7 @@ from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
+from experiments.common.utils import reporting
 from experiments.configs.formal_experiment import FORMAL_EXECUTION_CONFIG, FORMAL_METHODS
 
 
@@ -340,11 +341,11 @@ def _grouped_results(rows):
                         "bg_mae_mean": np.mean([row["bg_mae"] for row in subset]),
                         "bg_mae_std": np.std([row["bg_mae"] for row in subset]),
                         "star_f1_mean": np.mean([row["star_f1"] for row in subset]),
-                        "flux_error_mean": _finite_metric_mean(
+                        "flux_error_mean": reporting.finite_mean(
                             subset, "matched_star_mean_relative_flux_error"
                         ),
                         "flux_error_valid_count": len(
-                            _finite_metric_values(
+                            reporting.finite_values(
                                 subset, "matched_star_mean_relative_flux_error"
                             )
                         ),
@@ -413,14 +414,14 @@ def _main_result_table(rows, training_rows):
                 "residual_ssim_std": np.std([row["residual_ssim"] for row in subset]),
                 "star_f1": np.mean([row["star_f1"] for row in subset]),
                 "star_f1_std": np.std([row["star_f1"] for row in subset]),
-                "matched_star_mean_relative_flux_error": _finite_metric_mean(
+                "matched_star_mean_relative_flux_error": reporting.finite_mean(
                     subset, "matched_star_mean_relative_flux_error"
                 ),
-                "flux_error_std": _finite_metric_std(
+                "flux_error_std": reporting.finite_std(
                     subset, "matched_star_mean_relative_flux_error"
                 ),
                 "flux_error_valid_count": len(
-                    _finite_metric_values(
+                    reporting.finite_values(
                         subset, "matched_star_mean_relative_flux_error"
                     )
                 ),
@@ -477,25 +478,6 @@ def _low_high_consistency(output_root, samples, metric_rows):
             }
         )
     return rows
-
-
-def _finite_metric_values(rows, key):
-    return [
-        float(row[key])
-        for row in rows
-        if isinstance(row.get(key), (int, float, np.number))
-        and np.isfinite(row[key])
-    ]
-
-
-def _finite_metric_mean(rows, key):
-    values = _finite_metric_values(rows, key)
-    return float(np.mean(values)) if values else float("nan")
-
-
-def _finite_metric_std(rows, key):
-    values = _finite_metric_values(rows, key)
-    return float(np.std(values)) if values else float("nan")
 
 
 def _mean_available(rows, key):

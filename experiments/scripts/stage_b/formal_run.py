@@ -11,6 +11,7 @@ import torch
 from experiments.common.baselines import unet_small as unet
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
+from experiments.common.utils import reporting
 from experiments.common.utils import stage_b_metrics
 from experiments.common.utils import stage_b_provenance as provenance
 from experiments.configs.formal_experiment import FORMAL_EXECUTION_CONFIG
@@ -86,29 +87,6 @@ def _metric_row(method, seed, sample, result):
     return row
 
 
-def _finite_values(rows, key):
-    values = []
-    for row in rows:
-        value = row.get(key)
-        try:
-            value = float(value)
-        except (TypeError, ValueError):
-            continue
-        if np.isfinite(value):
-            values.append(value)
-    return values
-
-
-def _mean(rows, key):
-    values = _finite_values(rows, key)
-    return float(np.mean(values)) if values else float("nan")
-
-
-def _std(rows, key):
-    values = _finite_values(rows, key)
-    return float(np.std(values)) if values else float("nan")
-
-
 def _main_table(rows, training_rows):
     metric_keys = (
         "bg_mae",
@@ -126,8 +104,8 @@ def _main_table(rows, training_rows):
         subset = [r for r in rows if r["method"] == method]
         item = {"method": method, "count": len(subset)}
         for key in metric_keys:
-            item[key] = _mean(subset, key)
-            item[key + "_std"] = _std(subset, key)
+            item[key] = reporting.finite_mean(subset, key)
+            item[key + "_std"] = reporting.finite_std(subset, key)
         train_times = [
             float(r["training_time_s"])
             for r in training_rows
@@ -156,13 +134,13 @@ def _grouped_table(rows):
                     "scene_type": scene,
                     "intensity_level": level,
                     "count": len(subset),
-                    "bg_mae": _mean(subset, "bg_mae"),
-                    "residual_ssim": _mean(subset, "residual_ssim"),
-                    "star_f1": _mean(subset, "star_f1"),
-                    "faint_star_recall": _mean(subset, "faint_star_recall"),
-                    "flux_error": _mean(subset, "matched_star_mean_relative_flux_error"),
-                    "protected_region_mae": _mean(subset, "protected_region_mae"),
-                    "protected_projection_abs_error": _mean(subset, "protected_projection_abs_error"),
+                    "bg_mae": reporting.finite_mean(subset, "bg_mae"),
+                    "residual_ssim": reporting.finite_mean(subset, "residual_ssim"),
+                    "star_f1": reporting.finite_mean(subset, "star_f1"),
+                    "faint_star_recall": reporting.finite_mean(subset, "faint_star_recall"),
+                    "flux_error": reporting.finite_mean(subset, "matched_star_mean_relative_flux_error"),
+                    "protected_region_mae": reporting.finite_mean(subset, "protected_region_mae"),
+                    "protected_projection_abs_error": reporting.finite_mean(subset, "protected_projection_abs_error"),
                 })
     return table
 
