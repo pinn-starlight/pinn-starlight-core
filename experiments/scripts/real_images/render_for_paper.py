@@ -1,7 +1,7 @@
 """Render E4 scientific TIFF outputs in each source photograph's own display style.
 
 This command is deliberately post-processing only:
-- it never reruns Gaussian / Cosine-LS / U-Net / PINN / Final-PINN;
+- it never reruns Gaussian / Cosine-LS / PINN / Final-PINN;
 - it never overwrites formal E4 TIFFs or metrics;
 - one display mapping is fitted independently per source image;
 - all methods for that source image share exactly the same mapping;
@@ -23,14 +23,12 @@ from experiments.common.utils import experiment_utils as utils
 METHODS = (
     "fft_gaussian",
     "fourier_ls",
-    "unet_small",
     "pinn",
     "pinn_decoupled_gradient",
 )
 METHOD_TITLES = {
     "fft_gaussian": "Gaussian",
     "fourier_ls": "Cosine-LS",
-    "unet_small": "U-Net",
     "pinn": "PINN",
     "pinn_decoupled_gradient": "Final-PINN",
 }
@@ -311,7 +309,7 @@ def _save_notes(path: Path, source_name: str) -> None:
 
 ## 正文优先
 
-使用 `paper_main_comparison.png`：原始照片 + Gaussian / Cosine-LS / U-Net / PINN / Final-PINN 的处理后照片。它最直接回答“不同方法处理后看起来怎样”。
+使用 `paper_main_comparison.png`：原始照片 + Gaussian / Cosine-LS / PINN / Final-PINN 的处理后照片。它最直接回答“不同方法处理后看起来怎样”。
 
 建议图注：
 
@@ -334,7 +332,7 @@ def _save_notes(path: Path, source_name: str) -> None:
 ## 公平性规则
 
 - 每张源 NEF **单独**拟合自己的显示映射，不让不同 NEF 共用一条全局拉伸曲线；
-- 对同一张 NEF，Gaussian / Cosine-LS / U-Net / PINN / Final-PINN **必须共享同一条映射**，不能按方法分别调亮；
+- 对同一张 NEF，Gaussian / Cosine-LS / PINN / Final-PINN **必须共享同一条映射**，不能按方法分别调亮；
 - `background_pred.tif`、`residual_pred.tif`、`metrics.csv` 等正式科学结果不被本脚本修改；
 - `background_estimate_display.png` 是背景估计的 NEF-style 可视化，不是新的数值背景；
 - `corrected_display.png` 是 `observed - background_pred` 的 NEF-style 可视化，仅用于论文展示。

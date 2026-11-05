@@ -6,7 +6,6 @@ Stage-A / Stage-B 正式实验代码。这里使用命名空间包（子目录�
 
 | 路径 | 作用 |
 | --- | --- |
-| `common/baselines/` | 五种方法实现：coordinate PINN、decoupled-gradient PINN、FFT-Gaussian、cosine-domain LS、U-Net |
 | `common/data/` | 半合成数据生成（Stage-A/B）、native 背景估计 |
 | `common/utils/` | 指标、选择产物、实验 IO、Stage-B 专用工具 |
 | `configs/` | `formal_experiment.py`（Stage-A）、`stage_b_experiment.py`（Stage-B）、`split_protocols.py`（standard / CV5） |
@@ -21,7 +20,6 @@ Stage-A / Stage-B 正式实验代码。这里使用命名空间包（子目录�
 Stage-A standard：
 
 1. `experiments.scripts.preflight.run` — 数据与 manifest 检查
-2. `selection.gaussian` / `selection.fourier_ls` / `selection.unet` / `e1` — 仅用 train/validation 选择
 3. `config_lock.run` — Global Configuration Lock
 4. `e2.run` — 四方法冻结 benchmark
 5. `e3.run` — Original-PINN 消融（正式入口默认包含）
@@ -30,7 +28,6 @@ Stage-A standard：
 Stage-B：
 
 1. `stage_b.preflight`
-2. `stage_b.select_gaussian` / `select_fourier_ls` / `select_unet` / `select_pinn`
 3. `stage_b.lock`
 4. `stage_b.formal_run`
 5. `final_pinn.stage_b`

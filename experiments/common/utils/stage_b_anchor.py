@@ -15,7 +15,6 @@ from experiments.configs.formal_experiment import FORMAL_METHODS, selection_depe
 CORE_METHOD_SOURCE_FILES = (
     "experiments/common/baselines/fft_gaussian.py",
     "experiments/common/baselines/cosine_ls.py",
-    "experiments/common/baselines/unet_small.py",
     "experiments/common/baselines/coordinate_pinn.py",
     "experiments/common/baselines/sgc_pinn.py",
     "src/pinn_starlight_core/physics/forcing.py",

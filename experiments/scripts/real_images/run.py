@@ -1,4 +1,4 @@
-"""E4: five-method qualitative comparison on real high-pollution images."""
+"""E4: four-method qualitative comparison on real high-pollution images."""
 
 
 import argparse
@@ -11,7 +11,6 @@ from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.baselines import fft_gaussian as fft
 from experiments.common.baselines import cosine_ls as fourier_ls
-from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 from experiments.common.utils import selection_artifacts as artifacts
@@ -59,14 +58,13 @@ def _formal_device():
 
 
 def main(*, force: bool = False):
-    print("E4 five-method real-image comparison")
+    print("E4 four-method real-image comparison")
     device = _formal_device()
     real_images = _default_real_images()
     global_lock, lock_verification = _load_global_lock_for_e4()
     gaussian_config = global_lock["methods"]["fft_gaussian"]
     fourier_config = global_lock["methods"]["fourier_ls"]
     fourier_lambda_ls, fourier_sparse_weight = fourier_ls.validate_frozen_config(fourier_config)
-    unet_config = global_lock["methods"]["unet_small"]
     pinn_method_config = global_lock["methods"]["pinn"]
     pinn_config = pinn_method_config["config"]
     seed = int(pinn_method_config["test_seeds"][0])
@@ -75,9 +73,6 @@ def main(*, force: bool = False):
     if frozen_final_config != FINAL_PINN_FOLLOWUP_CONFIG:
         raise ValueError("final PINN config differs from the frozen Stage-A Global Lock")
     final_seed = int(FINAL_PINN_FOLLOWUP_CONFIG["test_seeds"][0])
-
-    checkpoint = utils.to_absolute_path(unet_config["e4_checkpoint"])
-    unet_model, unet_checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
 
     # All frozen prerequisites are verified before --force is allowed to clear
     # the previous E4 output. This prevents a provenance/preflight failure from
@@ -102,9 +97,6 @@ def main(*, force: bool = False):
             "fourier_ls_alpha": fourier_config["alpha"],
             "fourier_ls_boundary": fourier_config["boundary_condition"],
             "fourier_ls_optimizer": fourier_config["optimizer"],
-            "unet_checkpoint": unet_config["e4_checkpoint"],
-            "unet_validation_loss": unet_checkpoint_data.get("validation_loss"),
-            "unet_inference": unet_config["inference"],
             "pinn_seed": seed,
             "final_pinn_method": final_pinn.METHOD_NAME,
             "final_pinn_config": FINAL_PINN_FOLLOWUP_CONFIG,
@@ -157,25 +149,6 @@ def main(*, force: bool = False):
             "runtime_s": time.perf_counter() - started,
             "peak_vram_mb": None,
             "fourier_info": fourier_info,
-        }
-
-        utils.reset_peak_vram(device)
-        started = time.perf_counter()
-        unet_background, unet_info = unet.predict_with_model(
-            unet_model,
-            observed,
-            device=device,
-            inference_mode=unet_config["inference"]["mode"],
-            tile_size=int(unet_config["inference"]["tile_size"]),
-            overlap=int(unet_config["inference"]["overlap"]),
-            return_info=True,
-        )
-        predictions["unet_small"] = {
-            "background_pred": unet_background,
-            "residual_pred": utils.reconstruct_residual(observed, unet_background),
-            "runtime_s": time.perf_counter() - started,
-            "peak_vram_mb": utils.peak_vram_mb(device),
-            **unet_info,
         }
 
         pinn_result = pinn.train_background(
@@ -340,14 +313,14 @@ def _load_global_lock_for_e4():
     Historical Stage-A locks fingerprinted ``experiments/scripts/real_images/run.py``
     together with the Stage-A formal sources. E4 is now an independent
     real-image evaluation and this runner intentionally changed from four to
-    five methods. Rebuilding a post-test Stage-A lock solely to update that
+    four methods. Rebuilding a post-test Stage-A lock solely to update that
     unrelated file hash would weaken the audit trail.
 
     We therefore try the ordinary strict verifier first. The compatibility
     path is entered only when the *sole* strict failure is the E4 runner hash.
     It then reproduces the frozen-lock checks while exempting exactly that one
     file; every other source hash, selection artifact, data-protocol hash,
-    formal-config snapshot, and U-Net checkpoint remains mandatory.
+    formal-config snapshot, and every other frozen hash remains mandatory.
     """
     try:
         lock = utils.load_global_configuration_lock(
@@ -444,14 +417,6 @@ def _verify_legacy_lock_except_e4_runner(lock):
             "Historical Global Lock does not contain exactly one E4 runner provenance record"
         )
 
-    for candidate in lock["methods"]["unet_small"].get("checkpoints", []):
-        checkpoint = utils.to_absolute_path(candidate["checkpoint"])
-        if not checkpoint.is_file():
-            raise FileNotFoundError(f"Frozen U-Net checkpoint missing: {checkpoint}")
-        expected_sha = candidate.get("sha256")
-        if expected_sha and utils.file_sha256(checkpoint) != expected_sha:
-            raise ValueError(f"Frozen U-Net checkpoint changed: {checkpoint}")
-
 
 def _save_comparison_figure(path, observed, predictions):
     column_count = 1 + len(METHODS)
@@ -469,7 +434,6 @@ def _save_comparison_figure(path, observed, predictions):
     titles = {
         "fft_gaussian": "FFT-Gaussian",
         "fourier_ls": "Cosine-LS",
-        "unet_small": "U-Net-small",
         "pinn": "PINN",
         final_pinn.METHOD_NAME: "Final-PINN",
     }
@@ -502,14 +466,14 @@ def _save_comparison_figure(path, observed, predictions):
 def _save_inspection_checklist(path, image_name):
     content = f"""# {image_name} inspection checklist
 
-| Check | FFT-Gaussian | Cosine-LS | U-Net-small | PINN | Final-PINN | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Large-scale gradient remains |  |  |  |  |  |  |
-| Stars absorbed into background |  |  |  |  |  |  |
-| Diffuse structure removed incorrectly |  |  |  |  |  |  |
-| Edge artifacts |  |  |  |  |  |  |
-| Negative values |  |  |  |  |  |  |
-| New bright points |  |  |  |  |  |  |
+| Check | FFT-Gaussian | Cosine-LS | PINN | Final-PINN | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Large-scale gradient remains |  |  |  |  |  |
+| Stars absorbed into background |  |  |  |  |  |
+| Diffuse structure removed incorrectly |  |  |  |  |  |
+| Edge artifacts |  |  |  |  |  |
+| Negative values |  |  |  |  |  |
+| New bright points |  |  |  |  |  |
 """
     Path(path).write_text(content, encoding="utf-8")
 
@@ -526,7 +490,7 @@ def _run_final_pinn_only(
 
     This reproduces the improved branch of ``decoupled_gradient_pinn.run_paired``
     exactly, but intentionally omits the matched data-only control because E4 is
-    a five-method qualitative comparison rather than a mechanism-ablation run.
+    a four-method qualitative comparison rather than a mechanism-ablation run.
     """
     cfg = final_pinn.normalized_followup_config(config)
     observed = utils.load_observed(observed)

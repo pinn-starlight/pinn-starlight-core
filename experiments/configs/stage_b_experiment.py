@@ -66,7 +66,6 @@ STAGE_B_CONFIG = {
         "stage_b_test_may_be_used_before_b_lock": False,
         "reselect_gaussian_on_stage_b_validation": True,
         "reselect_fourier_ls_on_stage_b_validation": True,
-        "retrain_unet_on_stage_b_train_validation": True,
         "reselect_pinn_on_stage_b_validation": True,
         "reason": (
             "compare each method under the harder Stage-B distribution without "

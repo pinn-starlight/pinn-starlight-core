@@ -1,7 +1,7 @@
 """Method-independent Stage10-B stress-test scene generator.
 
 The generator deliberately does not reuse the evaluated Gaussian filter,
-Screened-Poisson forcing family, cosine-domain LS solver, PINN, or U-Net.  It creates
+Screened-Poisson forcing family, cosine-domain LS solver, or PINN.  It creates
 smooth pollution fields whose spatial frequencies overlap a separate smooth
 "protected" structure that belongs to the clean target and must not be removed.
 """
@@ -64,7 +64,7 @@ def generate_stage_b_scene(height: int, width: int, scene_type: str, intensity_l
         "protected_generator": protected_meta,
         "spectral_overlap_coefficient": float(overlap),
         "generator_independence": (
-            "does_not_reuse_gaussian_filter_screened_poisson_forcing_fourier_ls_pinn_or_unet"
+            "does_not_reuse_gaussian_filter_screened_poisson_forcing_or_pinn"
         ),
     }
     return pollution.astype(np.float32), protected.astype(np.float32), truth

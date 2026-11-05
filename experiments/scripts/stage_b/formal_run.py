@@ -8,7 +8,6 @@ import argparse
 import numpy as np
 import torch
 
-from experiments.common.baselines import unet_small as unet
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import reporting
@@ -20,7 +19,7 @@ from experiments.scripts.benchmark import run_method
 from experiments.scripts.stage_b.lock import LOCK_PATH, FORMAL_SOURCE_FILES
 
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "stage_b/benchmark"
-METHODS = ("fft_gaussian", "fourier_ls", "unet_small", "pinn")
+METHODS = ("fft_gaussian", "fourier_ls", "pinn")
 
 
 def _load_lock():
@@ -233,37 +232,6 @@ def main(*, force=False, smoke=False):
         if "fourier_info" in result:
             utils.write_json(out / "estimated_parameters.json", result["fourier_info"])
         rows.append(_metric_row("fourier_ls", "deterministic", sample, result))
-
-    checkpoints = configs["unet_small"]["checkpoints"]
-    if smoke:
-        checkpoints = checkpoints[:1]
-    for info in checkpoints:
-        seed = int(info["seed"])
-        checkpoint = utils.to_absolute_path(info["checkpoint"])
-        if utils.file_sha256(checkpoint) != info["sha256"]:
-            raise ValueError(f"Stage-B U-Net checkpoint changed after lock: {checkpoint}")
-        model, checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
-        if abs(float(checkpoint_data["validation_loss"]) - float(info["validation_loss"])) > 1e-12:
-            raise ValueError(f"Stage-B U-Net checkpoint metadata mismatch: {checkpoint}")
-        pcount = utils.parameter_count(model)
-        training_rows.append({"method": "unet_small", **info})
-        for sample in samples:
-            result = _with_residual(
-                sample["observed"],
-                run_method(
-                    "unet_small",
-                    sample["observed"],
-                    configs["unet_small"],
-                    unet_model=model,
-                    unet_parameter_count=pcount,
-                    device=device,
-                ),
-            )
-            _save_result(output_root / "unet_small" / f"seed_{seed}" / sample["sample_id"], sample, result)
-            rows.append(_metric_row("unet_small", seed, sample, result))
-        del model
-        if device.type == "cuda":
-            torch.cuda.empty_cache()
 
     pinn_seeds = list(configs["pinn"]["test_seeds"])
     if smoke:

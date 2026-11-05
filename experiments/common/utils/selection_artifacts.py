@@ -36,11 +36,6 @@ SELECTION_SOURCE_DEPENDENCIES = {
         "src/pinn_starlight_core/physics/forcing.py",
         _COMMON_DATA_DEPENDENCY,
     ),
-    "unet_small": (
-        "experiments/scripts/selection/unet.py",
-        "experiments/common/baselines/unet_small.py",
-        _COMMON_DATA_DEPENDENCY,
-    ),
 }
 
 # After the Global Lock exists, any change to formal code must invalidate the

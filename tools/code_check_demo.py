@@ -13,10 +13,9 @@ figure is deliberately laid out like the paper's qualitative figures
 (backgrounds on top, background-subtracted residuals below) so the audience can
 connect the demo to Fig. 3 / Fig. 8.
 
-The U-Net-small column is omitted because its checkpoint lives in
-``B001_P03_models_*.zip``, which was not transferred to this machine.  Show
-``artifacts/review/e4_review_for_paper.zip`` for the full five-method real-image
-results instead (see docs/CODE_CHECK_PLAYBOOK.md).
+The demo runs the same four methods as the paper.  Show
+``artifacts/review/e4_review_for_paper.zip`` for the archived real-image
+results (see docs/CODE_CHECK_PLAYBOOK.md).
 
 Usage
 -----

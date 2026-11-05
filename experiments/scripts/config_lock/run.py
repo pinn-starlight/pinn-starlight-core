@@ -1,9 +1,8 @@
 """Pure Stage-10 Global Configuration Lock gate.
 
 This script does not train, tune, or load synthetic image arrays. It verifies
-four pre-test selection artifacts, verifies their method-local dependencies,
-checks every U-Net checkpoint hash, snapshots formal source/config state, and
-then opens the held-out test gate.
+three pre-test selection artifacts, verifies their method-local dependencies,
+snapshots formal source/config state, and then opens the held-out test gate.
 """
 
 from __future__ import annotations
@@ -41,11 +40,6 @@ SELECTORS = {
         "splits": ("validation",),
         "command": "python -m experiments.scripts.selection.fourier_ls",
     },
-    "unet_small": {
-        "path": utils.UNET_SELECTION_ARTIFACT,
-        "splits": ("train", "validation"),
-        "command": "python -m experiments.scripts.selection.unet",
-    },
 }
 
 
@@ -77,12 +71,10 @@ def main(*, force: bool = False):
 
     gaussian = selected_artifacts["fft_gaussian"]["selected"]
     fourier = selected_artifacts["fourier_ls"]["selected"]
-    unet = selected_artifacts["unet_small"]["selected"]
     pinn_selected = selected_artifacts["pinn"]["selected"]
 
     fourier_ls.validate_frozen_config(fourier)
     pinn_config = dict(pinn.normalized_config(pinn_selected["config"]))
-    _verify_unet_checkpoints(unet)
 
     config_snapshot = formal_config_snapshot()
     selection_snapshot = {
@@ -134,7 +126,6 @@ def main(*, force: bool = False):
         "methods": {
             "fft_gaussian": gaussian,
             "fourier_ls": fourier,
-            "unet_small": unet,
             "pinn": {
                 "config": pinn_config,
                 "selection_metric": pinn_selected["selection_metric"],
@@ -167,29 +158,9 @@ def main(*, force: bool = False):
         f"Gaussian sigma={gaussian['sigma']}",
         f"Cosine-LS lambda_LS={fourier['lambda_ls']}",
         f"Cosine-LS sparse={fourier['sparse_weight']}",
-        f"U-Net checkpoints={len(unet['checkpoints'])}",
         f"PINN steps={pinn_config['steps']}",
         "formal_test_ready=True",
     )
-
-
-def _verify_unet_checkpoints(unet_config: dict) -> None:
-    candidates = unet_config.get("checkpoints", [])
-    if not candidates:
-        raise ValueError("U-Net selection artifact contains no checkpoints")
-    seen = set()
-    for candidate in candidates:
-        checkpoint = utils.to_absolute_path(candidate["checkpoint"])
-        if not checkpoint.is_file():
-            raise FileNotFoundError(f"Selected U-Net checkpoint missing: {checkpoint}")
-        if utils.file_sha256(checkpoint) != candidate.get("sha256"):
-            raise ValueError(f"Selected U-Net checkpoint hash changed: {checkpoint}")
-        seen.add(candidate["checkpoint"])
-    if unet_config.get("e4_checkpoint") not in seen:
-        raise ValueError("E4 U-Net checkpoint is not one of the selected seed checkpoints")
-    e4_checkpoint = utils.to_absolute_path(unet_config["e4_checkpoint"])
-    if utils.file_sha256(e4_checkpoint) != unet_config.get("e4_checkpoint_sha256"):
-        raise ValueError("E4 U-Net checkpoint hash mismatch")
 
 
 def _parse_args():

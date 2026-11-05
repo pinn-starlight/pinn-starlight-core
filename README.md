@@ -1,13 +1,12 @@
 # PINN-Starlight Core
 
-物理启发的夜空 / 光污染背景估计研究代码。仓库包含 Stage-A / Stage-B 正式实验、E1–E4 子实验、CV5 分组评估、五种方法的实现、论文图流水线，以及服务器结果搬运与离线重建工具。
+物理启发的夜空 / 光污染背景估计研究代码。仓库包含 Stage-A / Stage-B 正式实验、E1–E4 子实验、CV5 分组评估、四种方法的实现、论文图流水线，以及服务器结果搬运与离线重建工具。
 
 ## 目录结构
 
 | 路径 | 内容 |
 | --- | --- |
 | `src/pinn_starlight_core/` | 可安装的核心包：坐标 MLP、Laplacian/损失、effective forcing、图像读取；`python -m pinn_starlight_core` 是独立小 demo，不属于论文主流程 |
-| `experiments/common/baselines/` | 五种方法：coordinate PINN、decoupled-gradient PINN（最终方法）、FFT-Gaussian、cosine-domain LS、U-Net |
 | `experiments/configs/` | 实验配置的唯一来源：Stage-A/Stage-B、split 与 CV5 协议 |
 | `experiments/scripts/e1`…`e4` | 选择、冻结 benchmark、消融、真实图像实验 |
 | `experiments/scripts/protocol/` | Stage-A / Stage-B / CV5 的阶段编排与聚合 |

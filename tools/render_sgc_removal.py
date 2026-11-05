@@ -3,7 +3,7 @@
 Why this exists
 ---------------
 The E4 formal run produced one `comparison.png` per real image, laid out as
-2 rows x 6 columns: [Observed | FFT-Gaussian | Cosine-LS | U-Net-small | PINN |
+2 rows x 5 columns: [Observed | FFT-Gaussian | Cosine-LS | PINN |
 Final-PINN], with backgrounds on the top row and background-subtracted
 residuals on the bottom row.
 

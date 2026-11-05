@@ -13,7 +13,6 @@ import torch
 from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.baselines import fft_gaussian as fft
 from experiments.common.baselines import cosine_ls as fourier_ls
-from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 from experiments.common.utils import reporting
@@ -53,22 +52,6 @@ def run_method(method: str, observed, method_config: dict, **kwargs) -> dict:
             "fourier_info": fourier_info,
             "parameter_count": 0,
             "peak_vram_mb": None,
-        }
-    elif method == "unet_small":
-        inference = method_config["inference"]
-        background_pred, inference_info = unet.predict_with_model(
-            kwargs["unet_model"],
-            observed,
-            device=device,
-            inference_mode=inference["mode"],
-            tile_size=int(inference["tile_size"]),
-            overlap=int(inference["overlap"]),
-            return_info=True,
-        )
-        extra = {
-            "parameter_count": kwargs["unet_parameter_count"],
-            "peak_vram_mb": utils.peak_vram_mb(device),
-            **inference_info,
         }
     elif method == "pinn":
         pinn_result = pinn.train_background(
@@ -184,38 +167,6 @@ def main(*, force: bool = False):
         _save_result(sample_output, sample, result)
         utils.write_json(sample_output / "estimated_parameters.json", result["fourier_info"])
         metric_rows.append(_metric_row("fourier_ls", "deterministic", sample, result))
-
-    unet_config = method_configs["unet_small"]
-    for checkpoint_info in unet_config["checkpoints"]:
-        seed = int(checkpoint_info["seed"])
-        checkpoint = utils.to_absolute_path(checkpoint_info["checkpoint"])
-        model, checkpoint_data = unet.load_checkpoint_model(checkpoint, device)
-        parameter_count = utils.parameter_count(model)
-        if abs(float(checkpoint_data["validation_loss"]) - float(checkpoint_info["validation_loss"])) > 1e-12:
-            raise ValueError(f"Frozen U-Net checkpoint metadata changed: {checkpoint}")
-        training_rows.append({"method": "unet_small", **checkpoint_info})
-
-        for sample in samples:
-            result = _with_common_residual(
-                sample["observed"],
-                run_method(
-                    "unet_small",
-                    sample["observed"],
-                    unet_config,
-                    unet_model=model,
-                    unet_parameter_count=parameter_count,
-                    device=device,
-                ),
-            )
-            _save_result(
-                output_root / "unet_small" / f"seed_{seed}" / sample["sample_id"],
-                sample,
-                result,
-            )
-            metric_rows.append(_metric_row("unet_small", seed, sample, result))
-        del model
-        if device.type == "cuda":
-            torch.cuda.empty_cache()
 
     pinn_config = method_configs["pinn"]
     for seed in pinn_config["test_seeds"]:

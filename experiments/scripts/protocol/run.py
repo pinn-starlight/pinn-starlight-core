@@ -44,7 +44,6 @@ def _phase_modules(stage: str, phase: str, *, force: bool, device: str, fourier_
             return [
                 ("experiments.scripts.selection.gaussian", force_arg),
                 ("experiments.scripts.selection.fourier_ls", [*force_arg, "--backend", fourier_backend]),
-                ("experiments.scripts.selection.unet", force_arg),
                 ("experiments.scripts.selection.pinn", [*force_arg, "--device", device, "--laplacian-backend", "autograd"]),
             ]
         if phase == "lock":
@@ -60,7 +59,6 @@ def _phase_modules(stage: str, phase: str, *, force: bool, device: str, fourier_
             return [
                 ("experiments.scripts.stage_b.select_gaussian", force_arg),
                 ("experiments.scripts.stage_b.select_fourier_ls", [*force_arg, "--backend", fourier_backend]),
-                ("experiments.scripts.stage_b.select_unet", force_arg),
                 ("experiments.scripts.stage_b.select_pinn", [*force_arg, "--device", device, "--laplacian-backend", "autograd"]),
             ]
         if phase == "lock":

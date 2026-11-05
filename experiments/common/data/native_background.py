@@ -3,7 +3,7 @@
 This preprocessing is intentionally independent of every evaluated method. It
 removes only the low-frequency sky level already present in the camera-acquired
 reference before synthetic skyglow is injected. The estimated native background
-is never passed to PINN, cosine-domain LS, Gaussian, or U-Net.
+is never passed to PINN, cosine-domain LS, or Gaussian.
 """
 
 from __future__ import annotations

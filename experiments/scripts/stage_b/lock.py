@@ -15,7 +15,6 @@ from experiments.configs.stage_b_experiment import (
 from experiments.scripts.stage_b import (
     select_gaussian,
     select_fourier_ls,
-    select_unet,
     select_pinn,
 )
 
@@ -34,7 +33,6 @@ FORMAL_SOURCE_FILES = (
     "experiments/common/utils/experiment_utils.py",
     "experiments/common/baselines/fft_gaussian.py",
     "experiments/common/baselines/cosine_ls.py",
-    "experiments/common/baselines/unet_small.py",
     "experiments/common/baselines/coordinate_pinn.py",
     "experiments/common/baselines/sgc_pinn.py",
     "src/pinn_starlight_core/physics/forcing.py",
@@ -70,14 +68,6 @@ def main(*, force=False):
             required_splits=("validation",),
             source_files=select_fourier_ls.SOURCE_FILES,
         ),
-        "unet_small": provenance.verify_selection_artifact(
-            select_unet.ARTIFACT,
-            method="unet_small",
-            selection_config=stage_b_selection_config("unet_small"),
-            manifest=STAGE_B_MANIFEST,
-            required_splits=("train", "validation"),
-            source_files=select_unet.SOURCE_FILES,
-        ),
         "pinn": provenance.verify_selection_artifact(
             select_pinn.ARTIFACT,
             method="pinn",
@@ -97,7 +87,6 @@ def main(*, force=False):
     methods = {
         "fft_gaussian": artifacts["fft_gaussian"]["selected"],
         "fourier_ls": artifacts["fourier_ls"]["selected"],
-        "unet_small": artifacts["unet_small"]["selected"],
         "pinn": {
             **artifacts["pinn"]["selected"],
             "test_seeds": list(STAGE_B_TEST_SEEDS),
@@ -142,7 +131,6 @@ def main(*, force=False):
             for method, path in {
                 "fft_gaussian": select_gaussian.ARTIFACT,
                 "fourier_ls": select_fourier_ls.ARTIFACT,
-                "unet_small": select_unet.ARTIFACT,
                 "pinn": select_pinn.ARTIFACT,
             }.items()
         },

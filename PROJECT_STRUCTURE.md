@@ -135,10 +135,9 @@ experiments/
 | 文件 | 方法 | 角色 |
 | --- | --- | --- |
 | `coordinate_pinn.py` | Coordinate PINN | E0/E1/E2/E3/E4 共用的标准 PINN；包含 `PINNConfig`、`train_background` |
-| `decoupled_gradient_pinn.py` | Decoupled-gradient PINN（最终方法） | Stage-11 最终方法：数据-only `B0` → 固定几何 forcing 拟合 → 解耦梯度微调 |
+| `sgc_pinn.py` | SGC-PINN（最终方法） | Stage-11 最终方法：数据-only `B0` → 固定几何 forcing 拟合 → 解耦梯度微调 |
 | `fft_gaussian.py` | FFT-Gaussian | 频域高斯低通基线 |
-| `fft_screened_poisson.py` | Cosine-domain LS（`fourier_ls` / DCT） | 在 DCT-II 域解析求解 screened-Poisson；对 K 个 forcing 活跃集枚举 |
-| `unet_small.py` | U-Net Small | 四次下采样/上采样 + skip connection；提供训练、预测与 checkpoint 接口 |
+| `cosine_ls.py` | Cosine-LS（DCT-II 解析解） | 在 DCT-II 域解析求解 screened-Poisson；对 K 个 forcing 活跃集枚举 |
 
 所有方法都遵守同一个边界：**只用观测值和 train/validation 做选择或训练，test 只在冻结之后打开**。
 
@@ -182,19 +181,17 @@ experiments/
 | 目录/文件 | 阶段 | 作用 |
 | --- | --- | --- |
 | `preflight/run.py` | 公共 | 只读检查数据、manifest、真实图像数量 |
-| `selection/gaussian/run.py` | Stage-A 选择 | 选择 FFT-Gaussian 的 σ |
-| `selection/fourier_ls/run.py` | Stage-A 选择 | 选择 cosine-domain LS 的 λ 与稀疏权重 |
-| `selection/unet/run.py` | Stage-A 选择 | 在 train+validation 上训练/选择 U-Net |
-| `e1/run.py` | Stage-A 选择 | E1：选择 PINN 配置 |
+| `selection/gaussian.py` | Stage-A 选择 | 选择 FFT-Gaussian 的 σ |
+| `selection/fourier_ls.py` | Stage-A 选择 | 选择 cosine-domain LS 的 λ 与稀疏权重 |
+| `selection/pinn.py` | Stage-A 选择 | 选择 PINN 配置 |
 | `config_lock/run.py` | Stage-A 冻结 | 生成 Global Configuration Lock |
-| `e2/run.py` | Stage-A 评估 | 四方法冻结 benchmark（只打开 test） |
-| `e3/run.py` | Stage-A 消融 | Original-PINN 消融 |
-| `e4/run.py` | E4 | 真实高污染图像五方法对比 |
-| `e4/render_for_paper.py` | E4 出图 | 按每张源图的显示风格渲染 E4 结果 |
+| `benchmark.py` | Stage-A 评估 | 三方法冻结 benchmark（只打开 test） |
+| `ablation.py` | Stage-A 消融 | Original-PINN 消融 |
+| `real_images/run.py` | E4 | 真实高污染图像四方法对比 |
+| `real_images/render_for_paper.py` | E4 出图 | 按每张源图的显示风格渲染 E4 结果 |
 | `stage_b/preflight.py` | Stage-B | Stage-B 预检 |
 | `stage_b/select_gaussian.py` | Stage-B 选择 | Gaussian 选择 |
 | `stage_b/select_fourier_ls.py` | Stage-B 选择 | cosine-domain LS 选择 |
-| `stage_b/select_unet.py` | Stage-B 选择 | U-Net 训练/选择 |
 | `stage_b/select_pinn.py` | Stage-B 选择 | PINN 选择 |
 | `stage_b/lock.py` | Stage-B 冻结 | 生成 Stage-B Global Lock |
 | `stage_b/formal_run.py` | Stage-B 评估 | Stage-B 正式 benchmark |
@@ -292,12 +289,11 @@ export PINN_STARLIGHT_DATA_ROOT=/path/to/data-root
 ```text
 experiments/outputs/
 ├── selection/
-│   ├── pinn/                         # E1 选择产物
+│   ├── pinn/                         # PINN 选择产物
 │   ├── fft_gaussian/
-│   ├── fourier_ls/
-│   └── unet_small/
+│   └── fourier_ls/
 ├── configuration_lock/               # Stage-A Global Configuration Lock
-├── e2_benchmark/                     # 四方法冻结 benchmark
+├── e2_benchmark/                     # 三方法冻结 benchmark
 ├── e3_ablation/                      # Original-PINN 消融
 ├── final_pinn_validation/            # 最终 PINN 配对评估
 ├── e4_real/                          # 真实图像五方法对比
@@ -332,10 +328,10 @@ experiments/outputs/
 ensure_dataset(synthetic_formal)
   -> protocol.run --stage a --phase all
        -> preflight
-       -> selection.gaussian / selection.fourier_ls / selection.unet / e1
+       -> selection.gaussian / selection.fourier_ls / selection.pinn
        -> config_lock
-       -> e2 (benchmark)
-       -> e3 (ablation)
+       -> benchmark
+       -> ablation
   -> final_pinn.stage_a
 ```
 
@@ -345,7 +341,7 @@ ensure_dataset(synthetic_formal)
 ensure_dataset(synthetic_stage_b)
   -> protocol.run --stage b --phase all
        -> stage_b.preflight
-       -> stage_b.select_gaussian / select_fourier_ls / select_unet / select_pinn
+       -> stage_b.select_gaussian / select_fourier_ls / select_pinn
        -> stage_b.lock
        -> stage_b.formal_run
   -> final_pinn.stage_b

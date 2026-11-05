@@ -81,11 +81,9 @@ SELECTION_ROOT = OUTPUT_ROOT / "selection"
 PINN_SELECTION_ROOT = SELECTION_ROOT / "pinn"
 GAUSSIAN_SELECTION_ROOT = SELECTION_ROOT / "fft_gaussian"
 FOURIER_LS_SELECTION_ROOT = SELECTION_ROOT / "fourier_ls"
-UNET_SELECTION_ROOT = SELECTION_ROOT / "unet_small"
 PINN_SELECTION_ARTIFACT = PINN_SELECTION_ROOT / "pinn_selected.json"
 GAUSSIAN_SELECTION_ARTIFACT = GAUSSIAN_SELECTION_ROOT / "gaussian_selected.json"
 FOURIER_LS_SELECTION_ARTIFACT = FOURIER_LS_SELECTION_ROOT / "fourier_ls_selected.json"
-UNET_SELECTION_ARTIFACT = UNET_SELECTION_ROOT / "unet_selected.json"
 GLOBAL_CONFIGURATION_LOCK = OUTPUT_ROOT / "configuration_lock/global_configuration_lock.json"
 SEEDS = tuple(FORMAL_SEEDS)
 
@@ -298,7 +296,7 @@ def load_global_configuration_lock(
         raise RuntimeError("Global Configuration Lock is not complete for formal test")
 
     methods = lock.get("methods", {})
-    required_methods = ("fft_gaussian", "fourier_ls", "unet_small", "pinn")
+    required_methods = ("fft_gaussian", "fourier_ls", "pinn")
     for method in required_methods:
         if method not in methods:
             raise ValueError(f"Global lock is missing method configuration: {method}")
@@ -380,13 +378,6 @@ def load_global_configuration_lock(
             artifact_utils.FORMAL_SOURCE_DEPENDENCIES,
         )
 
-        for candidate in methods["unet_small"].get("checkpoints", []):
-            checkpoint = to_absolute_path(candidate["checkpoint"])
-            if not checkpoint.is_file():
-                raise FileNotFoundError(f"Frozen U-Net checkpoint missing: {checkpoint}")
-            expected_sha = candidate.get("sha256")
-            if expected_sha and file_sha256(checkpoint) != expected_sha:
-                raise ValueError(f"Frozen U-Net checkpoint changed: {checkpoint}")
     return lock
 
 

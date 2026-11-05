@@ -16,12 +16,10 @@ import math
 
 FORMAL_CONFIG_SCHEMA_VERSION = 5
 FORMAL_SEEDS = (20260728, 20260729, 20260730)
-FORMAL_METHODS = ("fft_gaussian", "fourier_ls", "unet_small", "pinn")
+FORMAL_METHODS = ("fft_gaussian", "fourier_ls", "pinn")
 
 # Formal Stage10-A execution policy.  These settings freeze numerical/backend
 # choices that should not depend on environment variables or GPU count.
-# `unet_small` remains the legacy internal identifier; the paper-facing label
-# is the standard-capacity single-channel U-Net baseline.
 FORMAL_EXECUTION_CONFIG = {
     "benchmark_gpu_policy": "single_visible_gpu",
     "benchmark_device": "cuda:0",
@@ -30,10 +28,6 @@ FORMAL_EXECUTION_CONFIG = {
     "fourier_ls_numeric_dtype": "float64",
     "fourier_ls_transform": "DCT-II (orthonormal)",
     "fourier_ls_boundary": "zero_normal_derivative_neumann",
-    "unet_training_memory_format": "nchw_contiguous",
-    "unet_optimizer": "Adam",
-    "unet_fused_adam": False,
-    "unet_tiled_batch_size": 1,
 }
 
 SYNTHETIC_DATA_CONFIG = {
@@ -274,32 +268,6 @@ FINAL_PINN_FOLLOWUP_CONFIG = {
     "test_seeds": [FORMAL_SEEDS[0]],
 }
 
-UNET_CONFIG = {
-    "training": {
-        "patch_size": 256,
-        "epochs": 12,
-        "steps_per_epoch": 100,
-        "batch_size": 4,
-        "base_channels": 64,
-        "conv_padding": 1,
-        "conv_padding_mode": "zeros",
-        "learning_rate": 1e-3,
-        "patience": 3,
-        "min_delta_relative": 0.002,
-        "amp_requested": True,
-        "seeds": list(FORMAL_SEEDS),
-    },
-    "inference": {
-        "mode": "tiled",
-        "tile_size": 256,
-        "overlap": 64,
-        "policy": "fixed tiled inference",
-    },
-    "selection": {
-        "checkpoint_metric": "validation_loss",
-        "e4_checkpoint_rule": "minimum validation_loss across formal seeds",
-    },
-}
 
 FORMAL_EXPERIMENT_CONFIG = {
     "schema_version": FORMAL_CONFIG_SCHEMA_VERSION,
@@ -309,7 +277,6 @@ FORMAL_EXPERIMENT_CONFIG = {
     "pinn": PINN_CONFIG,
     "fft_gaussian": GAUSSIAN_CONFIG,
     "fourier_ls": FOURIER_LS_CONFIG,
-    "unet_small": UNET_CONFIG,
     "final_pinn_followup": FINAL_PINN_FOLLOWUP_CONFIG,
 }
 
@@ -336,6 +303,4 @@ def selection_dependency_config(method: str) -> dict:
         return deepcopy({**data_dependency, **GAUSSIAN_CONFIG})
     if method == "fourier_ls":
         return deepcopy({**data_dependency, **FOURIER_LS_CONFIG})
-    if method == "unet_small":
-        return deepcopy({**data_dependency, **UNET_CONFIG})
     raise ValueError(f"Unknown formal method: {method}")
