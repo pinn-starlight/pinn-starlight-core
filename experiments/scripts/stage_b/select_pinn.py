@@ -150,63 +150,67 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
     initial_centers = pinn_selector._precompute_initial_centers(validation_rows, base_config)
     candidate_table = []
 
-    # Reuse Stage10-A E1 machinery without modifying Stage10-A source.
-    original_evaluator = pinn_selector.metrics.evaluate_synthetic
-    pinn_selector.metrics.evaluate_synthetic = _evaluate_stage_b_for_pinn_selection
-    try:
-        selected_config, _ = pinn_selector._select_stage(
-            "T1_network",
-            base_config,
-            [{"hidden_dims": list(candidate)} for candidate in selection["network_candidates"]],
-            validation_rows,
-            output_root,
-            seed,
-            device,
-            candidate_table,
-            keep_states=False,
-            laplacian_backend=laplacian_backend,
-            initial_centers_by_sample=initial_centers,
-        )
-        selected_config, _ = pinn_selector._select_stage(
-            "T2_physics_weight",
-            selected_config,
-            [{"physics_weight": value} for value in selection["physics_weight_candidates"]],
-            validation_rows,
-            output_root,
-            seed,
-            device,
-            candidate_table,
-            keep_states=False,
-            laplacian_backend=laplacian_backend,
-            initial_centers_by_sample=initial_centers,
-        )
-        selected_config, selected_result = pinn_selector._select_stage(
-            "T3_sparse_weight",
-            selected_config,
-            [{"sparse_weight": value} for value in selection["sparse_weight_candidates"]],
-            validation_rows,
-            output_root,
-            seed,
-            device,
-            candidate_table,
-            keep_states=True,
-            laplacian_backend=laplacian_backend,
-            initial_centers_by_sample=initial_centers,
-        )
-        selected_config, selected_result = pinn_selector._continue_until_stable(
-            selected_config,
-            selected_result,
-            validation_rows,
-            output_root,
-            device,
-            candidate_table,
-            selection,
-            seed,
-            laplacian_backend,
-            initial_centers,
-        )
-    finally:
-        pinn_selector.metrics.evaluate_synthetic = original_evaluator
+    # Stage-B reuses the Stage-A selection machinery, but its star-reference
+    # semantics differ (coordinates frozen from base_clean, flux measured on the
+    # Stage-B clean target).  The evaluator is therefore passed in explicitly
+    # rather than monkey-patched into the shared metrics module.
+    evaluator = _evaluate_stage_b_for_pinn_selection
+
+    selected_config, _ = pinn_selector._select_stage(
+        "T1_network",
+        base_config,
+        [{"hidden_dims": list(candidate)} for candidate in selection["network_candidates"]],
+        validation_rows,
+        output_root,
+        seed,
+        device,
+        candidate_table,
+        keep_states=False,
+        laplacian_backend=laplacian_backend,
+        initial_centers_by_sample=initial_centers,
+        evaluator=evaluator,
+    )
+    selected_config, _ = pinn_selector._select_stage(
+        "T2_physics_weight",
+        selected_config,
+        [{"physics_weight": value} for value in selection["physics_weight_candidates"]],
+        validation_rows,
+        output_root,
+        seed,
+        device,
+        candidate_table,
+        keep_states=False,
+        laplacian_backend=laplacian_backend,
+        initial_centers_by_sample=initial_centers,
+        evaluator=evaluator,
+    )
+    selected_config, selected_result = pinn_selector._select_stage(
+        "T3_sparse_weight",
+        selected_config,
+        [{"sparse_weight": value} for value in selection["sparse_weight_candidates"]],
+        validation_rows,
+        output_root,
+        seed,
+        device,
+        candidate_table,
+        keep_states=True,
+        laplacian_backend=laplacian_backend,
+        initial_centers_by_sample=initial_centers,
+        evaluator=evaluator,
+    )
+    selected_config, selected_result = pinn_selector._continue_until_stable(
+        selected_config,
+        selected_result,
+        validation_rows,
+        output_root,
+        device,
+        candidate_table,
+        selection,
+        seed,
+        laplacian_backend,
+        initial_centers,
+        evaluator=evaluator,
+    )
 
     selected_config = dict(selected_config)
     selected_config["steps"] = int(max(row["step"] for row in selected_result["rows"]))

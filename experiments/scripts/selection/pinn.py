@@ -29,8 +29,16 @@ def run_candidate(
     return_states=False,
     laplacian_backend=None,
     initial_centers_by_sample=None,
+    evaluator=None,
 ):
-    """Run one PINN candidate on the fixed validation split."""
+    """Run one PINN candidate on the fixed validation split.
+
+    ``evaluator`` is the metric function applied to each validation sample.  It
+    defaults to the Stage-A ``metrics.evaluate_synthetic``; the Stage-B selector
+    passes its own implementation because Stage-B reference semantics differ.
+    """
+    if evaluator is None:
+        evaluator = metrics.evaluate_synthetic
     output_dir.mkdir(parents=True, exist_ok=True)
     utils.save_run_metadata(
         output_dir,
@@ -77,7 +85,7 @@ def run_candidate(
         utils.save_rows_csv(sample_output / "history.csv", result["history"])
         utils.write_json(sample_output / "final_parameters.json", _final_parameters(result))
 
-        scores = metrics.evaluate_synthetic(sample, prediction)
+        scores = evaluator(sample, prediction)
         rows.append(
             {
                 "sample_id": sample_id,
@@ -225,6 +233,7 @@ def _select_stage(
     keep_states,
     laplacian_backend,
     initial_centers_by_sample,
+    evaluator=None,
 ):
     best = None
     for index, update in enumerate(updates, start=1):
@@ -240,6 +249,7 @@ def _select_stage(
             return_states=keep_states,
             laplacian_backend=laplacian_backend,
             initial_centers_by_sample=initial_centers_by_sample,
+            evaluator=evaluator,
         )
         row = {
             "stage": stage,
@@ -269,6 +279,7 @@ def _continue_until_stable(
     seed,
     laplacian_backend,
     initial_centers_by_sample,
+    evaluator=None,
 ):
     total_steps = int(config["steps"])
     previous_mae = current_result["aggregate"]["bg_mae"]
@@ -297,6 +308,7 @@ def _continue_until_stable(
             return_states=True,
             laplacian_backend=laplacian_backend,
             initial_centers_by_sample=initial_centers_by_sample,
+            evaluator=evaluator,
         )
         current_mae = continued["aggregate"]["bg_mae"]
         relative_improvement = (previous_mae - current_mae) / max(previous_mae, 1e-12)
