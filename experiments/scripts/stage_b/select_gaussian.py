@@ -1,18 +1,22 @@
-"""Stage10-B Gaussian validation selector."""
+"""Stage-B Gaussian validation selector.
+
+Reuses the Stage-A scoring implementation (same candidate space, same metric);
+only the manifest, config source and artifact schema differ.
+"""
 from __future__ import annotations
 import argparse
-import numpy as np
 
-from experiments.common.baselines import fft_gaussian as fft
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import stage_b_provenance as provenance
 from experiments.configs.stage_b_experiment import stage_b_selection_config
+from experiments.scripts.selection.gaussian import validation_mse_scores
 
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "stage_b/selection/fft_gaussian"
 ARTIFACT = OUTPUT_ROOT / "gaussian_selected.json"
 SOURCE_FILES = (
     "experiments/scripts/stage_b/select_gaussian.py",
+    "experiments/scripts/selection/gaussian.py",
     "experiments/configs/stage_b_experiment.py",
     "experiments/common/data/generate_stage_b.py",
     "experiments/common/data/stage_b_backgrounds.py",
@@ -26,16 +30,10 @@ def main(*, force=False):
     rows = utils.load_manifest(STAGE_B_MANIFEST, split="validation")
     samples = [utils.load_synthetic_sample(row) for row in rows]
     config = stage_b_selection_config("fft_gaussian")
-    candidates = []
-    for sigma in config["selection"]["sigma_candidates"]:
-        losses = []
-        for sample in samples:
-            pred = fft.estimate_background(sample["observed"], float(sigma))
-            losses.append(float(np.mean((pred - sample["background_true"]) ** 2)))
-        candidates.append({
-            "sigma": float(sigma),
-            "validation_background_mse": float(np.mean(losses)),
-        })
+    candidates = validation_mse_scores(
+        samples,
+        config["selection"]["sigma_candidates"],
+    )
     best = min(candidates, key=lambda x: x["validation_background_mse"])
     selected = {
         "sigma": float(best["sigma"]),
