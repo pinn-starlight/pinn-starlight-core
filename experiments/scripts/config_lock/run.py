@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 
-from experiments.common.baselines import fft_screened_poisson as fourier_ls
+from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import selection_artifacts as artifacts
@@ -29,22 +29,22 @@ SELECTORS = {
     "pinn": {
         "path": utils.PINN_SELECTION_ARTIFACT,
         "splits": ("validation",),
-        "command": "python -m experiments.scripts.e1.run",
+        "command": "python -m experiments.scripts.selection.pinn",
     },
     "fft_gaussian": {
         "path": utils.GAUSSIAN_SELECTION_ARTIFACT,
         "splits": ("validation",),
-        "command": "python -m experiments.scripts.selection.gaussian.run",
+        "command": "python -m experiments.scripts.selection.gaussian",
     },
     "fourier_ls": {
         "path": utils.FOURIER_LS_SELECTION_ARTIFACT,
         "splits": ("validation",),
-        "command": "python -m experiments.scripts.selection.fourier_ls.run",
+        "command": "python -m experiments.scripts.selection.fourier_ls",
     },
     "unet_small": {
         "path": utils.UNET_SELECTION_ARTIFACT,
         "splits": ("train", "validation"),
-        "command": "python -m experiments.scripts.selection.unet.run",
+        "command": "python -m experiments.scripts.selection.unet",
     },
 }
 

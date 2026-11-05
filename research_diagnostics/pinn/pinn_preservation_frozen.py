@@ -46,8 +46,8 @@ from tqdm import tqdm
 
 import pinn_starlight_core.nn.pinn_loss as pinn_loss
 from experiments.common.baselines import coordinate_pinn as base_pinn
-from experiments.common.baselines import decoupled_gradient_pinn as formal_followup
-from experiments.common.baselines import fft_screened_poisson as dct_solver
+from experiments.common.baselines import sgc_pinn as formal_followup
+from experiments.common.baselines import cosine_ls as dct_solver
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics

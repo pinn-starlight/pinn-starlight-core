@@ -44,7 +44,7 @@ CV5：
 
 E4：
 
-1. `experiments.scripts.e4.run` — 五方法真实图像对比
+1. `experiments.scripts.real_images.run` — 五方法真实图像对比
 
 ## 说明
 

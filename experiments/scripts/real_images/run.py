@@ -8,9 +8,9 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from experiments.common.baselines import coordinate_pinn as pinn
-from experiments.common.baselines import decoupled_gradient_pinn as final_pinn
+from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.baselines import fft_gaussian as fft
-from experiments.common.baselines import fft_screened_poisson as fourier_ls
+from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.baselines import unet_small as unet
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
@@ -32,7 +32,7 @@ OUTPUT_ROOT = utils.OUTPUT_ROOT / "e4_real"
 DOWNSAMPLE = 2
 CROP_SIZE = 0
 EXPECTED_REAL_IMAGE_COUNT = 16
-_E4_RUNNER_SOURCE = "experiments/scripts/e4/run.py"
+_E4_RUNNER_SOURCE = "experiments/scripts/real_images/run.py"
 
 
 def _default_real_images():
@@ -337,7 +337,7 @@ def main(*, force: bool = False):
 def _load_global_lock_for_e4():
     """Load the frozen Stage-A lock while allowing only the E4 runner to evolve.
 
-    Historical Stage-A locks fingerprinted ``experiments/scripts/e4/run.py``
+    Historical Stage-A locks fingerprinted ``experiments/scripts/real_images/run.py``
     together with the Stage-A formal sources. E4 is now an independent
     real-image evaluation and this runner intentionally changed from four to
     five methods. Rebuilding a post-test Stage-A lock solely to update that

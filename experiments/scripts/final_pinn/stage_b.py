@@ -5,7 +5,7 @@ import argparse
 
 import torch
 
-from experiments.common.baselines import decoupled_gradient_pinn as final_pinn
+from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import stage_b_metrics

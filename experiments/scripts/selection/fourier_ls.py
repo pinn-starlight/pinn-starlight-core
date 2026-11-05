@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 
-from experiments.common.baselines import fft_screened_poisson as fourier_ls
+from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import selection_artifacts as artifacts
 from experiments.configs.formal_experiment import selection_dependency_config

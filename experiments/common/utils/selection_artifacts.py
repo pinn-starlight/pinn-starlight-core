@@ -15,7 +15,7 @@ SELECTION_ARTIFACT_SCHEMA_VERSION = 1
 _COMMON_DATA_DEPENDENCY = "experiments/common/utils/experiment_utils.py"
 SELECTION_SOURCE_DEPENDENCIES = {
     "pinn": (
-        "experiments/scripts/e1/run.py",
+        "experiments/scripts/selection/pinn.py",
         "experiments/common/baselines/coordinate_pinn.py",
         "experiments/common/utils/metrics.py",
         "src/pinn_starlight_core/data/image_loader.py",
@@ -26,18 +26,18 @@ SELECTION_SOURCE_DEPENDENCIES = {
         _COMMON_DATA_DEPENDENCY,
     ),
     "fft_gaussian": (
-        "experiments/scripts/selection/gaussian/run.py",
+        "experiments/scripts/selection/gaussian.py",
         "experiments/common/baselines/fft_gaussian.py",
         _COMMON_DATA_DEPENDENCY,
     ),
     "fourier_ls": (
-        "experiments/scripts/selection/fourier_ls/run.py",
-        "experiments/common/baselines/fft_screened_poisson.py",
+        "experiments/scripts/selection/fourier_ls.py",
+        "experiments/common/baselines/cosine_ls.py",
         "src/pinn_starlight_core/physics/forcing.py",
         _COMMON_DATA_DEPENDENCY,
     ),
     "unet_small": (
-        "experiments/scripts/selection/unet/run.py",
+        "experiments/scripts/selection/unet.py",
         "experiments/common/baselines/unet_small.py",
         _COMMON_DATA_DEPENDENCY,
     ),
@@ -57,10 +57,10 @@ FORMAL_SOURCE_DEPENDENCIES = tuple(
             "experiments/common/data/synthetic_backgrounds.py",
             "experiments/scripts/preflight/run.py",
             "experiments/scripts/config_lock/run.py",
-            "experiments/scripts/e2/run.py",
-            "experiments/scripts/e3/run.py",
-            "experiments/scripts/e4/run.py",
-            "experiments/common/baselines/decoupled_gradient_pinn.py",
+            "experiments/scripts/benchmark.py",
+            "experiments/scripts/ablation.py",
+            "experiments/scripts/real_images/run.py",
+            "experiments/common/baselines/sgc_pinn.py",
             "experiments/scripts/final_pinn/common.py",
             "experiments/scripts/final_pinn/stage_a.py",
             "experiments/scripts/final_pinn/aggregate_cv5.py",

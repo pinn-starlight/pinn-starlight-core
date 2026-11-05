@@ -21,13 +21,13 @@ from experiments.common.utils import metrics as common_metrics
 from experiments.common.utils import scores
 from experiments.common.utils import stage_b_provenance as provenance
 from experiments.configs.stage_b_experiment import stage_b_selection_config
-from experiments.scripts.e1 import run as e1
+from experiments.scripts.selection import pinn as pinn_selector
 
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "stage_b/selection/pinn"
 ARTIFACT = OUTPUT_ROOT / "pinn_selected.json"
 SOURCE_FILES = (
     "experiments/scripts/stage_b/select_pinn.py",
-    "experiments/scripts/e1/run.py",
+    "experiments/scripts/selection/pinn.py",
     "experiments/configs/stage_b_experiment.py",
     "experiments/common/data/generate_stage_b.py",
     "experiments/common/data/stage_b_backgrounds.py",
@@ -133,7 +133,7 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
     selection = formal_config["selection"]
     base_config = dict(formal_config["training"])
     seed = int(selection["seed"])
-    device = e1._resolve_device(device_name)
+    device = pinn_selector._resolve_device(device_name)
     laplacian_backend = pinn.resolve_laplacian_backend(laplacian_backend)
     utils.set_seed(seed)
 
@@ -147,14 +147,14 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
         "evaluation_adapter": "stage_b_clean_target_star_reference",
     })
 
-    initial_centers = e1._precompute_initial_centers(validation_rows, base_config)
+    initial_centers = pinn_selector._precompute_initial_centers(validation_rows, base_config)
     candidate_table = []
 
     # Reuse Stage10-A E1 machinery without modifying Stage10-A source.
-    original_evaluator = e1.metrics.evaluate_synthetic
-    e1.metrics.evaluate_synthetic = _evaluate_stage_b_for_pinn_selection
+    original_evaluator = pinn_selector.metrics.evaluate_synthetic
+    pinn_selector.metrics.evaluate_synthetic = _evaluate_stage_b_for_pinn_selection
     try:
-        selected_config, _ = e1._select_stage(
+        selected_config, _ = pinn_selector._select_stage(
             "T1_network",
             base_config,
             [{"hidden_dims": list(candidate)} for candidate in selection["network_candidates"]],
@@ -167,7 +167,7 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
             laplacian_backend=laplacian_backend,
             initial_centers_by_sample=initial_centers,
         )
-        selected_config, _ = e1._select_stage(
+        selected_config, _ = pinn_selector._select_stage(
             "T2_physics_weight",
             selected_config,
             [{"physics_weight": value} for value in selection["physics_weight_candidates"]],
@@ -180,7 +180,7 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
             laplacian_backend=laplacian_backend,
             initial_centers_by_sample=initial_centers,
         )
-        selected_config, selected_result = e1._select_stage(
+        selected_config, selected_result = pinn_selector._select_stage(
             "T3_sparse_weight",
             selected_config,
             [{"sparse_weight": value} for value in selection["sparse_weight_candidates"]],
@@ -193,7 +193,7 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
             laplacian_backend=laplacian_backend,
             initial_centers_by_sample=initial_centers,
         )
-        selected_config, selected_result = e1._continue_until_stable(
+        selected_config, selected_result = pinn_selector._continue_until_stable(
             selected_config,
             selected_result,
             validation_rows,
@@ -206,7 +206,7 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
             initial_centers,
         )
     finally:
-        e1.metrics.evaluate_synthetic = original_evaluator
+        pinn_selector.metrics.evaluate_synthetic = original_evaluator
 
     selected_config = dict(selected_config)
     selected_config["steps"] = int(max(row["step"] for row in selected_result["rows"]))

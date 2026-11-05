@@ -2,7 +2,7 @@
 
 Experiment candidates and validation selection live in
 ``experiments/configs/formal_experiment.py`` and
-``experiments/scripts/selection/gaussian/run.py`` respectively.
+``experiments/scripts/selection/gaussian.py`` respectively.
 """
 
 import numpy as np

@@ -2,22 +2,22 @@
 from __future__ import annotations
 import argparse
 
-from experiments.common.baselines import fft_screened_poisson as fourier_ls
+from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import stage_b_provenance as provenance
 from experiments.configs.stage_b_experiment import stage_b_selection_config
-from experiments.scripts.selection.fourier_ls.run import select_hyperparameters
+from experiments.scripts.selection.fourier_ls import select_hyperparameters
 
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "stage_b/selection/fourier_ls"
 ARTIFACT = OUTPUT_ROOT / "fourier_ls_selected.json"
 SOURCE_FILES = (
     "experiments/scripts/stage_b/select_fourier_ls.py",
-    "experiments/scripts/selection/fourier_ls/run.py",
+    "experiments/scripts/selection/fourier_ls.py",
     "experiments/configs/stage_b_experiment.py",
     "experiments/common/data/generate_stage_b.py",
     "experiments/common/data/stage_b_backgrounds.py",
-    "experiments/common/baselines/fft_screened_poisson.py",
+    "experiments/common/baselines/cosine_ls.py",
     "src/pinn_starlight_core/physics/forcing.py",
     "experiments/common/utils/experiment_utils.py",
 )

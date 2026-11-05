@@ -33,9 +33,9 @@ from pathlib import Path
 import numpy as np
 
 from experiments.common.baselines import coordinate_pinn as pinn
-from experiments.common.baselines import decoupled_gradient_pinn as final_pinn
+from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.baselines import fft_gaussian as fft
-from experiments.common.baselines import fft_screened_poisson as fourier_ls
+from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 

@@ -32,7 +32,7 @@ for _path in (PROJECT_ROOT, PROJECT_ROOT / "src"):
 
 # Import from the restored Stage11 project.
 from experiments.common.utils import experiment_utils as utils
-from experiments.scripts.e4 import run as e4_run
+from experiments.scripts.real_images import run as e4_run
 
 
 def read_manifest(path: Path) -> dict[str, dict]:

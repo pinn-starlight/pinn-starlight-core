@@ -15,7 +15,7 @@ from experiments.common.utils import stage_b_metrics
 from experiments.common.utils import stage_b_provenance as provenance
 from experiments.configs.formal_experiment import FORMAL_EXECUTION_CONFIG
 from experiments.configs.stage_b_experiment import STAGE_B_CONFIG, stage_b_config_snapshot
-from experiments.scripts.e2.run import run_method
+from experiments.scripts.benchmark import run_method
 from experiments.scripts.stage_b.lock import LOCK_PATH, FORMAL_SOURCE_FILES
 
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "stage_b/benchmark"

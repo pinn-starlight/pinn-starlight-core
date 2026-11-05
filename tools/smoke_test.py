@@ -275,7 +275,7 @@ def test_fft_gaussian(ctx):
 
 def test_fourier_ls(ctx):
     """DCT-II screened-Poisson (Cosine-LS) solver runs on CPU."""
-    from experiments.common.baselines import fft_screened_poisson as fourier_ls
+    from experiments.common.baselines import cosine_ls as fourier_ls
 
     sample = _stage_a(ctx)
     background, info = fourier_ls.estimate_background(
@@ -325,7 +325,7 @@ def test_pinn(ctx):
 def test_final_pinn(ctx):
     """SGC-PINN: data-only stage-1 -> fixed forcing fit -> coordinated finetune."""
     from experiments.common.baselines import coordinate_pinn as pinn
-    from experiments.common.baselines import decoupled_gradient_pinn as final_pinn
+    from experiments.common.baselines import sgc_pinn as final_pinn
 
     sample = _stage_a(ctx)
     observed = sample["observed"]

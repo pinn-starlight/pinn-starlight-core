@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 from scipy import fft
 
-from experiments.common.baselines import fft_screened_poisson as solver
+from experiments.common.baselines import cosine_ls as solver
 
 
 def main() -> None:

@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from experiments.common.baselines import decoupled_gradient_pinn as final_pinn
+from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 from experiments.configs.formal_experiment import (

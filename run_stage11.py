@@ -597,7 +597,7 @@ def run_e4(*, force: bool, gpu: GPUInfo) -> None:
     """Run the independent five-method real-image E4 experiment."""
     env = _single_gpu_env(gpu, scheduler_mode="e4_real_single_gpu")
     args = ["--force"] if force else []
-    _module("experiments.scripts.e4.run", *args, env=env)
+    _module("experiments.scripts.real_images.run", *args, env=env)
 
 
 def run_b(*, force: bool, gpu: GPUInfo) -> None:

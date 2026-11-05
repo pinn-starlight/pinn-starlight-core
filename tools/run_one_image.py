@@ -35,7 +35,7 @@ from pathlib import Path
 import numpy as np
 
 from experiments.common.baselines import fft_gaussian as fft
-from experiments.common.baselines import fft_screened_poisson as fourier_ls
+from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.utils import experiment_utils as utils
 from tools.code_check_demo import run_methods, stage1_config, stage3_config
 

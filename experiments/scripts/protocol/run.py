@@ -42,17 +42,17 @@ def _phase_modules(stage: str, phase: str, *, force: bool, device: str, fourier_
             return [("experiments.scripts.preflight.run", [])]
         if phase == "select":
             return [
-                ("experiments.scripts.selection.gaussian.run", force_arg),
-                ("experiments.scripts.selection.fourier_ls.run", [*force_arg, "--backend", fourier_backend]),
-                ("experiments.scripts.selection.unet.run", force_arg),
-                ("experiments.scripts.e1.run", [*force_arg, "--device", device, "--laplacian-backend", "autograd"]),
+                ("experiments.scripts.selection.gaussian", force_arg),
+                ("experiments.scripts.selection.fourier_ls", [*force_arg, "--backend", fourier_backend]),
+                ("experiments.scripts.selection.unet", force_arg),
+                ("experiments.scripts.selection.pinn", [*force_arg, "--device", device, "--laplacian-backend", "autograd"]),
             ]
         if phase == "lock":
             return [("experiments.scripts.config_lock.run", force_arg)]
         if phase == "benchmark":
-            return [("experiments.scripts.e2.run", force_arg)]
+            return [("experiments.scripts.benchmark", force_arg)]
         if phase == "ablation":
-            return [("experiments.scripts.e3.run", force_arg)]
+            return [("experiments.scripts.ablation", force_arg)]
     else:
         if phase == "preflight":
             return [("experiments.scripts.stage_b.preflight", [])]

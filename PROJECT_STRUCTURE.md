@@ -367,7 +367,7 @@ protocol.prepare_cv5
 ### 9.4 E4（`e4`）
 
 ```text
-experiments.scripts.e4.run
+experiments.scripts.real_images.run
   -> 五种方法在 collections/real_high_pollution/ 上逐图推理
   -> experiments/outputs/e4_real/
 ```
