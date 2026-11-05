@@ -90,7 +90,10 @@ def _is_synthetic(rel: str) -> bool:
 
 def _is_excluded_raw(rel: str) -> bool:
     # Original/raw data are intentionally not copied.  Generated synthetic
-    # datasets are handled separately above.
+    # datasets are handled separately above, and the collection manifest is
+    # kept as provenance.
+    if rel == "/collections/manifest.csv":
+        return False
     if _is_synthetic(rel):
         return False
     return (
@@ -102,7 +105,15 @@ def _is_excluded_raw(rel: str) -> bool:
 
 def _is_cache_or_admin(rel: str, archive_dir: Path) -> bool:
     parts = Path(rel.lstrip("/")).parts
-    if any(x in parts for x in (".git", ".pixi", "__pycache__", ".pytest_cache", ".mypy_cache")):
+    ignored = (
+        ".git", ".pixi", ".venv", ".idea", ".agents",
+        "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache",
+        "build", "dist",
+    )
+    if any(x in parts for x in ignored):
+        return True
+    # Local, already-packed archives must never be re-archived.
+    if parts and parts[0] == "artifacts":
         return True
     try:
         archive_rel = "/" + archive_dir.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()

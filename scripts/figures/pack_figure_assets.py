@@ -5,7 +5,7 @@
 
 运行：
   cd /workspace/stage11
-  pixi run -e remote python stage11_server_pack_figures.py
+  pixi run -e remote python scripts/figures/pack_figure_assets.py
 
 输出：
   /workspace/stage11/figure_transfer/

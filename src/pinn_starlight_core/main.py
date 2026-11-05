@@ -13,7 +13,10 @@ from pinn_starlight_core.nn import pinn_layers as layers
 from pinn_starlight_core.nn import pinn_loss as losses
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INPUT_DIR = Path(f"{PROJECT_ROOT}/data/test")
+INPUT_DIR = PROJECT_ROOT / "test"
+IMAGE_SUFFIXES = {
+    ".tif", ".tiff", ".png", ".jpg", ".jpeg", ".nef", ".cr2", ".dng", ".arw",
+}
 STEPS = 1000
 BATCH_SIZE = 1_024
 PHYSICS_WEIGHT = 0.4
@@ -26,7 +29,7 @@ ALPHA_MAX = 0.6
 
 
 def single_train(input_file, device):
-    loader = ImageLoader(str(input_file), device)
+    loader = ImageLoader(input_file, device)
     coords, values, _, _ = loader.get_gray_data()
 
     model = layers.SkyglowMLP().to(device)
@@ -113,7 +116,11 @@ def main() -> None:
     if not INPUT_DIR.is_dir():
         raise FileNotFoundError(f"Input directory does not exist: {INPUT_DIR}")
 
-    input_files = sorted(path for path in INPUT_DIR.iterdir() if path.is_file())
+    input_files = sorted(
+        path
+        for path in INPUT_DIR.iterdir()
+        if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+    )
     if not input_files:
         raise FileNotFoundError(f"No input images found in: {INPUT_DIR}")
 

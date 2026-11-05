@@ -20,7 +20,7 @@ Stage-B SGC paired:
   /workspace/stage11/experiments/outputs/stage_b/final_pinn_validation
 
 运行环境：
-  pixi run -e remote python render_stage11_figures_exact.py
+  pixi run -e remote python scripts/figures/render_figures_server_exact.py
 
 不会重跑实验，不会修改原始文件。
 """
@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -39,6 +40,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+from matplotlib.font_manager import FontProperties
 from matplotlib.gridspec import GridSpec
 
 try:
@@ -104,9 +106,6 @@ ABLATION_DIRS = {
 # 不会再默默生成“方框中文”的坏图。
 # ============================================================
 
-import subprocess
-from matplotlib.font_manager import FontProperties
-
 def _fc_list():
     try:
         out = subprocess.check_output(
@@ -137,43 +136,53 @@ def find_real_font(candidates):
                 return Path(file)
     return None
 
-ZH_FONT_PATH = find_real_font([
-    "SimSun", "宋体",
-    "Noto Serif CJK SC",
-    "Source Han Serif SC",
-    "Source Han Serif CN",
-    "AR PL UMing CN",
-    "WenQuanYi Zen Hei",  # 最后兜底：至少中文不变方框
-])
+ZH_FONT_PATH = None
+EN_FONT_PATH = None
+ZH_FONT = None
+EN_FONT = None
 
-EN_FONT_PATH = find_real_font([
-    "Times New Roman",
-    "Times",
-    "Liberation Serif",
-    "Nimbus Roman",
-    "DejaVu Serif",
-])
 
-if ZH_FONT_PATH is None:
-    raise SystemExit(
-        "\n[字体错误] 服务器没有可用中文字体，因此 matplotlib 会把中文画成方框。\n"
-        "你当前是 root，最快修复：\n\n"
-        "  apt-get update\n"
-        "  apt-get install -y fonts-noto-cjk fonts-liberation2\n"
-        "  fc-cache -fv\n"
-        "  rm -rf ~/.cache/matplotlib\n\n"
-        "然后重新运行：\n"
-        "  pixi run -e remote python render_stage11_figures_exact_v2.py\n"
-    )
+def resolve_fonts() -> None:
+    """Resolve real font files lazily so that ``--help`` works on any machine."""
+    global ZH_FONT_PATH, EN_FONT_PATH, ZH_FONT, EN_FONT
 
-if EN_FONT_PATH is None:
-    raise SystemExit(
-        "\n[字体错误] 未找到英文衬线字体。建议：\n"
-        "  apt-get update && apt-get install -y fonts-liberation2\n"
-    )
+    ZH_FONT_PATH = find_real_font([
+        "SimSun", "宋体",
+        "Noto Serif CJK SC",
+        "Source Han Serif SC",
+        "Source Han Serif CN",
+        "AR PL UMing CN",
+        "WenQuanYi Zen Hei",  # 最后兜底：至少中文不变方框
+    ])
 
-ZH_FONT = FontProperties(fname=str(ZH_FONT_PATH))
-EN_FONT = FontProperties(fname=str(EN_FONT_PATH))
+    EN_FONT_PATH = find_real_font([
+        "Times New Roman",
+        "Times",
+        "Liberation Serif",
+        "Nimbus Roman",
+        "DejaVu Serif",
+    ])
+
+    if ZH_FONT_PATH is None:
+        raise SystemExit(
+            "\n[字体错误] 服务器没有可用中文字体，因此 matplotlib 会把中文画成方框。\n"
+            "你当前是 root，最快修复：\n\n"
+            "  apt-get update\n"
+            "  apt-get install -y fonts-noto-cjk fonts-liberation2\n"
+            "  fc-cache -fv\n"
+            "  rm -rf ~/.cache/matplotlib\n\n"
+            "然后重新运行：\n"
+            "  pixi run -e remote python scripts/figures/render_figures_server_exact.py\n"
+        )
+
+    if EN_FONT_PATH is None:
+        raise SystemExit(
+            "\n[字体错误] 未找到英文衬线字体。建议：\n"
+            "  apt-get update && apt-get install -y fonts-liberation2\n"
+        )
+
+    ZH_FONT = FontProperties(fname=str(ZH_FONT_PATH))
+    EN_FONT = FontProperties(fname=str(EN_FONT_PATH))
 
 # 数学字体使用 STIX，外观接近 Times。
 plt.rcParams["mathtext.fontset"] = "stix"
@@ -780,6 +789,7 @@ def main():
 
     out = args.out.expanduser().resolve()
 
+    resolve_fonts()
     print_font_info()
     print("输出目录:", out)
     if args.check_only:

@@ -15,10 +15,10 @@
 
 推荐运行：
     cd /workspace/stage11
-    pixi run python render_paper_figures_stage11.py --root . --dpi 600
+    pixi run python scripts/figures/render_figures.py --root . --dpi 600
 
 可先只检查路径：
-    pixi run python render_paper_figures_stage11.py --root . --check-only
+    pixi run python scripts/figures/render_figures.py --root . --check-only
 """
 
 from __future__ import annotations

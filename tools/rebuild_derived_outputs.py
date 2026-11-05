@@ -20,11 +20,15 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+for _path in (PROJECT_ROOT, PROJECT_ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 # Import from the restored Stage11 project.
 from experiments.common.utils import experiment_utils as utils

@@ -21,13 +21,13 @@ Design goals
 Typical remote usage
 --------------------
 cd /workspace/stage11
-pixi run python collect_stage11_figure_assets_auto.py --root . --zip
+pixi run python scripts/figures/collect_assets.py --root . --zip
 
 Recommended first pass:
-pixi run python collect_stage11_figure_assets_auto.py --root . --dry-run
+pixi run python scripts/figures/collect_assets.py --root . --dry-run
 
 Optional overrides:
-pixi run python collect_stage11_figure_assets_auto.py --root . \
+pixi run python scripts/figures/collect_assets.py --root . \
     --fig3-low clean_single_001_single_radial_low \
     --fig3-high clean_single_001_multi_source_high \
     --fig6-high clean_single_001_protected_overlap_high \

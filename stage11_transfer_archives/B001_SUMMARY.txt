@@ -1,9 +1,0 @@
-batch=B001
-label=3090_cv5_final
-created_archives=34
-new_files=5899
-new_uncompressed_gib=61.411
-
-You may transfer and then delete the Bxxx_*.zip files from the server.
-Do NOT delete archive_state.json/index/inventory until the very end.
-The incremental state prevents already-exported source files from being repacked.
