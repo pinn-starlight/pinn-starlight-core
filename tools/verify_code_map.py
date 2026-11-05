@@ -106,6 +106,9 @@ CITED_SYMBOLS: dict[str, tuple[str, ...]] = {
         "SELECTION_SOURCE_DEPENDENCIES", "FORMAL_SOURCE_DEPENDENCIES",
         "build_selection_artifact", "verify_selection_artifact",
     ),
+    "experiments/common/utils/reporting.py": (
+        "finite_values", "finite_mean", "finite_std",
+    ),
     "experiments/common/utils/stage_b_provenance.py": (
         "build_selection_artifact", "verify_selection_artifact",
         "source_snapshot", "verify_source_snapshot",
