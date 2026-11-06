@@ -532,7 +532,7 @@ def _assert_validation_only(rows, label):
 def _load_sample(stage, row):
     # Common loader does load truth because truth is needed later for evaluation.
     # Crucially, training receives ONLY sample["observed"]; the truth arrays are
-    # never passed into candidate optimisation functions.
+    # never passed into candidate optimization functions.
     sample = utils.load_synthetic_sample(row)
     if sample["split"] != "validation":
         raise RuntimeError("non-validation sample reached loader")

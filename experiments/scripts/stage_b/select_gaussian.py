@@ -1,8 +1,4 @@
-"""Stage-B Gaussian validation selector.
-
-Reuses the Stage-A scoring implementation (same candidate space, same metric);
-only the manifest, config source and artifact schema differ.
-"""
+"""Stage-B Gaussian validation selector."""
 from __future__ import annotations
 import argparse
 

@@ -150,10 +150,7 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
     initial_centers = pinn_selector._precompute_initial_centers(validation_rows, base_config)
     candidate_table = []
 
-    # Stage-B reuses the Stage-A selection machinery, but its star-reference
-    # semantics differ (coordinates frozen from base_clean, flux measured on the
-    # Stage-B clean target).  The evaluator is therefore passed in explicitly
-    # rather than monkey-patched into the shared metrics module.
+    # Stage-B 的星表语义与 Stage-A 不同，评估器显式传入。
     evaluator = _evaluate_stage_b_for_pinn_selection
 
     selected_config, _ = pinn_selector._select_stage(

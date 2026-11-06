@@ -191,7 +191,7 @@ CITED_LINE_RANGES: tuple[tuple[str, str, int, int], ...] = (
     ("experiments/scripts/stage_b/lock.py", "main", 48, 150),
     ("experiments/scripts/stage_b/formal_run.py", "_load_lock", 25, 36),
     ("experiments/scripts/stage_b/formal_run.py", "main", 179, 278),
-    ("experiments/scripts/stage_b/select_pinn.py", "main", 126, 247),
+    ("experiments/scripts/stage_b/select_pinn.py", "main", 126, 244),
     ("experiments/scripts/final_pinn/stage_b.py", "main", 35, 161),
     ("experiments/common/utils/stage_b_anchor.py", "load_stage_a_anchor", 27, 81),
     ("experiments/scripts/protocol/aggregate_cv5.py", "aggregate", 79, 174),

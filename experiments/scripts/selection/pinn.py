@@ -33,9 +33,7 @@ def run_candidate(
 ):
     """Run one PINN candidate on the fixed validation split.
 
-    ``evaluator`` is the metric function applied to each validation sample.  It
-    defaults to the Stage-A ``metrics.evaluate_synthetic``; the Stage-B selector
-    passes its own implementation because Stage-B reference semantics differ.
+    ``evaluator`` defaults to ``metrics.evaluate_synthetic``.
     """
     if evaluator is None:
         evaluator = metrics.evaluate_synthetic
