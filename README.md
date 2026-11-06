@@ -12,14 +12,13 @@
 | `experiments/scripts/protocol/` | Stage-A / Stage-B / CV5 的阶段编排与聚合 |
 | `experiments/scripts/final_pinn/` | 最终 PINN 的配对评估与 CV5 聚合 |
 | `scripts/figures/` | 论文图 3/4/6 的资产收集、渲染与打包 |
-| `scripts/ops/` | 一次性回填 / 保持性验证脚本 |
 | `tools/` | 服务器归档导出/恢复、派生文件重建、指标回填、完整性检查 |
 | `research_diagnostics/` | 冻结的探索性诊断脚本 |
 | `collections/`、`test/` | 数据根：采集清单与原始测试图 |
 | `paper_figures/` | 已生成的论文图（输出） |
 | `artifacts/` | 本地大文件归档（含约 9.6 GB 服务器搬运包；已被 git 忽略） |
 
-更细的目录/模块说明见 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)；各子系统的说明见 [experiments/README.md](experiments/README.md)、[scripts/figures/README.md](scripts/figures/README.md)、[tools/README.md](tools/README.md) 和 [artifacts/README.md](artifacts/README.md)。
+更细的目录/模块说明见 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)；各子系统的说明见 [experiments/README.md](experiments/README.md)、[tools/README.md](tools/README.md) 和 [artifacts/README.md](artifacts/README.md)。
 
 ## 环境
 
@@ -62,7 +61,7 @@ pixi run -e remote python -m experiments.scripts.protocol.run \
 
 ## 论文图与工具
 
-- 图 3/4/6 的收集与渲染：见 `scripts/figures/README.md`。
+- 图 3/4/6 的收集与渲染脚本在 `scripts/figures/`。
 - 服务器归档导出/恢复与离线重建：见 `tools/README.md`。
 - `paper_figures/` 中是已生成结果；重新渲染请用脚本，不要手工修改图片。
 

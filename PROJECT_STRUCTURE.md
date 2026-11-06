@@ -1,7 +1,7 @@
 # 项目结构说明
 
 本文档说明仓库的目录职责、模块边界、实验执行顺序与输出位置。  
-入口和常用命令见 [README.md](README.md)；论文图与搬运工具分别见 [scripts/figures/README.md](scripts/figures/README.md) 和 [tools/README.md](tools/README.md)。
+入口和常用命令见 [README.md](README.md)；论文图脚本与搬运工具分别见 `scripts/figures/` 和 [tools/README.md](tools/README.md)。
 
 | 想了解 | 建议阅读 |
 | --- | --- |
@@ -210,15 +210,11 @@ experiments/
 
 ```text
 scripts/
-├── figures/                      # 论文图 3/4/6
-│   ├── collect_assets.py         # 自动匹配并收集冻结数组（推荐）
-│   ├── pack_figure_assets.py     # 按固定样本打包三张图的 ZIP
-│   ├── render_figures.py         # 参数化 --root 的渲染器
-│   ├── render_figures_server_exact.py  # 固定 /workspace/stage11 的精确渲染器
-│   └── legacy/                   # 历史版本（不再维护）
-└── ops/
-    ├── backfill_forced_reference.sh     # 只读回填 forced-reference 指标
-    └── validate_pinn_preservation.sh    # 冻结 PINN 保持性验证
+└── figures/                      # 论文图 3/4/6
+    ├── collect_assets.py         # 自动匹配并收集冻结数组（推荐）
+    ├── pack_figure_assets.py     # 按固定样本打包三张图的 ZIP
+    ├── render_figures.py         # 参数化 --root 的渲染器
+    └── render_figures_server_exact.py  # 固定 /workspace/stage11 的精确渲染器
 ```
 
 这些脚本只读冻结结果，不训练模型、不修改原始输出。
@@ -257,7 +253,6 @@ scripts/
 | `pinn/pinn_preservation_frozen.py` | 冻结的 PINN 保持性/分解探索性验证；不属于正式 A/B 主流程 |
 | `pinn/pinn_preservation_frozen_manifest.json` | 上述冻结脚本的清单与校验信息 |
 
-对应的启动脚本是 `scripts/ops/validate_pinn_preservation.sh`。
 
 ---
 
@@ -396,7 +391,7 @@ run_stage11.py
 - 新方法：放 `experiments/common/baselines/`，并在 `experiments/configs/formal_experiment.py` 登记；
 - 新指标：放 `experiments/common/utils/metrics.py` 或 `scores.py`；
 - 新实验阶段：放 `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage11.py` 编排；
-- 一次性脚本：放 `scripts/figures/` 或 `scripts/ops/`，不要堆回根目录；
+- 一次性脚本：放 `scripts/figures/`，不要堆回根目录；
 - 服务器数据工具：放 `tools/`；
 - 不要手改 `experiments/outputs/`、`paper_figures/` 里的结果；重新生成请走脚本。
 
@@ -430,8 +425,6 @@ pixi run -e remote python tools/rebuild_derived_outputs.py
 pixi run -e remote python tools/verify_rebuild_ready.py --require-derived
 
 # 指标回填与保持性验证
-bash scripts/ops/backfill_forced_reference.sh
-bash scripts/ops/validate_pinn_preservation.sh
 ```
 
 ---
