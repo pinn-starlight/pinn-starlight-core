@@ -50,7 +50,7 @@ logs/
 /collections/cv5/
 
 # --- large local artifacts (README is the only tracked file) ----------------
-/artifacts/*
+artifacts/
 !/artifacts/README.md
 
 # --- misc -------------------------------------------------------------------
