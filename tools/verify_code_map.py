@@ -181,7 +181,7 @@ CITED_LINE_RANGES: tuple[tuple[str, str, int, int], ...] = (
     ("experiments/common/utils/metrics.py", "evaluate_synthetic", 325, 386),
     ("experiments/common/utils/experiment_utils.py", "load_global_configuration_lock", 283, 381),
     ("experiments/scripts/benchmark.py", "_formal_device", 85, 93),
-    ("experiments/scripts/selection/pinn.py", "_select_stage", 224, 268),
+    ("experiments/scripts/selection/pinn.py", "_select_stage", 222, 266),
     ("experiments/scripts/selection/pinn.py", "_continue_until_stable", 269, 342),
     ("experiments/scripts/config_lock/run.py", "main", 46, 163),
     ("experiments/scripts/protocol/prepare_cv5.py", "prepare_stage", 68, 179),
