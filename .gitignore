@@ -37,6 +37,7 @@ logs/
 
 # --- data (source package directory is kept) --------------------------------
 /data/
+/test
 !/src/pinn_starlight_core/data/
 
 # --- generated datasets (regenerate from archives; never commit) ------------
