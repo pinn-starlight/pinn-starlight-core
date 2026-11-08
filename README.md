@@ -56,6 +56,20 @@ pixi run -e remote python -m experiments.scripts.protocol.run \
     --stage a --mode standard --phase all --device cuda:0 --include-ablation
 ```
 
+## 冒烟测试（无需 GPU）
+
+正式实验需要 GPU 和约 11 GB 合成数据，但整套科学代码路径可以在 CPU 上用小预算跑通：
+
+```bash
+python -m tools.smoke_test              # 全部 12 项，约 20 秒
+python -m tools.smoke_test --list       # 列出测试项
+python -m tools.smoke_test --only pinn  # 只跑某几项
+```
+
+它覆盖 data → 背景估计 → PINN → SGC-PINN → metrics 的完整链路，输出只用于证明代码可执行、内部自洽、数组有限，**不是科学结果**。退出码为 0 才算通过。
+
+缺少样本数据时，先用 `bash tools/fetch_smoke_data.sh` 从归档解出约 280 MB 的最小数据集。
+
 ## 数据与输出
 
 - 默认数据根是仓库根目录下的 `collections/` 与 `test/`；也可以设置 `PINN_STARLIGHT_DATA_ROOT` 指向包含这两个目录的位置。
