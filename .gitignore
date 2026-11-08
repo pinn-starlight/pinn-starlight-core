@@ -1,29 +1,65 @@
-.venv
-/.idea
-.agents
-.vscode
-tmp
-experiments/scripts/legacy
-experiments/output
-experiments/outputs/
-
-#docs
-docs
-logs
-
-# python
+# --- Python -----------------------------------------------------------------
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# test data (images, outputs)
+# --- environments -----------------------------------------------------------
+.venv/
+.pixi/*
+!.pixi/config.toml
+
+# --- build ------------------------------------------------------------------
+build/
+dist/
+
+# --- IDE / local assistant files -------------------------------------------
+.idea/
+.vscode/
+.agents/
+notebooks/
+
+# --- experiment outputs / runtime logs -------------------------------------
+experiments/output/
+experiments/outputs/
+experiments/outputs-*/
+experiments/scripts/legacy
+logs/
+
+# --- server transfer packs / figure exports ---------------------------------
+/stage11_transfer_archives/
+/transfer_forced_reference_*/
+/figure_transfer/
+
+# --- data (source package directory is kept) --------------------------------
 /data/
+/test
 !/src/pinn_starlight_core/data/
 
-# jupyter
-notebooks/.ipynb_checkpoints
-notebooks/notebook_test.ipynb
-notebooks/backup/
-notebooks/study/MNIST/data
+# --- generated datasets (regenerate from archives; never commit) ------------
+# Only collections/manifest.csv is tracked.  The 10.85 GB of synthetic arrays
+# and the camera reference candidates are rebuilt by the data generators and
+# must not enter version control.
+/collections/clean_candidates/
+/collections/synthetic_formal/
+/collections/synthetic_stage_b/
+/collections/real_high_pollution/
+/collections/cv5/
 
-#ai generated file
-notebooks/
+# --- large local artifacts (README is the only tracked file) ----------------
+artifacts/
+!/artifacts/README.md
+
+# --- misc -------------------------------------------------------------------
+.DS_Store
+.dsh-drop
+.dsh
+tmp/
+*.swp
+
+# --- legacy documentation ---------------------------------------------------
+docs/

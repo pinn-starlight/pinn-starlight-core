@@ -24,12 +24,13 @@ def coordinate_grid(height: int, width: int, device="cpu") -> torch.Tensor:
 
 # 暂时使用灰度图训练
 class ImageLoader:
-    def __init__(self, path: Path, device="cpu", downsample=2):
+    def __init__(self, path: Path | str, device="cpu", downsample=2):
         """
             此path为文件的路径而非文件夹
         """
         if downsample <= 0:
             raise ValueError("downsample must be positive")
+        path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"图像不存在：{path}")
         self.device = device
@@ -73,7 +74,6 @@ class ImageLoader:
 
         return scale_val, data
 
-
     def get_gray_data(self):
         rgb = self.rgb_data
         gray = (
@@ -87,5 +87,5 @@ class ImageLoader:
             gray.ravel(), dtype=torch.float32, device=self.device
         )
 
-        return coords, np.clip(brightness, 0, 1), self.W, self.H
+        return coords, brightness.clamp(0.0, 1.0), self.W, self.H
 

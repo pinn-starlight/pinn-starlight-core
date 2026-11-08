@@ -1,0 +1,27 @@
+image_id,original_path,current_path,category,session_id,usage,notes
+excluded_cloudy_001,cloudy/_DSC0071.NEF,excluded/cloudy/excluded_cloudy_001.nef,excluded_cloudy,s02,excluded,cloudy
+excluded_cloudy_002,cloudy/_DSC0072.NEF,excluded/cloudy/excluded_cloudy_002.nef,excluded_cloudy,s02,excluded,cloudy
+excluded_cloudy_003,cloudy/_DSC0073.NEF,excluded/cloudy/excluded_cloudy_003.nef,excluded_cloudy,s02,excluded,cloudy
+excluded_cloudy_004,cloudy/_DSC0074.NEF,excluded/cloudy/excluded_cloudy_004.nef,excluded_cloudy,s02,excluded,cloudy
+excluded_cloudy_005,cloudy/_DSC0075.NEF,excluded/cloudy/excluded_cloudy_005.nef,excluded_cloudy,s02,excluded,cloudy
+real_high_001,pollution_high/_DSC0009.NEF,real_high_pollution/real_high_001.nef,high_pollution,s02,e4_candidate,
+real_high_002,pollution_high/_DSC0017.NEF,real_high_pollution/real_high_002.nef,high_pollution,s02,e4_candidate,
+real_high_003,pollution_high/_DSC0018.NEF,real_high_pollution/real_high_003.nef,high_pollution,s02,e4_candidate,
+real_high_004,pollution_high/_DSC0048.NEF,real_high_pollution/real_high_004.nef,high_pollution,s02,e4_candidate,
+real_high_005,pollution_high/_DSC0052.NEF,real_high_pollution/real_high_005.nef,high_pollution,s02,e4_candidate,
+real_high_006,pollution_high/_DSC0054.NEF,real_high_pollution/real_high_006.nef,high_pollution,s02,e4_candidate,
+real_high_007,pollution_high/_DSC0059.NEF,real_high_pollution/real_high_007.nef,high_pollution,s02,e4_candidate,
+real_high_008,pollution_high/_DSC0064.NEF,real_high_pollution/real_high_008.nef,high_pollution,s02,e4_candidate,
+real_high_009,pollution_high/_DSC0065.NEF,real_high_pollution/real_high_009.nef,high_pollution,s02,e4_candidate,
+real_high_010,pollution_high/_DSC0068.NEF,real_high_pollution/real_high_010.nef,high_pollution,s02,e4_candidate,
+real_high_011,pollution_high/_DSC0069.NEF,real_high_pollution/real_high_011.nef,high_pollution,s02,e4_candidate,
+real_high_012,pollution_high/_DSC0076.NEF,real_high_pollution/real_high_012.nef,high_pollution,s02,e4_candidate,
+real_high_013,pollution_high/_DSC0077.NEF,real_high_pollution/real_high_013.nef,high_pollution,s02,e4_candidate,
+real_high_014,pollution_high/_DSC0078.NEF,real_high_pollution/real_high_014.nef,high_pollution,s02,e4_candidate,
+real_high_015,pollution_high/_DSC0079.NEF,real_high_pollution/real_high_015.nef,high_pollution,s02,e4_candidate,
+real_high_016,pollution_high/Cache_-551bbcc5a127289e.jpg,real_high_pollution/real_high_016.jpg,high_pollution,unknown,review_source,source unknown; review before formal use
+clean_single_001,pollution_low/_DSC8576.NEF,clean_candidates/single/clean_single_001.nef,clean_candidate_single,s03,synthetic_base_candidate,
+clean_single_002,pollution_low/_DSC9544.NEF,clean_candidates/single/clean_single_002.nef,clean_candidate_single,s01,synthetic_base_candidate,
+clean_single_003,pollution_low/f7.5.tif,clean_candidates/single/clean_single_003.tif,clean_candidate_single,unknown,synthetic_base_candidate,
+clean_stack_001,pollution_low/stacked/r_2_stacked.tif,clean_candidates/stacked/clean_stack_001.tif,clean_candidate_stacked,s01,synthetic_base_candidate,professional stack
+clean_stack_002,pollution_low/stacked/r_6.30_stacked.tif,clean_candidates/stacked/clean_stack_002.tif,clean_candidate_stacked,s03,synthetic_base_candidate,professional stack

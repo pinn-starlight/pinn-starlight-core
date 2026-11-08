@@ -1,0 +1,57 @@
+{
+  "schema": 2,
+  "patch_name": "PINN preservation exploratory validation - frozen v2",
+  "basis": "current Stage11 source package supplied by user",
+  "conflict_resolution_priority": [
+    "current Stage11 formal source/config",
+    "Stage11 final experiment protocol",
+    "current Stage11 writing documents",
+    "Stage10 historical handoff/migration documents"
+  ],
+  "scientific_status": "posthoc_exploratory_mechanism_validation",
+  "formal_result_replacement": false,
+  "test_split_allowed": false,
+  "parameter_grid_search_allowed": false,
+  "pareto_optimization_claim_allowed": false,
+  "runtime_used_for_candidate_selection": false,
+  "platform_rule": "All candidates in one full run must execute on the same machine and software environment; runtime is recorded only for audit, not compared as evidence.",
+  "fixed_seed": 20260728,
+  "full_budget": {
+    "init_steps": 20000,
+    "dct_distill_steps": 20000,
+    "refine_steps": 5000
+  },
+  "smoke_budget": {
+    "init_steps": 30,
+    "dct_distill_steps": 30,
+    "refine_steps": 20
+  },
+  "fixed_diagnostic_hyperparameters": {
+    "physics_first_data_weight": 0.1,
+    "physics_first_physics_weight": 1.0,
+    "physics_first_sparse_weight": 0.001,
+    "robust_smooth_l1_beta": 0.02,
+    "v2_anchor_weight": 0.25,
+    "v4_conflict_budget": 0.2
+  },
+  "reference": "v0_current_datafirst_projected",
+  "candidates": {
+    "v1_physics_first": "physics-dominated conservative initialization with weak robust observation anchor; fixed forcing identification; current projected-gradient refinement",
+    "v2_physics_first_anchor": "V1 plus a fixed anchor to the physics-first background during refinement",
+    "v3_dct_init": "frozen selected DCT-II screened-Poisson background -> MLP distillation -> fixed forcing identification -> current projected-gradient refinement",
+    "v4_budgeted_conflict": "current data-first initialization and forcing fit; Stage3 allows bounded anti-data physics gradients instead of full conflict projection"
+  },
+  "hypothesis": "A conservative initial decomposition may better preserve uncertain astronomical low-frequency structure because under-separation can be corrected later, whereas structure absorbed into the background early is difficult to identify and recover without truth labels.",
+  "audited_source_sha256": {
+    "experiments/configs/formal_experiment.py": "b8df724ca31d642dd9f79e8891c9f9a3850deae9c94954e68dbedef77d0798a8",
+    "experiments/configs/stage_b_experiment.py": "fcfe27b99d84730e6d5a9a55ff9762738973175fdecd0f3005226ca529ced943",
+    "experiments/common/baselines/coordinate_pinn.py": "ab3f1a9463359a0b8a0a0920717b785c9c2e820e848456afcd45b539eb3a170f",
+    "experiments/common/baselines/sgc_pinn.py": "a275c1ce2762630e7e2f18684647e14b0ec0def798cd043e540e65a5db1297d7",
+    "experiments/common/baselines/cosine_ls.py": "2a9d4926ef3007f465c68cec5301f05d7e95476bf6ca6ff964538ea6504b5d98",
+    "experiments/common/utils/experiment_utils.py": "d6649cd23edce5a3886886b87dc14f6fa8ce5353a21e9d9a439e4dcb5aa72e35",
+    "experiments/common/utils/metrics.py": "1c13d2d9f74e366662efa81cbafce8277d72cc4be973a9cd1520d8c7f721cf01",
+    "experiments/common/utils/stage_b_metrics.py": "18de41c94d0dd88be3c19ae8e32c6f75e3b9a003d2aac414288f9d07d60ea804",
+    "experiments/common/data/generate_stage_b.py": "38d2c3dd4c29ddaa17a3588bc65495d9f37756a32f580ae21ec37809e6ea1cb2",
+    "experiments/scripts/final_pinn/common.py": "9cfe2d75b64aec7443c2482971cd01ed5235cc926dd3b21aa1690985332beca8"
+  }
+}
