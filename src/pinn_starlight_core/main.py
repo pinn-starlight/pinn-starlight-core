@@ -1,6 +1,13 @@
+"""Standalone coordinate-PINN demo.
+
+This module is a self-contained smoke run over local images; it is **not** part
+of the Stage-11 formal pipeline (see ``experiments/`` for that).
+"""
 from __future__ import annotations
 
+import argparse
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import torch
@@ -13,39 +20,57 @@ from pinn_starlight_core.nn import pinn_layers as layers
 from pinn_starlight_core.nn import pinn_loss as losses
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INPUT_DIR = PROJECT_ROOT / "test"
+DEFAULT_INPUT_DIR = PROJECT_ROOT / "test"
 IMAGE_SUFFIXES = {
     ".tif", ".tiff", ".png", ".jpg", ".jpeg", ".nef", ".cr2", ".dng", ".arw",
 }
-STEPS = 1000
-BATCH_SIZE = 1_024
-PHYSICS_WEIGHT = 0.4
-MODEL_LR = 1e-3
-ICITY_LR = 1e-3
-ALPHA_LR = 1e-4
-ALPHA_INIT = 0.55
-ALPHA_MIN = 0.4
-ALPHA_MAX = 0.6
 
 
-def single_train(input_file, device):
+@dataclass(frozen=True)
+class DemoConfig:
+    """Hyperparameters of the standalone demo run.
+
+    Defaults reproduce the Stage-10 demo settings; they are not tuned for the
+    formal experiments and must not be reused as a benchmark configuration.
+    """
+
+    steps: int = 1_000
+    batch_size: int = 1_024
+    physics_weight: float = 0.4
+    model_lr: float = 1e-3
+    city_lr: float = 1e-3
+    alpha_lr: float = 1e-4
+    alpha_init: float = 0.55
+    alpha_min: float = 0.4
+    alpha_max: float = 0.6
+    max_components: int = 3
+    sigma_max: float = 0.55
+    initial_sigma: float = 0.425
+
+
+def single_train(input_file, device, config: DemoConfig = DemoConfig()):
+    """Fit one image and return the final losses plus forcing diagnostics."""
     loader = ImageLoader(input_file, device)
     coords, values, _, _ = loader.get_gray_data()
 
     model = layers.SkyglowMLP().to(device)
     city_source = physics_model.EffectiveForcingMixture(
-        device, loader=loader, max_components=3, sigma_max=0.55, initial_sigma=0.425
+        device,
+        loader=loader,
+        max_components=config.max_components,
+        sigma_max=config.sigma_max,
+        initial_sigma=config.initial_sigma,
     ).to(device)
     alpha_module = physics_model.Alpha(
-        init=ALPHA_INIT,
-        alpha_min=ALPHA_MIN,
-        alpha_max=ALPHA_MAX,
+        init=config.alpha_init,
+        alpha_min=config.alpha_min,
+        alpha_max=config.alpha_max,
     ).to(device)
     optimizer = optim.Adam(
         [
-            {"params": model.parameters(), "lr": MODEL_LR},
-            {"params": city_source.parameters(), "lr": ICITY_LR},
-            {"params": alpha_module.parameters(), "lr": ALPHA_LR},
+            {"params": model.parameters(), "lr": config.model_lr},
+            {"params": city_source.parameters(), "lr": config.city_lr},
+            {"params": alpha_module.parameters(), "lr": config.alpha_lr},
         ]
     )
 
@@ -53,8 +78,8 @@ def single_train(input_file, device):
     final_data_loss = 0.0
     final_physics_loss = 0.0
 
-    for _ in tqdm(range(STEPS), file=sys.stdout):
-        index = torch.randint(0, coords.shape[0], (BATCH_SIZE,), device=device)
+    for _ in tqdm(range(config.steps), file=sys.stdout):
+        index = torch.randint(0, coords.shape[0], (config.batch_size,), device=device)
         batch_xy = coords[index].clone().requires_grad_(True)
         batch_observed = values[index]
 
@@ -68,7 +93,7 @@ def single_train(input_file, device):
             alpha,
             batch_xy,
         )
-        total_loss = data_loss + PHYSICS_WEIGHT * physics_loss
+        total_loss = data_loss + config.physics_weight * physics_loss
 
         optimizer.zero_grad(set_to_none=True)
         total_loss.backward()
@@ -94,8 +119,8 @@ def single_train(input_file, device):
     }
 
 
-def print_summary(input_file, result):
-    print(f"\n{input_file.name} | step {STEPS}")
+def print_summary(input_file, result, steps):
+    print(f"\n{input_file.name} | step {steps}")
     print(
         f"loss={result['total_loss']:.8f} | "
         f"data={result['data_loss']:.8f} | "
@@ -109,24 +134,53 @@ def print_summary(input_file, result):
     )
 
 
-def main() -> None:
-    print("Hello PINN-Starlight-core")
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if not INPUT_DIR.is_dir():
-        raise FileNotFoundError(f"Input directory does not exist: {INPUT_DIR}")
-
+def _collect_images(input_dir: Path):
+    if not input_dir.is_dir():
+        raise FileNotFoundError(
+            f"Input directory does not exist: {input_dir}\n"
+            "Pass --input-dir PATH to point at a folder of images."
+        )
     input_files = sorted(
         path
-        for path in INPUT_DIR.iterdir()
+        for path in input_dir.iterdir()
         if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
     )
     if not input_files:
-        raise FileNotFoundError(f"No input images found in: {INPUT_DIR}")
+        supported = ", ".join(sorted(IMAGE_SUFFIXES))
+        raise FileNotFoundError(
+            f"No input images found in: {input_dir}\n"
+            f"Supported formats: {supported}"
+        )
+    return input_files
 
+
+def main(argv=None) -> None:
+    parser = argparse.ArgumentParser(
+        prog="pinn-starlight-core",
+        description="Standalone coordinate-PINN demo over the images in a folder.",
+    )
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=DEFAULT_INPUT_DIR,
+        help=f"folder of input images (default: {DEFAULT_INPUT_DIR})",
+    )
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=DemoConfig.steps,
+        help=f"optimization steps per image (default: {DemoConfig.steps})",
+    )
+    args = parser.parse_args(argv)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    input_files = _collect_images(Path(args.input_dir))
+    config = DemoConfig(steps=args.steps)
+
+    print(f"demo input: {Path(args.input_dir)} ({len(input_files)} image(s), device={device})")
     for input_file in input_files:
-        result = single_train(input_file, device)
-        print_summary(input_file, result)
+        result = single_train(input_file, device, config)
+        print_summary(input_file, result, config.steps)
 
 
 if __name__ == "__main__":
