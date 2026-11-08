@@ -8,7 +8,10 @@
 | --- | --- |
 | `src/pinn_starlight_core/` | 可安装的核心包：坐标 MLP、Laplacian/损失、effective forcing、图像读取；`python -m pinn_starlight_core` 是独立小 demo，不属于论文主流程 |
 | `experiments/configs/` | 实验配置的唯一来源：Stage-A/Stage-B、split 与 CV5 协议 |
-| `experiments/scripts/e1`…`e4` | 选择、冻结 benchmark、消融、真实图像实验 |
+| `experiments/scripts/selection/` | Stage-A 三种方法（Gaussian / Fourier-LS / PINN）的超参选择 |
+| `experiments/scripts/benchmark.py`、`ablation.py` | 冻结 benchmark 与 Original-PINN 消融 |
+| `experiments/scripts/real_images/` | 真实高污染图像对比与论文出图 |
+| `experiments/scripts/stage_b/` | Stage-B 的选择、preflight、lock 与正式运行 |
 | `experiments/scripts/protocol/` | Stage-A / Stage-B / CV5 的阶段编排与聚合 |
 | `experiments/scripts/final_pinn/` | 最终 PINN 的配对评估与 CV5 聚合 |
 | `scripts/figures/` | 论文图 3/4/6 的资产收集、渲染与打包 |

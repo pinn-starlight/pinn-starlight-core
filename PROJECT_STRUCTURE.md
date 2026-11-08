@@ -150,8 +150,6 @@ experiments/
 | `generate_synthetic.py` | 生成 Stage-A 半合成数据集 → `collections/synthetic_formal/` |
 | `stage_b_backgrounds.py` | Stage-B 的频谱重叠压力测试场景（含保护结构） |
 | `generate_stage_b.py` | 生成 Stage-B 数据集 → `collections/synthetic_stage_b/` |
-| `elliptical_background.py` | 旧椭圆背景工具的兼容包装与可视化示例 |
-| `exponential_background.py` | 旧指数背景工具的兼容包装与可视化示例 |
 
 ### 4.3 `common/utils/`：实验基础设施
 
