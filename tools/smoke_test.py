@@ -22,6 +22,7 @@ Usage
 
 Exit code is 0 only if every selected test passes.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,9 +44,7 @@ DEFAULT_STAGE_B = "clean_single_002_protected_overlap_high"
 # helpers
 # --------------------------------------------------------------------------
 def _stage_a_row(sample_id: str = DEFAULT_STAGE_A) -> dict:
-    rows = utils.load_manifest(
-        utils.SYNTHETIC_DATA_ROOT / "manifest.csv", split="validation"
-    )
+    rows = utils.load_manifest(utils.SYNTHETIC_DATA_ROOT / "manifest.csv", split="validation")
     for row in rows:
         if row["sample_id"] == sample_id:
             return row
@@ -98,9 +97,7 @@ def _stage_a(ctx: dict, downsample: int | None = None) -> dict:
 
 def _stage_b(ctx: dict, downsample: int | None = None) -> dict:
     ds = ctx["downsample"] if downsample is None else downsample
-    return _cached(
-        ctx, f"stage_b@{ds}", lambda: _load_sample(_stage_b_row(), ds, stage_b=True)
-    )
+    return _cached(ctx, f"stage_b@{ds}", lambda: _load_sample(_stage_b_row(), ds, stage_b=True))
 
 
 def _assert_finite(name: str, array) -> None:
@@ -204,9 +201,9 @@ def test_analytic_laplacian(ctx):
     )
     analytic_b, analytic_lap = pinn._background_and_laplacian(model, xy)
     direct = torch.sigmoid(model(xy).squeeze(-1))
-    grad = torch.autograd.grad(
-        direct, xy, grad_outputs=torch.ones_like(direct), create_graph=True
-    )[0]
+    grad = torch.autograd.grad(direct, xy, grad_outputs=torch.ones_like(direct), create_graph=True)[
+        0
+    ]
     parts = []
     for axis in (0, 1):
         second = torch.autograd.grad(
@@ -310,16 +307,11 @@ def test_pinn(ctx):
     # experiment layer reconstructs the residual from the observation.
     prediction = {
         "background_pred": result["background_pred"],
-        "residual_pred": utils.reconstruct_residual(
-            sample["observed"], result["background_pred"]
-        ),
+        "residual_pred": utils.reconstruct_residual(sample["observed"], result["background_pred"]),
     }
     _check_prediction("pinn", prediction, sample["observed"].shape)
     hist = result.get("history") or []
-    return (
-        f"{len(hist)} logged steps, bg mean "
-        f"{float(np.mean(result['background_pred'])):.4f}"
-    )
+    return f"{len(hist)} logged steps, bg mean {float(np.mean(result['background_pred'])):.4f}"
 
 
 def test_final_pinn(ctx):
@@ -375,9 +367,7 @@ def test_final_pinn(ctx):
     )
     prediction = {
         "background_pred": refined["background_pred"],
-        "residual_pred": utils.reconstruct_residual(
-            observed, refined["background_pred"]
-        ),
+        "residual_pred": utils.reconstruct_residual(observed, refined["background_pred"]),
     }
     _check_prediction("final_pinn", prediction, observed.shape)
     return (
@@ -402,8 +392,14 @@ def test_metrics_stage_a(ctx):
     }
     result = metrics.evaluate_synthetic(sample, prediction)
     core = (
-        "bg_mae", "bg_rmse", "bg_psnr", "bg_ssim",
-        "residual_mae", "residual_rmse", "residual_psnr", "residual_ssim",
+        "bg_mae",
+        "bg_rmse",
+        "bg_psnr",
+        "bg_ssim",
+        "residual_mae",
+        "residual_rmse",
+        "residual_psnr",
+        "residual_ssim",
         "star_f1",
     )
     for key in core:
@@ -413,7 +409,8 @@ def test_metrics_stage_a(ctx):
             raise AssertionError(f"metric {key} is not finite: {result[key]}")
     # Match-dependent metrics are legitimately NaN when nothing matches.
     undefined = sorted(
-        k for k, v in result.items()
+        k
+        for k, v in result.items()
         if isinstance(v, (int, float)) and v is not None and not np.isfinite(v)
     )
     note = f", undefined={undefined}" if undefined else ""
@@ -485,9 +482,7 @@ def test_generators(ctx):
         produced.append(background_type)
 
     for scene_type in stage_b_backgrounds.SCENE_TYPES:
-        scene = stage_b_backgrounds.generate_stage_b_scene(
-            64, 96, scene_type, "high", 20260728
-        )
+        scene = stage_b_backgrounds.generate_stage_b_scene(64, 96, scene_type, "high", 20260728)
         if not isinstance(scene, (tuple, list)) or len(scene) < 2:
             raise AssertionError(f"{scene_type} scene has unexpected structure")
         for item in scene:
@@ -503,9 +498,7 @@ def test_data_inventory(ctx):
     required = {
         "collections manifest": utils.COLLECTION_MANIFEST,
         "Stage-A manifest": utils.SYNTHETIC_DATA_ROOT / "manifest.csv",
-        "Stage-B manifest": utils.SYNTHETIC_DATA_ROOT.parent
-        / "synthetic_stage_b"
-        / "manifest.csv",
+        "Stage-B manifest": utils.SYNTHETIC_DATA_ROOT.parent / "synthetic_stage_b" / "manifest.csv",
         "E0 native test image": utils.NATIVE_TEST_IMAGE,
         "Global configuration lock": utils.GLOBAL_CONFIGURATION_LOCK,
         "Stage-B configuration lock": utils.BASE_OUTPUT_ROOT
@@ -561,8 +554,7 @@ def _preflight_data() -> None:
         "Stage-B manifest": STAGE_B_MANIFEST,
         "Global configuration lock": utils.GLOBAL_CONFIGURATION_LOCK,
     }
-    missing = [f"  {label}: {path}" for label, path in required.items()
-               if not Path(path).is_file()]
+    missing = [f"  {label}: {path}" for label, path in required.items() if not Path(path).is_file()]
     if not missing:
         return
 

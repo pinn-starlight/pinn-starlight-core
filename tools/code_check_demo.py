@@ -22,6 +22,7 @@ Usage
     python -m tools.code_check_demo
     python -m tools.code_check_demo --downsample 6 --steps 20
 """
+
 from __future__ import annotations
 
 import argparse
@@ -231,8 +232,12 @@ def evaluate(sample: dict, backgrounds: dict) -> dict:
         table[name] = {
             k: result.get(k)
             for k in (
-                "bg_mae", "bg_rmse", "bg_psnr", "bg_ssim",
-                "residual_ssim", "star_f1",
+                "bg_mae",
+                "bg_rmse",
+                "bg_psnr",
+                "bg_ssim",
+                "residual_ssim",
+                "star_f1",
                 "matched_star_mean_relative_flux_error",
                 "forced_reference_mean_relative_flux_error",
             )
@@ -314,14 +319,16 @@ def main(argv=None) -> int:
 
     started = time.perf_counter()
     sample = load_sample(args.sample, args.downsample)
-    print(f"loaded observed {sample['observed'].shape} in {time.perf_counter()-started:.1f}s")
+    print(f"loaded observed {sample['observed'].shape} in {time.perf_counter() - started:.1f}s")
 
     started = time.perf_counter()
     run = run_methods(sample, args.steps, device)
-    print(f"ran 4 methods in {time.perf_counter()-started:.1f}s\n")
+    print(f"ran 4 methods in {time.perf_counter() - started:.1f}s\n")
 
-    print(f"{'method':<16}{'bg MAE':>12}{'bg PSNR':>10}{'bg SSIM':>10}"
-          f"{'res SSIM':>10}{'star F1':>9}   {'time':>7}")
+    print(
+        f"{'method':<16}{'bg MAE':>12}{'bg PSNR':>10}{'bg SSIM':>10}"
+        f"{'res SSIM':>10}{'star F1':>9}   {'time':>7}"
+    )
     print("-" * 78)
     table = evaluate(sample, run["backgrounds"])
     labels = {

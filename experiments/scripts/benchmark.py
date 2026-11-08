@@ -31,9 +31,7 @@ def run_method(method: str, observed, method_config: dict, **kwargs) -> dict:
     utils.reset_peak_vram(device)
     started = time.perf_counter()
     if method == "fft_gaussian":
-        background_pred = fft.estimate_background(
-            observed, float(method_config["sigma"])
-        )
+        background_pred = fft.estimate_background(observed, float(method_config["sigma"]))
         extra = {"parameter_count": 0, "peak_vram_mb": None}
     elif method == "fourier_ls":
         lambda_ls, sparse_weight = fourier_ls.validate_frozen_config(method_config)
@@ -79,14 +77,12 @@ def run_method(method: str, observed, method_config: dict, **kwargs) -> dict:
     }
 
 
-
 def _formal_device():
     """Resolve the frozen single-GPU Stage10-A benchmark device."""
     device = torch.device(str(FORMAL_EXECUTION_CONFIG["benchmark_device"]))
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError(
-            "Formal Stage10-A requires CUDA for the frozen benchmark policy; "
-            "CUDA is not available."
+            "Formal Stage10-A requires CUDA for the frozen benchmark policy; CUDA is not available."
         )
     return device
 
@@ -154,14 +150,11 @@ def main(*, force: bool = False):
                 fourier_config,
                 show_progress=True,
                 progress_desc=(
-                    f"E2 Cosine-LS [{sample_index}/{len(samples)}] "
-                    f"{sample['sample_id']}"
+                    f"E2 Cosine-LS [{sample_index}/{len(samples)}] {sample['sample_id']}"
                 ),
             ),
         )
-        sample_output = (
-            output_root / "fourier_ls/deterministic" / sample["sample_id"]
-        )
+        sample_output = output_root / "fourier_ls/deterministic" / sample["sample_id"]
         _save_result(sample_output, sample, result)
         utils.write_json(sample_output / "estimated_parameters.json", result["fourier_info"])
         metric_rows.append(_metric_row("fourier_ls", "deterministic", sample, result))
@@ -216,9 +209,7 @@ def main(*, force: bool = False):
 def _with_common_residual(observed, method_result):
     """Attach R_hat outside the Method boundary using the shared reconstruction."""
     result = dict(method_result)
-    result["residual_pred"] = utils.reconstruct_residual(
-        observed, result["background_pred"]
-    )
+    result["residual_pred"] = utils.reconstruct_residual(observed, result["background_pred"])
     return result
 
 
@@ -255,14 +246,15 @@ def _metric_row(method, seed, sample, result):
                 "fourier_smooth_objective": result["fourier_info"]["smooth_objective"],
                 "fourier_sparse_objective": result["fourier_info"]["sparse_objective"],
                 "fourier_profile_nfev": result["fourier_info"]["profile_nfev"],
-                "fourier_effective_component_count": result["fourier_info"]["effective_component_count"],
+                "fourier_effective_component_count": result["fourier_info"][
+                    "effective_component_count"
+                ],
                 "fourier_sigma_x": result["fourier_info"]["sigma_x"],
                 "fourier_sigma_y": result["fourier_info"]["sigma_y"],
                 "fourier_theta": result["fourier_info"]["theta"],
             }
         )
     return row
-
 
 
 def _grouped_results(rows):
@@ -294,9 +286,7 @@ def _grouped_results(rows):
                             subset, "matched_star_mean_relative_flux_error"
                         ),
                         "flux_error_valid_count": len(
-                            reporting.finite_values(
-                                subset, "matched_star_mean_relative_flux_error"
-                            )
+                            reporting.finite_values(subset, "matched_star_mean_relative_flux_error")
                         ),
                     }
                 )
@@ -317,11 +307,7 @@ def _failure_cases(rows):
             if identity in seen:
                 continue
             seen.add(identity)
-            seed_dir = (
-                "deterministic"
-                if row["seed"] == "deterministic"
-                else f"seed_{row['seed']}"
-            )
+            seed_dir = "deterministic" if row["seed"] == "deterministic" else f"seed_{row['seed']}"
             cases.append(
                 {
                     "method": method,
@@ -332,7 +318,9 @@ def _failure_cases(rows):
                     "intensity_level": row["intensity_level"],
                     "bg_mae": row["bg_mae"],
                     "star_f1": row["star_f1"],
-                    "matched_star_mean_relative_flux_error": row["matched_star_mean_relative_flux_error"],
+                    "matched_star_mean_relative_flux_error": row[
+                        "matched_star_mean_relative_flux_error"
+                    ],
                     "prediction_dir": f"{method}/{seed_dir}/{row['sample_id']}",
                 }
             )
@@ -370,9 +358,7 @@ def _main_result_table(rows, training_rows):
                     subset, "matched_star_mean_relative_flux_error"
                 ),
                 "flux_error_valid_count": len(
-                    reporting.finite_values(
-                        subset, "matched_star_mean_relative_flux_error"
-                    )
+                    reporting.finite_values(subset, "matched_star_mean_relative_flux_error")
                 ),
                 "background_below_zero_fraction": np.mean(
                     [row["background_below_zero_fraction"] for row in subset]
@@ -460,7 +446,6 @@ def _pinn_parameters(result):
             "parameter_count",
         )
     }
-
 
 
 def _parse_args():

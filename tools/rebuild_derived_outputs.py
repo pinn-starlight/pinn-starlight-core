@@ -15,6 +15,7 @@ Reconstructed:
 
 The scientific prediction itself (background_pred.tif) is never synthesized.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,8 +62,7 @@ def load_e4_observed(image_name: str, sources: dict[str, Path]) -> np.ndarray:
     source = sources.get(image_name)
     if source is None:
         raise FileNotFoundError(
-            f"E4 source image {image_name!r} was not found in "
-            f"{utils.REAL_HIGH_POLLUTION_ROOT}"
+            f"E4 source image {image_name!r} was not found in {utils.REAL_HIGH_POLLUTION_ROOT}"
         )
     observed = utils.load_gray_image(source, downsample=e4_run.DOWNSAMPLE)
     return e4_run._center_crop(observed, e4_run.CROP_SIZE)
@@ -109,9 +109,7 @@ def rebuild_result_dirs(*, force=False):
                 continue
             observed_path = resolve_observed(row)
             if not observed_path.is_file():
-                raise FileNotFoundError(
-                    f"observed TIFF for {sample_id} not found: {observed_path}"
-                )
+                raise FileNotFoundError(f"observed TIFF for {sample_id} not found: {observed_path}")
             observed = utils.load_float_tiff(observed_path)
 
         background = utils.load_float_tiff(bg_path)

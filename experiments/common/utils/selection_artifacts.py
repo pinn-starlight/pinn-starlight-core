@@ -61,9 +61,7 @@ FORMAL_SOURCE_DEPENDENCIES = tuple(
             "experiments/scripts/final_pinn/aggregate_cv5.py",
         )
         + tuple(
-            path
-            for dependencies in SELECTION_SOURCE_DEPENDENCIES.values()
-            for path in dependencies
+            path for dependencies in SELECTION_SOURCE_DEPENDENCIES.values() for path in dependencies
         )
     )
 )
@@ -105,9 +103,7 @@ def verify_source_provenance(provenance: dict, expected_paths=None) -> None:
         raise ValueError("Source provenance contains no files")
     actual_paths = tuple(record.get("path") for record in records)
     if expected_paths is not None:
-        normalized_expected = tuple(
-            str(path).replace("\\", "/") for path in expected_paths
-        )
+        normalized_expected = tuple(str(path).replace("\\", "/") for path in expected_paths)
         if actual_paths != normalized_expected:
             raise ValueError("Source dependency list changed; rerun the affected selector")
     if stable_json_sha256(records) != provenance.get("bundle_sha256"):
@@ -138,8 +134,7 @@ def build_selection_artifact(
     if "test" in loaded_splits:
         raise ValueError("Pre-test selection artifact cannot include the test split")
     sample_ids = {
-        split: [str(row["sample_id"]) for row in rows]
-        for split, rows in rows_by_split.items()
+        split: [str(row["sample_id"]) for row in rows] for split, rows in rows_by_split.items()
     }
     return {
         "schema_version": SELECTION_ARTIFACT_SCHEMA_VERSION,
@@ -194,9 +189,7 @@ def verify_selection_artifact(
     loaded_splits = tuple(boundary.get("loaded_splits", []))
     required_splits = tuple(required_splits)
     if loaded_splits != required_splits:
-        raise ValueError(
-            f"{method} selection split mismatch: {loaded_splits} != {required_splits}"
-        )
+        raise ValueError(f"{method} selection split mismatch: {loaded_splits} != {required_splits}")
     if "test" in loaded_splits or boundary.get("test_arrays_loaded_during_selection") is not False:
         raise RuntimeError(f"{method} selection artifact violates the pre-test boundary")
 

@@ -16,6 +16,7 @@ Default coverage:
 Final-PINN outputs are not recomputed because their formal evaluator already
 contains forced-reference mean/P95 metrics.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -177,20 +178,24 @@ def _augment_rows(
         sample_id = str(source["sample_id"])
         manifest_row = sample_rows.get(sample_id)
         if manifest_row is None:
-            missing.append({"label": label, "sample_id": sample_id, "reason": "missing_manifest_row"})
+            missing.append(
+                {"label": label, "sample_id": sample_id, "reason": "missing_manifest_row"}
+            )
             continue
 
         pred_dir = _prediction_dir(kind, benchmark_root, source)
         background_path = pred_dir / "background_pred.tif"
         if not background_path.is_file():
-            missing.append({
-                "label": label,
-                "sample_id": sample_id,
-                "method_or_variant": source.get("method", source.get("variant", "")),
-                "seed": source.get("seed", ""),
-                "reason": "missing_background_pred",
-                "expected_path": background_path.relative_to(PROJECT_ROOT).as_posix(),
-            })
+            missing.append(
+                {
+                    "label": label,
+                    "sample_id": sample_id,
+                    "method_or_variant": source.get("method", source.get("variant", "")),
+                    "seed": source.get("seed", ""),
+                    "reason": "missing_background_pred",
+                    "expected_path": background_path.relative_to(PROJECT_ROOT).as_posix(),
+                }
+            )
             continue
 
         sample = sample_cache.get(sample_id)
@@ -329,8 +334,14 @@ def main() -> None:
         default=("a", "b", "cv5", "e3"),
         help="derived evaluation targets; default: a b cv5 e3",
     )
-    parser.add_argument("--force", action="store_true", help="replace only forced_reference_backfill outputs")
-    parser.add_argument("--allow-incomplete", action="store_true", help="diagnostic only; do not use for final paper tables")
+    parser.add_argument(
+        "--force", action="store_true", help="replace only forced_reference_backfill outputs"
+    )
+    parser.add_argument(
+        "--allow-incomplete",
+        action="store_true",
+        help="diagnostic only; do not use for final paper tables",
+    )
     args = parser.parse_args()
 
     _prepare_output(args.force)
@@ -382,7 +393,14 @@ def main() -> None:
 
     if "cv5" in targets:
         for fold in range(5):
-            manifest = PROJECT_ROOT / "collections" / "synthetic_formal" / "cv5" / f"fold_{fold}" / "manifest.csv"
+            manifest = (
+                PROJECT_ROOT
+                / "collections"
+                / "synthetic_formal"
+                / "cv5"
+                / f"fold_{fold}"
+                / "manifest.csv"
+            )
             root = outputs / "cv5" / f"fold_{fold}" / "e2_benchmark"
             records.append(
                 _augment_rows(
@@ -399,7 +417,9 @@ def main() -> None:
 
     final_checks = [
         _check_final_pinn(outputs / "final_pinn_validation" / "metrics.csv", "stage_a_final_pinn"),
-        _check_final_pinn(outputs / "stage_b" / "final_pinn_validation" / "metrics.csv", "stage_b_final_pinn"),
+        _check_final_pinn(
+            outputs / "stage_b" / "final_pinn_validation" / "metrics.csv", "stage_b_final_pinn"
+        ),
     ]
     for fold in range(5):
         final_checks.append(
@@ -442,7 +462,9 @@ def main() -> None:
         )
     print("Output:", OUTPUT_ROOT)
     if args.allow_incomplete:
-        print("WARNING: --allow-incomplete was used; do not use incomplete summaries for final paper tables.")
+        print(
+            "WARNING: --allow-incomplete was used; do not use incomplete summaries for final paper tables."
+        )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 """Verify that a restored Stage11 tree is ready for offline paper analysis."""
+
 from __future__ import annotations
 
 import argparse
@@ -45,7 +46,13 @@ def main():
         except Exception:
             bad_tiffs.append(str(bg))
         if args.require_derived:
-            for name in ("observed.tif", "residual_pred.tif", "observed.png", "background_pred.png", "residual_pred.png"):
+            for name in (
+                "observed.tif",
+                "residual_pred.tif",
+                "observed.png",
+                "background_pred.png",
+                "residual_pred.png",
+            ):
                 if not (bg.parent / name).is_file():
                     missing_derived.append(str(bg.parent / name))
 

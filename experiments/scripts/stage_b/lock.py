@@ -1,4 +1,5 @@
 """Create the Stage10-B Global Lock after all B selectors finish."""
+
 from __future__ import annotations
 
 import argparse
@@ -143,8 +144,7 @@ def main(*, force=False):
             "global_lock_sha256": utils.file_sha256(utils.GLOBAL_CONFIGURATION_LOCK),
             "lock_state": a_lock["lock_state"],
             "formal_test_ready": bool(a_lock["formal_test_ready"]),
-            "compatibility_rule":
-                "method-specific selection/training configs and core method source matched Stage10-A",
+            "compatibility_rule": "method-specific selection/training configs and core method source matched Stage10-A",
         },
     }
     utils.write_json(LOCK_PATH, lock)

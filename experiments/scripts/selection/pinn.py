@@ -259,7 +259,9 @@ def _select_stage(
         }
         candidate_table.append(row)
         candidate = (config, result)
-        if best is None or _selection_key(result["aggregate"]) < _selection_key(best[1]["aggregate"]):
+        if best is None or _selection_key(result["aggregate"]) < _selection_key(
+            best[1]["aggregate"]
+        ):
             best = candidate
     if best is None:
         raise ValueError(f"{stage} has no candidate")
@@ -342,7 +344,6 @@ def _continue_until_stable(
     return selected_config, best_result
 
 
-
 def _precompute_initial_centers(validation_rows, config):
     """Cache observed-only initialization shared by all E1 candidates.
 
@@ -359,6 +360,7 @@ def _precompute_initial_centers(validation_rows, config):
             config,
         )
     return cache
+
 
 def _aggregate(rows):
     flux_values = _finite_values(rows, "matched_star_mean_relative_flux_error")
@@ -427,7 +429,6 @@ def _final_parameters(result):
     }
     values["laplacian_backend"] = result.get("laplacian_backend", "unknown")
     return values
-
 
 
 def _resolve_device(device_name):

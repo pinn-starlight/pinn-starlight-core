@@ -5,6 +5,7 @@ Screened-Poisson forcing family, cosine-domain LS solver, or PINN.  It creates
 smooth pollution fields whose spatial frequencies overlap a separate smooth
 "protected" structure that belongs to the clean target and must not be removed.
 """
+
 from __future__ import annotations
 
 import math
@@ -54,14 +55,10 @@ def generate_stage_b_scene(
     elif scene_type == "irregular_smooth":
         pollution_raw, pollution_meta = _irregular_smooth(height, width, xx, yy, rng)
     else:
-        pollution_raw, pollution_meta = _protected_overlap_pollution(
-            height, width, xx, yy, rng
-        )
+        pollution_raw, pollution_meta = _protected_overlap_pollution(height, width, xx, yy, rng)
 
     protected_raw, protected_meta = _protected_structure(xx, yy, rng, scene_type)
-    pollution = _normalize_nonnegative(pollution_raw) * float(
-        INTENSITY_LEVELS[intensity_level]
-    )
+    pollution = _normalize_nonnegative(pollution_raw) * float(INTENSITY_LEVELS[intensity_level])
     protected = _normalize_nonnegative(protected_raw) * float(PROTECTED_PEAK[scene_type])
 
     overlap = spectral_overlap_coefficient(pollution, protected)
@@ -144,13 +141,9 @@ def _irregular_smooth(height, width, xx, yy, rng):
     # Deliberately low-resolution cubic control field, then smooth again.
     field = zoom(controls, (height / gh, width / gw), order=3, mode="reflect", prefilter=True)
     field = field[:height, :width]
-    field = gaussian_filter(
-        field, sigma=max(1.0, min(height, width) * 0.035), mode="reflect"
-    )
+    field = gaussian_filter(field, sigma=max(1.0, min(height, width) * 0.035), mode="reflect")
     angle = float(rng.uniform(-math.pi, math.pi))
-    gradient = 0.5 + 0.5 * (
-        math.cos(angle) * xx + math.sin(angle) * yy
-    ) / math.sqrt(2.0)
+    gradient = 0.5 + 0.5 * (math.cos(angle) * xx + math.sin(angle) * yy) / math.sqrt(2.0)
     raw = 0.72 * field + 0.28 * gradient
     meta = {
         "family": "cubic_coarse_control_field_plus_oblique_gradient",
@@ -193,9 +186,7 @@ def _protected_structure(xx, yy, rng, scene_type):
         + waviness * np.sin(math.pi * (xx + 1.0) + phase)
     )
     width = float(
-        rng.uniform(0.12, 0.22)
-        if scene_type != "protected_overlap"
-        else rng.uniform(0.16, 0.26)
+        rng.uniform(0.12, 0.22) if scene_type != "protected_overlap" else rng.uniform(0.16, 0.26)
     )
     ridge = np.exp(-0.5 * ((yy - centerline) / width) ** 2)
     taper_center = float(rng.uniform(-0.35, 0.35))
@@ -204,10 +195,7 @@ def _protected_structure(xx, yy, rng, scene_type):
     kx = float(rng.uniform(-0.55, 0.55))
     ky = float(rng.uniform(-0.45, 0.45))
     kscale = float(rng.uniform(0.28, 0.48))
-    knot = (
-        1.0
-        / (1.0 + (((xx - kx) / kscale) ** 2 + ((yy - ky) / (kscale * 0.75)) ** 2)) ** 1.6
-    )
+    knot = 1.0 / (1.0 + (((xx - kx) / kscale) ** 2 + ((yy - ky) / (kscale * 0.75)) ** 2)) ** 1.6
     raw = 0.75 * ridge + 0.25 * knot
     meta = {
         "family": "sinuous_diffuse_ridge_plus_broad_knot",
@@ -241,14 +229,10 @@ def radial_power_distribution(image, bins=64):
     power = np.abs(spec) ** 2
     h, w = arr.shape
     yy, xx = np.mgrid[:h, :w]
-    rr = np.sqrt(
-        ((yy - (h - 1) / 2) / max(h, 1)) ** 2 + ((xx - (w - 1) / 2) / max(w, 1)) ** 2
-    )
+    rr = np.sqrt(((yy - (h - 1) / 2) / max(h, 1)) ** 2 + ((xx - (w - 1) / 2) / max(w, 1)) ** 2)
     edges = np.linspace(0.0, float(rr.max()) + 1e-12, int(bins) + 1)
     idx = np.clip(np.digitize(rr.ravel(), edges) - 1, 0, int(bins) - 1)
-    radial = np.bincount(idx, weights=power.ravel(), minlength=int(bins)).astype(
-        np.float64
-    )
+    radial = np.bincount(idx, weights=power.ravel(), minlength=int(bins)).astype(np.float64)
     radial += 1e-30
     radial /= radial.sum()
     return radial

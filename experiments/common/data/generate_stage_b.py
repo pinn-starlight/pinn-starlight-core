@@ -3,6 +3,7 @@
 This module only adds new Stage-B data.  It does not modify Stage10-A data,
 selection artifacts, checkpoints, or the Stage10-A Global Configuration Lock.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,11 +41,7 @@ def _stable_seed(*parts) -> int:
 def _base_candidates(manifest_path):
     with Path(manifest_path).open("r", encoding="utf-8-sig", newline="") as file:
         rows = list(csv.DictReader(file))
-    by_id = {
-        row["image_id"]: row
-        for row in rows
-        if row.get("usage") == "synthetic_base_candidate"
-    }
+    by_id = {row["image_id"]: row for row in rows if row.get("usage") == "synthetic_base_candidate"}
     missing = [base_id for base_id in STAGE_B_BASE_SPLIT if base_id not in by_id]
     if missing:
         raise ValueError("Stage-B missing required base images: " + ", ".join(missing))
@@ -147,10 +144,16 @@ def build_dataset(
                     if not np.array_equal(clean_true, clean_cache):
                         raise AssertionError("Stage-B low/high clean target changed unexpectedly")
                     if not np.array_equal(protected_true, protected_cache):
-                        raise AssertionError("Stage-B low/high protected field changed unexpectedly")
+                        raise AssertionError(
+                            "Stage-B low/high protected field changed unexpectedly"
+                        )
 
-                identity_error = float(np.max(np.abs(observed - base_clean - protected_true - background_true)))
-                clean_identity_error = float(np.max(np.abs(clean_true - base_clean - protected_true)))
+                identity_error = float(
+                    np.max(np.abs(observed - base_clean - protected_true - background_true))
+                )
+                clean_identity_error = float(
+                    np.max(np.abs(clean_true - base_clean - protected_true))
+                )
                 if identity_error > 2e-6 or clean_identity_error > 2e-6:
                     raise AssertionError("Stage-B additive identity failed")
 
@@ -159,9 +162,13 @@ def build_dataset(
                 sample_dir.mkdir(parents=True, exist_ok=True)
                 paths = {
                     "base_clean": _save_array(sample_dir, "base_clean", sample_id, base_clean),
-                    "protected_true": _save_array(sample_dir, "protected_true", sample_id, protected_true),
+                    "protected_true": _save_array(
+                        sample_dir, "protected_true", sample_id, protected_true
+                    ),
                     "clean_true": _save_array(sample_dir, "clean_true", sample_id, clean_true),
-                    "background_true": _save_array(sample_dir, "background_true", sample_id, background_true),
+                    "background_true": _save_array(
+                        sample_dir, "background_true", sample_id, background_true
+                    ),
                     "observed": _save_array(sample_dir, "observed", sample_id, observed),
                 }
                 metadata = {

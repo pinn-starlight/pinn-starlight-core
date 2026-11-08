@@ -9,6 +9,7 @@ low-frequency structure. Therefore the Stage10-A evaluator's hard-coded
 and selection machinery, but install a Stage-B-specific evaluator only for this
 process. Stage10-A source files are not modified.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -67,7 +68,10 @@ def _evaluate_stage_b_for_pinn_selection(sample: dict, prediction: dict) -> dict
     }
 
     reference_info = sample.get("metadata", {}).get("star_reference", {})
-    if int(reference_info.get("evaluation_schema_version", 0)) != common_metrics.EVALUATION_SCHEMA_VERSION:
+    if (
+        int(reference_info.get("evaluation_schema_version", 0))
+        != common_metrics.EVALUATION_SCHEMA_VERSION
+    ):
         raise ValueError(
             "Stage-B star_reference schema mismatch; regenerate Stage-B data "
             "with the current generator"
@@ -75,15 +79,16 @@ def _evaluate_stage_b_for_pinn_selection(sample: dict, prediction: dict) -> dict
 
     # Stage-B-specific provenance contract.
     if reference_info.get("catalog_source") != "stage_b_base_clean_coordinates":
-        raise ValueError(
-            "Stage-B PINN selector expected star coordinates frozen from base_clean"
-        )
+        raise ValueError("Stage-B PINN selector expected star coordinates frozen from base_clean")
     if reference_info.get("coordinate_source") != "native_background_flattened_camera_reference":
         raise ValueError(
             "Stage-B star coordinates must come from the native-background-"
             "flattened camera reference"
         )
-    if reference_info.get("photometry_source") != "stage_b_clean_true_base_plus_protected_structure":
+    if (
+        reference_info.get("photometry_source")
+        != "stage_b_clean_true_base_plus_protected_structure"
+    ):
         raise ValueError(
             "Stage-B reference photometry must be measured on the Stage-B clean target"
         )
@@ -136,15 +141,18 @@ def main(*, force=False, device_name=None, laplacian_backend="autograd"):
     laplacian_backend = pinn.resolve_laplacian_backend(laplacian_backend)
     utils.set_seed(seed)
 
-    utils.save_run_metadata(output_root, {
-        "experiment": "Stage10-B PINN validation selection",
-        "manifest": utils.project_relative(STAGE_B_MANIFEST),
-        "selection_config": formal_config,
-        "validation_samples": [row["sample_id"] for row in validation_rows],
-        "compute_device": str(device),
-        "pinn_laplacian_backend": laplacian_backend,
-        "evaluation_adapter": "stage_b_clean_target_star_reference",
-    })
+    utils.save_run_metadata(
+        output_root,
+        {
+            "experiment": "Stage10-B PINN validation selection",
+            "manifest": utils.project_relative(STAGE_B_MANIFEST),
+            "selection_config": formal_config,
+            "validation_samples": [row["sample_id"] for row in validation_rows],
+            "compute_device": str(device),
+            "pinn_laplacian_backend": laplacian_backend,
+            "evaluation_adapter": "stage_b_clean_target_star_reference",
+        },
+    )
 
     initial_centers = pinn_selector._precompute_initial_centers(validation_rows, base_config)
     candidate_table = []

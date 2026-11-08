@@ -157,13 +157,9 @@ FOURIER_LS_CONFIG = {
         "alpha": 0.5,
         "max_components": 3,
         "center_initialization": {
-            "rule": (
-                "observed-only P99.5 winsorization + Gaussian low-pass + greedy NMS"
-            ),
+            "rule": ("observed-only P99.5 winsorization + Gaussian low-pass + greedy NMS"),
             "winsor_percentile": _FORCING_COMMON["forcing_winsor_percentile"],
-            "low_pass_sigma_fraction": _FORCING_COMMON[
-                "forcing_low_pass_sigma_fraction"
-            ],
+            "low_pass_sigma_fraction": _FORCING_COMMON["forcing_low_pass_sigma_fraction"],
             "min_center_distance": _FORCING_COMMON["forcing_min_center_distance"],
             "center_refinement": _FORCING_COMMON["forcing_center_refinement"],
             "coordinate_rule": "observed_pixels_mapped_to_normalized_pixel_centers",
@@ -174,9 +170,7 @@ FOURIER_LS_CONFIG = {
             "rms_grid_size": _FORCING_COMMON["forcing_rms_grid_size"],
             "rms_epsilon": _FORCING_COMMON["forcing_rms_epsilon"],
             "weights_nonnegative": True,
-            "inactive_relative_threshold": _FORCING_COMMON[
-                "inactive_relative_threshold"
-            ],
+            "inactive_relative_threshold": _FORCING_COMMON["inactive_relative_threshold"],
         },
         "geometry": {
             "parameters_per_component": [

@@ -3,6 +3,7 @@
 This runner opens only the Stage-B test split after the Stage-B Global Lock
 exists. All B-specific selection/training has already finished.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -80,11 +81,15 @@ def _metric_row(method, seed, sample, result):
         **evaluated,
     }
     if "fourier_info" in result:
-        row.update({
-            "fourier_objective": result["fourier_info"]["objective"],
-            "fourier_profile_nfev": result["fourier_info"]["profile_nfev"],
-            "fourier_effective_component_count": result["fourier_info"]["effective_component_count"],
-        })
+        row.update(
+            {
+                "fourier_objective": result["fourier_info"]["objective"],
+                "fourier_profile_nfev": result["fourier_info"]["profile_nfev"],
+                "fourier_effective_component_count": result["fourier_info"][
+                    "effective_component_count"
+                ],
+            }
+        )
     return row
 
 
@@ -123,26 +128,35 @@ def _grouped_table(rows):
         for scene in STAGE_B_CONFIG["scene_types"]:
             for level in STAGE_B_CONFIG["intensity_levels"]:
                 subset = [
-                    r for r in rows
+                    r
+                    for r in rows
                     if r["method"] == method
                     and r["scene_type"] == scene
                     and r["intensity_level"] == level
                 ]
                 if not subset:
                     continue
-                table.append({
-                    "method": method,
-                    "scene_type": scene,
-                    "intensity_level": level,
-                    "count": len(subset),
-                    "bg_mae": reporting.finite_mean(subset, "bg_mae"),
-                    "residual_ssim": reporting.finite_mean(subset, "residual_ssim"),
-                    "star_f1": reporting.finite_mean(subset, "star_f1"),
-                    "faint_star_recall": reporting.finite_mean(subset, "faint_star_recall"),
-                    "flux_error": reporting.finite_mean(subset, "matched_star_mean_relative_flux_error"),
-                    "protected_region_mae": reporting.finite_mean(subset, "protected_region_mae"),
-                    "protected_projection_abs_error": reporting.finite_mean(subset, "protected_projection_abs_error"),
-                })
+                table.append(
+                    {
+                        "method": method,
+                        "scene_type": scene,
+                        "intensity_level": level,
+                        "count": len(subset),
+                        "bg_mae": reporting.finite_mean(subset, "bg_mae"),
+                        "residual_ssim": reporting.finite_mean(subset, "residual_ssim"),
+                        "star_f1": reporting.finite_mean(subset, "star_f1"),
+                        "faint_star_recall": reporting.finite_mean(subset, "faint_star_recall"),
+                        "flux_error": reporting.finite_mean(
+                            subset, "matched_star_mean_relative_flux_error"
+                        ),
+                        "protected_region_mae": reporting.finite_mean(
+                            subset, "protected_region_mae"
+                        ),
+                        "protected_projection_abs_error": reporting.finite_mean(
+                            subset, "protected_projection_abs_error"
+                        ),
+                    }
+                )
     return table
 
 
@@ -152,7 +166,10 @@ def _failure_cases(rows):
         subset = [r for r in rows if r["method"] == method]
         candidates = [
             ("largest_bg_mae", max(subset, key=lambda r: r["bg_mae"])),
-            ("largest_protected_error", max(subset, key=lambda r: r["protected_projection_abs_error"])),
+            (
+                "largest_protected_error",
+                max(subset, key=lambda r: r["protected_projection_abs_error"]),
+            ),
             ("lowest_faint_star_recall", min(subset, key=lambda r: r["faint_star_recall"])),
         ]
         seen = set()
@@ -161,20 +178,24 @@ def _failure_cases(rows):
             if ident in seen:
                 continue
             seen.add(ident)
-            output.append({
-                "method": method,
-                "reason": reason,
-                "seed": row["seed"],
-                "sample_id": row["sample_id"],
-                "scene_type": row["scene_type"],
-                "intensity_level": row["intensity_level"],
-                "bg_mae": row["bg_mae"],
-                "star_f1": row["star_f1"],
-                "faint_star_recall": row["faint_star_recall"],
-                "matched_star_mean_relative_flux_error": row["matched_star_mean_relative_flux_error"],
-                "protected_region_mae": row["protected_region_mae"],
-                "protected_projection_abs_error": row["protected_projection_abs_error"],
-            })
+            output.append(
+                {
+                    "method": method,
+                    "reason": reason,
+                    "seed": row["seed"],
+                    "sample_id": row["sample_id"],
+                    "scene_type": row["scene_type"],
+                    "intensity_level": row["intensity_level"],
+                    "bg_mae": row["bg_mae"],
+                    "star_f1": row["star_f1"],
+                    "faint_star_recall": row["faint_star_recall"],
+                    "matched_star_mean_relative_flux_error": row[
+                        "matched_star_mean_relative_flux_error"
+                    ],
+                    "protected_region_mae": row["protected_region_mae"],
+                    "protected_projection_abs_error": row["protected_projection_abs_error"],
+                }
+            )
     return output
 
 
@@ -195,15 +216,18 @@ def main(*, force=False, smoke=False):
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("Formal Stage-B requires the frozen CUDA execution policy")
 
-    utils.save_run_metadata(output_root, {
-        "experiment": "Stage10-B adapted formal benchmark",
-        "stage_b_config": stage_b_config_snapshot(),
-        "stage_b_global_lock": utils.project_relative(LOCK_PATH),
-        "stage_b_global_lock_sha256": utils.file_sha256(LOCK_PATH),
-        "smoke": bool(smoke),
-        "test_samples": [r["sample_id"] for r in test_rows],
-        "method_policy": "Stage-B train/validation selection completed before Stage-B lock",
-    })
+    utils.save_run_metadata(
+        output_root,
+        {
+            "experiment": "Stage10-B adapted formal benchmark",
+            "stage_b_config": stage_b_config_snapshot(),
+            "stage_b_global_lock": utils.project_relative(LOCK_PATH),
+            "stage_b_global_lock_sha256": utils.file_sha256(LOCK_PATH),
+            "smoke": bool(smoke),
+            "test_samples": [r["sample_id"] for r in test_rows],
+            "method_policy": "Stage-B train/validation selection completed before Stage-B lock",
+        },
+    )
     utils.write_json(output_root / "stage_b_global_lock_snapshot.json", lock)
 
     rows, training_rows = [], []
@@ -214,7 +238,9 @@ def main(*, force=False, smoke=False):
             sample["observed"],
             run_method("fft_gaussian", sample["observed"], configs["fft_gaussian"], device=device),
         )
-        _save_result(output_root / "fft_gaussian/deterministic" / sample["sample_id"], sample, result)
+        _save_result(
+            output_root / "fft_gaussian/deterministic" / sample["sample_id"], sample, result
+        )
         rows.append(_metric_row("fft_gaussian", "deterministic", sample, result))
 
     for i, sample in enumerate(samples, 1):

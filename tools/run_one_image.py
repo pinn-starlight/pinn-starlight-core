@@ -23,6 +23,7 @@ Behaviour
 
 Outputs land in ``experiments/outputs/code_check_demo/``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -60,8 +61,11 @@ def _archive_for(path: str) -> str | None:
 
 def _ensure_sample_arrays(row: dict) -> None:
     """Extract this sample's TIFFs from the local archive if they are missing."""
-    missing = [k for k in ("observed", "background_true", "clean_true")
-               if not utils.to_absolute_path(row[k]).is_file()]
+    missing = [
+        k
+        for k in ("observed", "background_true", "clean_true")
+        if not utils.to_absolute_path(row[k]).is_file()
+    ]
     if not missing:
         return
     sample_dir = str(Path(row["observed"]).parent) + "/"
@@ -89,9 +93,7 @@ def _ensure_sample_arrays(row: dict) -> None:
 def load_synthetic(name: str, max_side: int) -> dict:
     manifest = utils.SYNTHETIC_DATA_ROOT / "manifest.csv"
     if not manifest.is_file():
-        raise SystemExit(
-            "Stage-A manifest not found. Run: bash tools/fetch_smoke_data.sh"
-        )
+        raise SystemExit("Stage-A manifest not found. Run: bash tools/fetch_smoke_data.sh")
     row = None
     for split in ("validation", "train", "test"):
         rows = utils.load_manifest(manifest, split=split)
@@ -100,17 +102,18 @@ def load_synthetic(name: str, max_side: int) -> dict:
             break
     if row is None:
         raise SystemExit(
-            f"{name!r} is not in {manifest}.\n"
-            f"Pick one of the sample_id values from that CSV."
+            f"{name!r} is not in {manifest}.\nPick one of the sample_id values from that CSV."
         )
     _ensure_sample_arrays(row)
 
     observed = utils.load_float_tiff(row["observed"])
     stride = max(1, int(np.ceil(max(observed.shape) / max_side)))
+
     def load(key):
         return np.ascontiguousarray(
             utils.load_float_tiff(row[key])[::stride, ::stride], dtype=np.float32
         )
+
     return {
         "sample_id": name,
         "source": "synthetic",
@@ -133,8 +136,7 @@ def load_image(path: Path, max_side: int) -> dict:
         raise SystemExit(f"image not found: {path}")
     if path.suffix.lower() not in IMAGE_SUFFIXES:
         raise SystemExit(
-            f"unsupported extension {path.suffix!r}; "
-            f"expected one of {sorted(IMAGE_SUFFIXES)}"
+            f"unsupported extension {path.suffix!r}; expected one of {sorted(IMAGE_SUFFIXES)}"
         )
 
     # Probe dimensions first so we can cap the long side before training.
@@ -175,11 +177,7 @@ def load_archived_reference(sample_id: str) -> dict:
     """
     import csv
 
-    wanted = {
-        archived: key
-        for key, names in ARCHIVED_METHOD_ALIASES.items()
-        for archived in names
-    }
+    wanted = {archived: key for key, names in ARCHIVED_METHOD_ALIASES.items() for archived in names}
     reference: dict[str, dict] = {}
     for path in ARCHIVED_SOURCES:
         if not path.is_file():
@@ -219,8 +217,7 @@ def evaluate_synthetic(sample: dict, backgrounds: dict) -> dict:
             continue
         table[name] = {
             k: result.get(k)
-            for k in ("bg_mae", "bg_rmse", "bg_psnr", "bg_ssim",
-                      "residual_ssim", "star_f1")
+            for k in ("bg_mae", "bg_rmse", "bg_psnr", "bg_ssim", "residual_ssim", "star_f1")
         }
     return table
 
@@ -305,10 +302,12 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", type=Path, help="any image file to analyse")
     parser.add_argument("--sample", help="synthetic validation sample_id")
-    parser.add_argument("--max-side", type=int, default=384,
-                        help="cap the long image side (default 512)")
-    parser.add_argument("--steps", type=int, default=500,
-                        help="PINN steps per stage (CPU demo default 500)")
+    parser.add_argument(
+        "--max-side", type=int, default=384, help="cap the long image side (default 512)"
+    )
+    parser.add_argument(
+        "--steps", type=int, default=500, help="PINN steps per stage (CPU demo default 500)"
+    )
     parser.add_argument("--out", type=Path, default=OUTPUT_ROOT)
     args = parser.parse_args(argv)
 
@@ -331,8 +330,11 @@ def main(argv=None) -> int:
         sample = load_synthetic(args.sample, args.max_side)
     else:
         sample = load_image(args.image, args.max_side)
-    print(f"loaded {sample['observed'].shape} (x{sample['downsample']}) "
-          f"in {time.perf_counter() - started:.1f}s", flush=True)
+    print(
+        f"loaded {sample['observed'].shape} (x{sample['downsample']}) "
+        f"in {time.perf_counter() - started:.1f}s",
+        flush=True,
+    )
 
     started = time.perf_counter()
     try:
@@ -357,9 +359,7 @@ def main(argv=None) -> int:
         "pinn": "Original PINN",
         "final_pinn": "SGC-PINN",
     }
-    reference = (
-        load_archived_reference(sample["sample_id"]) if sample.get("has_truth") else {}
-    )
+    reference = load_archived_reference(sample["sample_id"]) if sample.get("has_truth") else {}
 
     def cell(row, name, spec, width):
         value = row.get(name)
@@ -393,9 +393,9 @@ def main(argv=None) -> int:
             except (KeyError, TypeError, ValueError):
                 paper_f1 = "n/a"
             print(
-                f"{label:<16}{cell(row,'bg_mae','.6f',11)}"
-                f"{cell(row,'bg_psnr','.2f',9)}{cell(row,'bg_ssim','.4f',9)}"
-                f"{cell(row,'residual_ssim','.4f',9)}{cell(row,'star_f1','.3f',9)}"
+                f"{label:<16}{cell(row, 'bg_mae', '.6f', 11)}"
+                f"{cell(row, 'bg_psnr', '.2f', 9)}{cell(row, 'bg_ssim', '.4f', 9)}"
+                f"{cell(row, 'residual_ssim', '.4f', 9)}{cell(row, 'star_f1', '.3f', 9)}"
                 f"{timings.get(key, float('nan')):>8.2f}s"
                 f"{paper_mae:>15}{paper_f1:>10}"
             )
@@ -423,12 +423,12 @@ def main(argv=None) -> int:
                 print(f"{label:<16}  ERROR: {row['error'][:56]}")
                 continue
             print(
-                f"{label:<16}{cell(row,'background_mean','.5f',10)}"
-                f"{cell(row,'background_total_variation','.5f',10)}"
-                f"{cell(row,'residual_std','.5f',10)}"
-                f"{cell(row,'residual_negative_fraction','.4f',9)}"
-                f"{cell(row,'residual_above_one_fraction','.4f',9)}"
-                f"{cell(row,'detected_star_count','d',8)}"
+                f"{label:<16}{cell(row, 'background_mean', '.5f', 10)}"
+                f"{cell(row, 'background_total_variation', '.5f', 10)}"
+                f"{cell(row, 'residual_std', '.5f', 10)}"
+                f"{cell(row, 'residual_negative_fraction', '.4f', 9)}"
+                f"{cell(row, 'residual_above_one_fraction', '.4f', 9)}"
+                f"{cell(row, 'detected_star_count', 'd', 8)}"
                 f"{timings.get(key, float('nan')):>8.2f}s"
             )
         print("-" * len(header))

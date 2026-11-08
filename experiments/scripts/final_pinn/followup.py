@@ -8,6 +8,7 @@ loop, summary aggregation — is identical and lives here.
 The numerical work stays in :func:`sgc_pinn.run_paired` and the per-stage
 ``evaluate_*`` functions; this module only wires it together.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -154,9 +155,7 @@ def run_followup(spec: FollowupSpec, *, force: bool = False, smoke: bool = False
                     "runtime_s": method_result["runtime_s_total"],
                     "stage1_runtime_s": shared["stage1_runtime_s"],
                     "forcing_runtime_s": (
-                        shared["forcing_runtime_s"]
-                        if method == final_pinn.METHOD_NAME
-                        else 0.0
+                        shared["forcing_runtime_s"] if method == final_pinn.METHOD_NAME else 0.0
                     ),
                     "stage3_runtime_s": method_result["stage3_runtime_s"],
                     "peak_vram_mb": method_result["peak_vram_mb"],
@@ -170,9 +169,7 @@ def run_followup(spec: FollowupSpec, *, force: bool = False, smoke: bool = False
                     "mean_target_scaled_physics_to_data_ratio": method_result[
                         "mean_target_scaled_physics_to_data_ratio"
                     ],
-                    "mean_absolute_balance_error": method_result[
-                        "mean_absolute_balance_error"
-                    ],
+                    "mean_absolute_balance_error": method_result["mean_absolute_balance_error"],
                     **scores,
                 }
                 for key in spec.drop_row_fields:

@@ -11,6 +11,7 @@ Important distinction:
 - both are rendered only for paper display and never replace the scientific
   TIFFs or metrics.
 """
+
 from __future__ import annotations
 
 import io
@@ -49,8 +50,7 @@ def load_source_display_rgb(
             import rawpy
         except ImportError as exc:
             raise RuntimeError(
-                "RAW/NEF display rendering requires rawpy. "
-                "Run inside the project Pixi environment."
+                "RAW/NEF display rendering requires rawpy. Run inside the project Pixi environment."
             ) from exc
 
         with rawpy.imread(str(path)) as raw:

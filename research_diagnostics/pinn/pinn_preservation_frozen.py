@@ -22,6 +22,7 @@ The experiment asks a narrow mechanism question:
 
 It does NOT claim to solve the general multi-objective/Pareto problem.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,30 +47,24 @@ from tqdm import tqdm
 
 import pinn_starlight_core.nn.pinn_loss as pinn_loss
 from experiments.common.baselines import coordinate_pinn as base_pinn
-from experiments.common.baselines import sgc_pinn as formal_followup
 from experiments.common.baselines import cosine_ls as dct_solver
+from experiments.common.baselines import sgc_pinn as formal_followup
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
-from experiments.common.utils import metrics
-from experiments.common.utils import stage_b_metrics
+from experiments.common.utils import metrics, stage_b_metrics
 from experiments.configs.formal_experiment import FINAL_PINN_FOLLOWUP_CONFIG
 from experiments.scripts.final_pinn.common import forced_reference_metrics
 from pinn_starlight_core.data.image_loader import coordinate_grid
 from pinn_starlight_core.nn.pinn_layers import SkyglowMLP
-
 
 PATCH_DIR = Path(__file__).resolve().parent
 PATCH_MANIFEST = PATCH_DIR / "pinn_preservation_frozen_manifest.json"
 A_MANIFEST = utils.SYNTHETIC_DATA_ROOT / "manifest.csv"
 A_LOCK = utils.BASE_OUTPUT_ROOT / "configuration_lock/global_configuration_lock.json"
 B_LOCK = (
-    utils.BASE_OUTPUT_ROOT
-    / "stage_b/configuration_lock/stage_b_global_configuration_lock.json"
+    utils.BASE_OUTPUT_ROOT / "stage_b/configuration_lock/stage_b_global_configuration_lock.json"
 )
-OUTPUT_BASE = (
-    utils.BASE_OUTPUT_ROOT
-    / "diagnostics/pinn_preservation_exploratory_frozen_v2"
-)
+OUTPUT_BASE = utils.BASE_OUTPUT_ROOT / "diagnostics/pinn_preservation_exploratory_frozen_v2"
 
 REFERENCE = "v0_current_datafirst_projected"
 CANDIDATES = (
@@ -217,9 +212,7 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
             f"{sample['intensity_level']}"
         )
 
-        initial_centers = base_pinn.initial_centers_from_observed(
-            sample["observed"], data_cfg
-        )
+        initial_centers = base_pinn.initial_centers_from_observed(sample["observed"], data_cfg)
 
         # ==============================================================
         # Shared branch D: current data-first initialisation.
@@ -271,7 +264,11 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
         )
         final_rows.append(
             _save_final(
-                output_root, stage, sample, REFERENCE, v0,
+                output_root,
+                stage,
+                sample,
+                REFERENCE,
+                v0,
                 init_runtime_s=float(data_init["runtime_s"]),
                 forcing_diag=data_forcing_diag,
                 save_arrays=save_arrays,
@@ -293,7 +290,11 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
         )
         final_rows.append(
             _save_final(
-                output_root, stage, sample, "v4_budgeted_conflict", v4,
+                output_root,
+                stage,
+                sample,
+                "v4_budgeted_conflict",
+                v4,
                 init_runtime_s=float(data_init["runtime_s"]),
                 forcing_diag=data_forcing_diag,
                 save_arrays=save_arrays,
@@ -349,7 +350,11 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
         )
         final_rows.append(
             _save_final(
-                output_root, stage, sample, "v1_physics_first", v1,
+                output_root,
+                stage,
+                sample,
+                "v1_physics_first",
+                v1,
                 init_runtime_s=float(physics_init["runtime_s"]),
                 forcing_diag=physics_forcing_diag,
                 save_arrays=save_arrays,
@@ -371,7 +376,11 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
         )
         final_rows.append(
             _save_final(
-                output_root, stage, sample, "v2_physics_first_anchor", v2,
+                output_root,
+                stage,
+                sample,
+                "v2_physics_first_anchor",
+                v2,
                 init_runtime_s=float(physics_init["runtime_s"]),
                 forcing_diag=physics_forcing_diag,
                 save_arrays=save_arrays,
@@ -435,7 +444,11 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
         )
         final_rows.append(
             _save_final(
-                output_root, stage, sample, "v3_dct_init", v3,
+                output_root,
+                stage,
+                sample,
+                "v3_dct_init",
+                v3,
                 init_runtime_s=float(dct_solver_runtime + dct_init["runtime_s"]),
                 forcing_diag=dct_forcing_diag,
                 save_arrays=save_arrays,
@@ -446,10 +459,7 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
         # partial diagnostic record.
         _write_all_tables(output_root, final_rows, init_rows)
 
-        del (
-            data_init, v0, v4, physics_init, v1, v2,
-            dct_background, dct_init, v3
-        )
+        del (data_init, v0, v4, physics_init, v1, v2, dct_background, dct_init, v3)
         gc.collect()
         if device.type == "cuda":
             torch.cuda.empty_cache()
@@ -482,9 +492,7 @@ def _verify_patch_and_sources():
         actual = _sha256(path)
         if actual != expected_hash:
             mismatches.append(
-                f"hash mismatch: {rel}\n"
-                f"  expected {expected_hash}\n"
-                f"  actual   {actual}"
+                f"hash mismatch: {rel}\n  expected {expected_hash}\n  actual   {actual}"
             )
     if mismatches:
         raise RuntimeError(
@@ -497,9 +505,7 @@ def _verify_patch_and_sources():
 def _verify_formal_prerequisites():
     # Stage-A verifier checks the current formal config, manifest fingerprint and
     # frozen method configuration without opening test image arrays.
-    utils.load_global_configuration_lock(
-        A_LOCK, verify=True, require_formal_ready=True
-    )
+    utils.load_global_configuration_lock(A_LOCK, verify=True, require_formal_ready=True)
     if not B_LOCK.is_file():
         raise FileNotFoundError(
             "Stage-B Global Lock is required before this diagnostic: " + str(B_LOCK)
@@ -512,10 +518,7 @@ def _verify_formal_prerequisites():
 
 
 def _choose_smoke_row(rows):
-    high = [
-        r for r in rows
-        if str(r.get("intensity_level", "")).strip().lower() == "high"
-    ]
+    high = [r for r in rows if str(r.get("intensity_level", "")).strip().lower() == "high"]
     return (high or list(rows))[0]
 
 
@@ -524,9 +527,7 @@ def _assert_validation_only(rows, label):
         raise RuntimeError(f"{label} validation split is empty")
     bad = [r.get("sample_id") for r in rows if r.get("split") != "validation"]
     if bad:
-        raise RuntimeError(
-            f"{label} contains non-validation rows; refusing to continue: {bad}"
-        )
+        raise RuntimeError(f"{label} contains non-validation rows; refusing to continue: {bad}")
 
 
 def _load_sample(stage, row):
@@ -583,9 +584,7 @@ def _train_physics_first(
     )
     generator = torch.Generator(device=device)
     generator.manual_seed(int(seed))
-    alpha = torch.tensor(
-        float(base_config["alpha"]), dtype=torch.float32, device=device
-    )
+    alpha = torch.tensor(float(base_config["alpha"]), dtype=torch.float32, device=device)
     batch_size = min(int(base_config["batch_size"]), int(coords.shape[0]))
     log_every = max(1, int(base_config["log_every"]))
     warmup = min(
@@ -604,20 +603,15 @@ def _train_physics_first(
             bool(base_config["center_refinement_enabled"]) and step > warmup
         )
         indices = torch.randint(
-            0, coords.shape[0], (batch_size,),
-            device=device, generator=generator
+            0, coords.shape[0], (batch_size,), device=device, generator=generator
         )
         xy = coords[indices]
         target = values[indices]
 
         background, laplacian = base_pinn._background_and_laplacian(model, xy)
-        robust_data = F.smooth_l1_loss(
-            background, target, beta=ROBUST_BETA, reduction="mean"
-        )
+        robust_data = F.smooth_l1_loss(background, target, beta=ROBUST_BETA, reduction="mean")
         forcing_pred = forcing(xy, alpha)
-        physics = pinn_loss.mse_physics_from_laplacian(
-            background, laplacian, forcing_pred, alpha
-        )
+        physics = pinn_loss.mse_physics_from_laplacian(background, laplacian, forcing_pred, alpha)
         sparse = forcing.sparse_penalty()
 
         total = (
@@ -691,14 +685,12 @@ def _fit_forcing_keep_geometry(
     model = SkyglowMLP(base_config["hidden_dims"]).to(device)
     model.load_state_dict(model_state)
     model.eval()
-    alpha = torch.tensor(
-        float(base_config["alpha"]), dtype=torch.float32, device=device
-    )
+    alpha = torch.tensor(float(base_config["alpha"]), dtype=torch.float32, device=device)
 
     q_parts = []
     with torch.no_grad():
         for start in range(0, coords.shape[0], 8192):
-            xy = coords[start:start + 8192]
+            xy = coords[start : start + 8192]
             background, laplacian = base_pinn._background_and_laplacian(model, xy)
             q_parts.append((alpha * background - laplacian).detach())
     q_all = torch.cat(q_parts, dim=0)
@@ -739,9 +731,7 @@ def _fit_forcing_keep_geometry(
         "uses_true_background": False,
         "components": forcing.diagnostics(
             alpha,
-            inactive_relative_threshold=float(
-                base_config["inactive_relative_threshold"]
-            ),
+            inactive_relative_threshold=float(base_config["inactive_relative_threshold"]),
         ),
     }
     return _cpu_state(forcing.state_dict()), diagnostics
@@ -768,9 +758,7 @@ def _distill_background(
     values = torch.from_numpy(target.reshape(-1)).to(device)
 
     model = SkyglowMLP(base_config["hidden_dims"]).to(device)
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=float(base_config["model_lr"])
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=float(base_config["model_lr"]))
     generator = torch.Generator(device=device)
     generator.manual_seed(int(seed))
     batch_size = min(int(base_config["batch_size"]), int(coords.shape[0]))
@@ -784,8 +772,7 @@ def _distill_background(
 
     for step in iterator:
         indices = torch.randint(
-            0, coords.shape[0], (batch_size,),
-            device=device, generator=generator
+            0, coords.shape[0], (batch_size,), device=device, generator=generator
         )
         xy = coords[indices]
         target_batch = values[indices]
@@ -862,15 +849,11 @@ def _custom_refine(
     for p in forcing.parameters():
         p.requires_grad_(False)
 
-    optimizer = torch.optim.Adam(
-        params, lr=float(stage3_config["model_lr"])
-    )
+    optimizer = torch.optim.Adam(params, lr=float(stage3_config["model_lr"]))
     generator = torch.Generator(device=device)
     generator.manual_seed(int(seed))
 
-    alpha = torch.tensor(
-        float(base_config["alpha"]), dtype=torch.float32, device=device
-    )
+    alpha = torch.tensor(float(base_config["alpha"]), dtype=torch.float32, device=device)
     steps = int(stage3_config["steps"])
     batch_size = min(int(base_config["batch_size"]), int(coords.shape[0]))
     log_every = max(1, int(stage3_config["log_every"]))
@@ -889,9 +872,7 @@ def _custom_refine(
     iterator = range(1, steps + 1)
     if show_progress:
         label = (
-            "V2 anchored refinement"
-            if mode == "projected_with_anchor"
-            else "V4 budgeted conflict"
+            "V2 anchored refinement" if mode == "projected_with_anchor" else "V4 budgeted conflict"
         )
         iterator = tqdm(iterator, desc=label, leave=False)
 
@@ -899,8 +880,7 @@ def _custom_refine(
 
     for step in iterator:
         indices = torch.randint(
-            0, coords.shape[0], (batch_size,),
-            device=device, generator=generator
+            0, coords.shape[0], (batch_size,), device=device, generator=generator
         )
         xy = coords[indices]
         target = values[indices]
@@ -942,31 +922,24 @@ def _custom_refine(
                 torch.zeros((), dtype=torch.float64, device=device),
             )
             used_physics_grads = [
-                gp - coeff.to(gp.dtype) * gd
-                for gd, gp in zip(primary_grads, physics_grads)
+                gp - coeff.to(gp.dtype) * gd for gd, gp in zip(primary_grads, physics_grads)
             ]
             used_norm = torch.sqrt(_sum_sq(used_physics_grads) + eps)
             lambda_eff = rho * primary_norm / (used_norm + eps)
-            lambda_eff = torch.clamp(
-                lambda_eff, min=lambda_min, max=lambda_max
-            )
+            lambda_eff = torch.clamp(lambda_eff, min=lambda_min, max=lambda_max)
             lambda_use = lambda_eff * min(1.0, float(step) / ramp_steps)
             cap_applied = False
         else:
             used_physics_grads = physics_grads
             used_norm = physics_norm
             lambda_eff = rho * primary_norm / (used_norm + eps)
-            lambda_eff = torch.clamp(
-                lambda_eff, min=lambda_min, max=lambda_max
-            )
+            lambda_eff = torch.clamp(lambda_eff, min=lambda_min, max=lambda_max)
             lambda_use = lambda_eff * min(1.0, float(step) / ramp_steps)
             cap_applied = False
             if conflict:
                 # Guarantees:
                 # gd · (gd + lambda gp) >= (1-budget) ||gd||^2
-                cap_value = (
-                    V4_CONFLICT_BUDGET * primary_norm_sq / (-dot + eps)
-                )
+                cap_value = V4_CONFLICT_BUDGET * primary_norm_sq / (-dot + eps)
                 cap_value = torch.clamp(cap_value, min=0.0)
                 before = lambda_use
                 lambda_use = torch.minimum(lambda_use, cap_value)
@@ -994,23 +967,17 @@ def _custom_refine(
                     "mode": mode,
                     "data_loss": final_data,
                     "anchor_loss": final_anchor,
-                    "anchor_weight": (
-                        V2_ANCHOR_WEIGHT
-                        if mode == "projected_with_anchor" else 0.0
-                    ),
+                    "anchor_weight": (V2_ANCHOR_WEIGHT if mode == "projected_with_anchor" else 0.0),
                     "physics_loss": final_phys,
                     "primary_grad_norm": pn,
-                    "raw_physics_grad_norm": float(
-                        physics_norm.detach().item()
-                    ),
+                    "raw_physics_grad_norm": float(physics_norm.detach().item()),
                     "used_physics_grad_norm": un,
                     "raw_grad_cosine": cosine,
                     "lambda_use": lam,
                     "scaled_physics_to_primary_ratio": ratio,
                     "gradient_conflict": conflict,
                     "conflict_budget": (
-                        V4_CONFLICT_BUDGET
-                        if mode == "budgeted_conflict" else float("nan")
+                        V4_CONFLICT_BUDGET if mode == "budgeted_conflict" else float("nan")
                     ),
                     "budget_cap_applied": cap_applied,
                 }
@@ -1038,21 +1005,13 @@ def _custom_refine(
         "history": history,
         "stage3_runtime_s": float(runtime_s),
         "peak_vram_mb": utils.peak_vram_mb(device),
-        "gradient_conflict_fraction": (
-            float(conflicts / logged) if logged else float("nan")
-        ),
-        "budget_cap_fraction": (
-            float(capped / logged) if logged else 0.0
-        ),
-        "mean_lambda_use": (
-            float(np.mean(lambdas)) if lambdas else float("nan")
-        ),
+        "gradient_conflict_fraction": (float(conflicts / logged) if logged else float("nan")),
+        "budget_cap_fraction": (float(capped / logged) if logged else 0.0),
+        "mean_lambda_use": (float(np.mean(lambdas)) if lambdas else float("nan")),
         "mean_scaled_physics_to_primary_ratio": (
             float(np.mean(ratios)) if ratios else float("nan")
         ),
-        "mean_raw_grad_cosine": (
-            float(np.mean(cosines)) if cosines else float("nan")
-        ),
+        "mean_raw_grad_cosine": (float(np.mean(cosines)) if cosines else float("nan")),
         "final_data_loss": final_data,
         "final_physics_loss": final_phys,
         "final_anchor_loss": final_anchor,
@@ -1097,14 +1056,13 @@ def _save_final(
         "background_type": sample["background_type"],
         "intensity_level": sample["intensity_level"],
         "init_runtime_s_audit_only": float(init_runtime_s),
-        "stage3_runtime_s_audit_only": float(
-            result.get("stage3_runtime_s", float("nan"))
-        ),
+        "stage3_runtime_s_audit_only": float(result.get("stage3_runtime_s", float("nan"))),
         "runtime_is_selection_metric": False,
         **{
             k: v
             for k, v in result.items()
-            if k in {
+            if k
+            in {
                 "gradient_conflict_fraction",
                 "budget_cap_fraction",
                 "mean_lambda_use",
@@ -1118,9 +1076,7 @@ def _save_final(
         **scores,
     }
 
-    sample_dir = (
-        output_root / f"stage_{stage}" / method / sample["sample_id"]
-    )
+    sample_dir = output_root / f"stage_{stage}" / method / sample["sample_id"]
     sample_dir.mkdir(parents=True, exist_ok=True)
     _write_json(sample_dir / "final_metrics.json", row)
     _write_json(sample_dir / "forcing_diagnostics.json", forcing_diag)
@@ -1130,9 +1086,7 @@ def _save_final(
     )
 
     if save_arrays:
-        residual = utils.reconstruct_residual(
-            sample["observed"], result["background_pred"]
-        )
+        residual = utils.reconstruct_residual(sample["observed"], result["background_pred"])
         utils.save_prediction_arrays(
             sample_dir,
             sample["observed"],
@@ -1161,20 +1115,14 @@ def _write_all_tables(output_root, final_rows, init_rows):
     _write_rows(output_root / "metrics.csv", final_rows)
     _write_rows(output_root / "initialization_metrics.csv", init_rows)
 
-    final_summary = _group_summary(
-        final_rows, group_keys=("stage", "method")
-    )
-    init_summary = _group_summary(
-        init_rows, group_keys=("stage", "initialization")
-    )
+    final_summary = _group_summary(final_rows, group_keys=("stage", "method"))
+    init_summary = _group_summary(init_rows, group_keys=("stage", "initialization"))
     paired = _paired_vs_reference(final_rows)
 
     _write_rows(output_root / "candidate_summary.csv", final_summary)
     _write_rows(output_root / "initialization_summary.csv", init_summary)
     _write_rows(output_root / "paired_vs_reference.csv", paired)
-    _write_mechanism_report(
-        output_root, final_summary, init_summary, paired
-    )
+    _write_mechanism_report(output_root, final_summary, init_summary, paired)
 
 
 def _group_summary(rows, *, group_keys):
@@ -1189,13 +1137,13 @@ def _group_summary(rows, *, group_keys):
     }
     out = []
     for key, group in sorted(groups.items()):
-        item = {
-            k: v for k, v in zip(group_keys, key)
-        }
+        item = {k: v for k, v in zip(group_keys, key)}
         item["sample_count"] = len(group)
         numeric_keys = sorted(
             {
-                k for row in group for k, v in row.items()
+                k
+                for row in group
+                for k, v in row.items()
                 if k not in excluded and isinstance(v, (int, float))
             }
         )
@@ -1216,10 +1164,7 @@ def _group_summary(rows, *, group_keys):
 
 
 def _paired_vs_reference(rows):
-    by_key = {
-        (r["method"], r["stage"], r["sample_id"]): r
-        for r in rows
-    }
+    by_key = {(r["method"], r["stage"], r["sample_id"]): r for r in rows}
     lower_better = {
         "bg_mae": True,
         "bg_rmse": True,
@@ -1239,9 +1184,7 @@ def _paired_vs_reference(rows):
     stages = sorted({r["stage"] for r in rows})
 
     for stage in stages:
-        sample_ids = sorted(
-            {r["sample_id"] for r in rows if r["stage"] == stage}
-        )
+        sample_ids = sorted({r["sample_id"] for r in rows if r["stage"] == stage})
         for candidate in CANDIDATES:
             for metric in metrics_to_compare:
                 deltas = []
@@ -1263,7 +1206,7 @@ def _paired_vs_reference(rows):
                     tol = max(1e-12, 1e-8 * max(abs(av), abs(bv), 1.0))
                     if abs(delta) <= tol:
                         ties += 1
-                    elif (delta < 0 if lower_better[metric] else delta > 0):
+                    elif delta < 0 if lower_better[metric] else delta > 0:
                         wins += 1
                     else:
                         losses += 1
@@ -1274,19 +1217,13 @@ def _paired_vs_reference(rows):
                             "candidate": candidate,
                             "baseline": REFERENCE,
                             "metric": metric,
-                            "better_direction": (
-                                "lower" if lower_better[metric] else "higher"
-                            ),
+                            "better_direction": ("lower" if lower_better[metric] else "higher"),
                             "valid_pairs": len(deltas),
                             "wins": wins,
                             "losses": losses,
                             "ties": ties,
-                            "mean_delta_candidate_minus_reference": float(
-                                np.mean(deltas)
-                            ),
-                            "median_delta_candidate_minus_reference": float(
-                                np.median(deltas)
-                            ),
+                            "mean_delta_candidate_minus_reference": float(np.mean(deltas)),
+                            "median_delta_candidate_minus_reference": float(np.median(deltas)),
                         }
                     )
 
@@ -1342,11 +1279,7 @@ def _write_mechanism_report(output_root, final_summary, init_summary, paired):
             + ": bg_mae="
             + _fmt(row.get("mean_bg_mae"))
             + ", forced_flux="
-            + _fmt(
-                row.get(
-                    "mean_forced_reference_mean_relative_flux_error"
-                )
-            )
+            + _fmt(row.get("mean_forced_reference_mean_relative_flux_error"))
             + ", protected_projection_ratio="
             + _fmt(row.get("mean_protected_projection_ratio"))
         )
@@ -1360,9 +1293,7 @@ def _write_mechanism_report(output_root, final_summary, init_summary, paired):
         "must be a separately frozen step after this validation-only exploration.",
     ]
 
-    (output_root / "mechanism_report.txt").write_text(
-        "\n".join(lines) + "\n", encoding="utf-8"
-    )
+    (output_root / "mechanism_report.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _platform_record(device):
@@ -1374,9 +1305,7 @@ def _platform_record(device):
         "cuda_available": bool(torch.cuda.is_available()),
         "device_requested": str(device),
         "stage11_machine_role": os.environ.get("STAGE11_MACHINE_ROLE"),
-        "stage11_pixi_environment": os.environ.get(
-            "STAGE11_PIXI_ENVIRONMENT"
-        ),
+        "stage11_pixi_environment": os.environ.get("STAGE11_PIXI_ENVIRONMENT"),
         "runtime_used_for_candidate_selection": False,
     }
     if device.type == "cuda":
@@ -1384,9 +1313,7 @@ def _platform_record(device):
         record.update(
             {
                 "gpu_name": torch.cuda.get_device_name(index),
-                "gpu_capability": list(
-                    torch.cuda.get_device_capability(index)
-                ),
+                "gpu_capability": list(torch.cuda.get_device_capability(index)),
                 "gpu_count": torch.cuda.device_count(),
             }
         )
@@ -1395,8 +1322,7 @@ def _platform_record(device):
 
 def _resolve_device(value):
     device = torch.device(
-        value if value is not None
-        else ("cuda:0" if torch.cuda.is_available() else "cpu")
+        value if value is not None else ("cuda:0" if torch.cuda.is_available() else "cpu")
     )
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA requested but unavailable")
@@ -1414,9 +1340,9 @@ def _analytic_laplacian_self_check(device):
     )
     analytic_b, analytic_lap = base_pinn._background_and_laplacian(model, xy)
     direct = torch.sigmoid(model(xy).squeeze(-1))
-    grad = torch.autograd.grad(
-        direct, xy, grad_outputs=torch.ones_like(direct), create_graph=True
-    )[0]
+    grad = torch.autograd.grad(direct, xy, grad_outputs=torch.ones_like(direct), create_graph=True)[
+        0
+    ]
     parts = []
     for axis in (0, 1):
         second = torch.autograd.grad(
@@ -1428,36 +1354,25 @@ def _analytic_laplacian_self_check(device):
         )[0][:, axis]
         parts.append(second)
     auto_lap = parts[0] + parts[1]
-    b_err = float(
-        torch.max(torch.abs(analytic_b - direct)).detach().cpu()
-    )
-    lap_err = float(
-        torch.max(torch.abs(analytic_lap - auto_lap)).detach().cpu()
-    )
+    b_err = float(torch.max(torch.abs(analytic_b - direct)).detach().cpu())
+    lap_err = float(torch.max(torch.abs(analytic_lap - auto_lap)).detach().cpu())
     if b_err > 2e-6 or lap_err > 2e-5:
         raise RuntimeError(
-            "analytic Laplacian self-check failed: "
-            f"background={b_err:.3e}, laplacian={lap_err:.3e}"
+            f"analytic Laplacian self-check failed: background={b_err:.3e}, laplacian={lap_err:.3e}"
         )
 
 
 def _sum_sq(grads):
-    total = torch.zeros(
-        (), dtype=torch.float64, device=grads[0].device
-    )
+    total = torch.zeros((), dtype=torch.float64, device=grads[0].device)
     for g in grads:
         total = total + torch.sum(g.detach().double().square())
     return total
 
 
 def _dot(a, b):
-    total = torch.zeros(
-        (), dtype=torch.float64, device=a[0].device
-    )
+    total = torch.zeros((), dtype=torch.float64, device=a[0].device)
     for ga, gb in zip(a, b):
-        total = total + torch.sum(
-            ga.detach().double() * gb.detach().double()
-        )
+        total = total + torch.sum(ga.detach().double() * gb.detach().double())
     return total
 
 
@@ -1488,9 +1403,7 @@ def _rmse(y, p):
 
 
 def _relative_rmse(y, p):
-    denom = float(
-        np.sqrt(np.mean(np.asarray(y, dtype=np.float64) ** 2))
-    )
+    denom = float(np.sqrt(np.mean(np.asarray(y, dtype=np.float64) ** 2)))
     return _rmse(y, p) / max(denom, 1e-12)
 
 
@@ -1514,9 +1427,7 @@ def _write_json(path, payload):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(
-            payload, ensure_ascii=False, indent=2, allow_nan=True
-        ) + "\n",
+        json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=True) + "\n",
         encoding="utf-8",
     )
 
@@ -1541,9 +1452,7 @@ def _write_rows(path, rows):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--suite", choices=("smoke", "full"), default="full"
-    )
+    parser.add_argument("--suite", choices=("smoke", "full"), default="full")
     parser.add_argument("--device", default=None)
     parser.add_argument(
         "--force",

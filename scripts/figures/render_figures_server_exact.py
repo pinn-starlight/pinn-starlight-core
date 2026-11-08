@@ -44,7 +44,7 @@ try:
     import tifffile
 except ImportError as e:
     raise SystemExit(
-        "remote 环境缺少 tifffile；请先执行：pixi run -e remote python -c \"import tifffile\""
+        'remote 环境缺少 tifffile；请先执行：pixi run -e remote python -c "import tifffile"'
     ) from e
 
 
@@ -103,6 +103,7 @@ ABLATION_DIRS = {
 # 不会再默默生成“方框中文”的坏图。
 # ============================================================
 
+
 def _fc_list():
     try:
         out = subprocess.check_output(
@@ -122,7 +123,9 @@ def _fc_list():
     except Exception:
         return []
 
+
 _FC_ROWS = _fc_list()
+
 
 def find_real_font(candidates):
     # 必须真的在 fc-list 里出现，不能接受 fc-match 的隐式 fallback。
@@ -132,6 +135,7 @@ def find_real_font(candidates):
             if cl in fam.lower():
                 return Path(file)
     return None
+
 
 ZH_FONT_PATH = None
 EN_FONT_PATH = None
@@ -143,22 +147,27 @@ def resolve_fonts() -> None:
     """Resolve real font files lazily so that ``--help`` works on any machine."""
     global ZH_FONT_PATH, EN_FONT_PATH, ZH_FONT, EN_FONT
 
-    ZH_FONT_PATH = find_real_font([
-        "SimSun", "宋体",
-        "Noto Serif CJK SC",
-        "Source Han Serif SC",
-        "Source Han Serif CN",
-        "AR PL UMing CN",
-        "WenQuanYi Zen Hei",  # 最后兜底：至少中文不变方框
-    ])
+    ZH_FONT_PATH = find_real_font(
+        [
+            "SimSun",
+            "宋体",
+            "Noto Serif CJK SC",
+            "Source Han Serif SC",
+            "Source Han Serif CN",
+            "AR PL UMing CN",
+            "WenQuanYi Zen Hei",  # 最后兜底：至少中文不变方框
+        ]
+    )
 
-    EN_FONT_PATH = find_real_font([
-        "Times New Roman",
-        "Times",
-        "Liberation Serif",
-        "Nimbus Roman",
-        "DejaVu Serif",
-    ])
+    EN_FONT_PATH = find_real_font(
+        [
+            "Times New Roman",
+            "Times",
+            "Liberation Serif",
+            "Nimbus Roman",
+            "DejaVu Serif",
+        ]
+    )
 
     if ZH_FONT_PATH is None:
         raise SystemExit(
@@ -181,21 +190,26 @@ def resolve_fonts() -> None:
     ZH_FONT = FontProperties(fname=str(ZH_FONT_PATH))
     EN_FONT = FontProperties(fname=str(EN_FONT_PATH))
 
+
 # 数学字体使用 STIX，外观接近 Times。
 plt.rcParams["mathtext.fontset"] = "stix"
 plt.rcParams["axes.unicode_minus"] = False
 
 NAVY = "#173f6b"
 
+
 def has_cjk(s: str) -> bool:
     return any("\u3400" <= ch <= "\u9fff" for ch in s)
+
 
 def fp_for_text(s: str):
     return ZH_FONT if has_cjk(s) else EN_FONT
 
+
 def print_font_info():
     print("[FONT] 中文:", ZH_FONT.get_name(), "->", ZH_FONT_PATH)
     print("[FONT] 英文:", EN_FONT.get_name(), "->", EN_FONT_PATH)
+
 
 # ============================================================
 # 基础 I/O
@@ -296,9 +310,7 @@ def find_dir_exact_or_recursive(
             matches.append((score, len(str(p)), p))
 
     if not matches:
-        die(
-            f"在 {root} 下找不到同时包含 {required_parts} 的目录"
-        )
+        die(f"在 {root} 下找不到同时包含 {required_parts} 的目录")
 
     matches.sort(key=lambda t: (-t[0], t[1]))
     return matches[0][2]
@@ -307,6 +319,7 @@ def find_dir_exact_or_recursive(
 # ============================================================
 # 精确实验目录
 # ============================================================
+
 
 def stagea_baseline_dir(method: str, sid: str) -> Path:
     if method == "gaussian":
@@ -325,9 +338,7 @@ def stagea_baseline_dir(method: str, sid: str) -> Path:
             if p.is_dir():
                 return p
         return find_dir_exact_or_recursive(
-            STAGEA_BASELINE / PINN_DIR,
-            required_parts=(sid,),
-            prefer_parts=(f"seed_{SEED}",)
+            STAGEA_BASELINE / PINN_DIR, required_parts=(sid,), prefer_parts=(f"seed_{SEED}",)
         )
     die(f"未知 Stage-A method: {method}")
 
@@ -361,9 +372,7 @@ def ablation_dir(variant_key: str, sid: str) -> Path:
 
     # 否则只在这个已确认 variant 下递归，不会串到别的消融
     return find_dir_exact_or_recursive(
-        variant_root,
-        required_parts=(sid,),
-        prefer_parts=(f"seed_{SEED}",)
+        variant_root, required_parts=(sid,), prefer_parts=(f"seed_{SEED}",)
     )
 
 
@@ -382,9 +391,7 @@ def stageb_baseline_dir(method: str, sid: str) -> Path:
             if p.is_dir():
                 return p
         return find_dir_exact_or_recursive(
-            STAGEB_BASELINE / PINN_DIR,
-            required_parts=(sid,),
-            prefer_parts=(f"seed_{SEED}",)
+            STAGEB_BASELINE / PINN_DIR, required_parts=(sid,), prefer_parts=(f"seed_{SEED}",)
         )
     die(f"未知 Stage-B method: {method}")
 
@@ -400,6 +407,7 @@ def stageb_pair_dir(branch: str, sid: str) -> Path:
 # ============================================================
 # 显示范围
 # ============================================================
+
 
 def finite_sample(x: np.ndarray, max_n=350_000) -> np.ndarray:
     v = x[np.isfinite(x)].ravel()
@@ -427,6 +435,7 @@ def single_range(x: np.ndarray, lo=1.0, hi=99.5):
 # 绘图辅助
 # ============================================================
 
+
 def style_ax(ax):
     ax.set_xticks([])
     ax.set_yticks([])
@@ -436,25 +445,14 @@ def style_ax(ax):
 
 
 def panel(ax, img, vrange, title=None, mask=None):
-    ax.imshow(
-        img, cmap="gray",
-        vmin=vrange[0], vmax=vrange[1],
-        interpolation="nearest"
-    )
+    ax.imshow(img, cmap="gray", vmin=vrange[0], vmax=vrange[1], interpolation="nearest")
     if mask is not None and np.any(mask):
         ax.contour(
-            mask.astype(float),
-            levels=[0.5],
-            colors="white",
-            linewidths=0.55,
-            linestyles="--"
+            mask.astype(float), levels=[0.5], colors="white", linewidths=0.55, linestyles="--"
         )
     style_ax(ax)
     if title:
-        ax.set_title(
-            title, fontsize=9.4, pad=4, color=NAVY,
-            fontproperties=fp_for_text(title)
-        )
+        ax.set_title(title, fontsize=9.4, pad=4, color=NAVY, fontproperties=fp_for_text(title))
 
 
 def save(fig, outbase: Path, dpi: int):
@@ -471,6 +469,7 @@ def save(fig, outbase: Path, dpi: int):
 # ============================================================
 # 图3：Stage-A
 # ============================================================
+
 
 def load_fig3_case(sid: str):
     src = STAGEA_SOURCE / sid
@@ -502,22 +501,29 @@ def render_fig3(outdir: Path, dpi: int):
 
     fig = plt.figure(figsize=(12.4, 7.45), facecolor="white")
     fig.suptitle(
-        "图3  Stage-A 代表性空间结果",
-        fontsize=17, y=0.986, color=NAVY,
-        fontproperties=ZH_FONT
+        "图3  Stage-A 代表性空间结果", fontsize=17, y=0.986, color=NAVY, fontproperties=ZH_FONT
     )
     fig.text(
-        0.5, 0.952,
+        0.5,
+        0.952,
         "固定代表样本的背景估计与背景扣除结果",
-        ha="center", fontsize=9.4, color="#555555",
-        fontproperties=ZH_FONT
+        ha="center",
+        fontsize=9.4,
+        color="#555555",
+        fontproperties=ZH_FONT,
     )
 
     gs = GridSpec(
-        4, 5, figure=fig,
-        left=0.035, right=0.985, bottom=0.045, top=0.89,
-        hspace=0.31, wspace=0.042,
-        height_ratios=[1.0, 0.93, 1.0, 0.93]
+        4,
+        5,
+        figure=fig,
+        left=0.035,
+        right=0.985,
+        bottom=0.045,
+        top=0.89,
+        hspace=0.31,
+        wspace=0.042,
+        height_ratios=[1.0, 0.93, 1.0, 0.93],
     )
 
     headers = ["观测图像", "真实背景", "高斯滤波", "DCT-II LS", "原始 PINN"]
@@ -537,25 +543,31 @@ def render_fig3(outdir: Path, dpi: int):
             panel(ax, img, vr)
             if gi == 0:
                 ax.set_title(
-                    headers[c], fontsize=9.9, pad=7, color=NAVY, weight="bold",
-                    fontproperties=fp_for_text(headers[c])
+                    headers[c],
+                    fontsize=9.9,
+                    pad=7,
+                    color=NAVY,
+                    weight="bold",
+                    fontproperties=fp_for_text(headers[c]),
                 )
 
-        ax = fig.add_subplot(gs[r+1, 0:2])
+        ax = fig.add_subplot(gs[r + 1, 0:2])
         panel(ax, d["clean"], res_v, "干净参考 / 真实残差")
 
-        for c, (img, ttl) in enumerate([
-            (d["g_res"], "高斯滤波扣除结果"),
-            (d["d_res"], "DCT-II LS 扣除结果"),
-            (d["p_res"], "原始 PINN 扣除结果"),
-        ], start=2):
-            ax = fig.add_subplot(gs[r+1, c])
+        for c, (img, ttl) in enumerate(
+            [
+                (d["g_res"], "高斯滤波扣除结果"),
+                (d["d_res"], "DCT-II LS 扣除结果"),
+                (d["p_res"], "原始 PINN 扣除结果"),
+            ],
+            start=2,
+        ):
+            ax = fig.add_subplot(gs[r + 1, c])
             panel(ax, img, res_v, ttl)
 
         y = 0.905 if gi == 0 else 0.466
         fig.text(
-            0.035, y, group_label, fontsize=10.4, color=NAVY, weight="bold",
-            fontproperties=ZH_FONT
+            0.035, y, group_label, fontsize=10.4, color=NAVY, weight="bold", fontproperties=ZH_FONT
         )
 
     save(fig, outdir / "Fig3_StageA_spatial_results", dpi)
@@ -564,6 +576,7 @@ def render_fig3(outdir: Path, dpi: int):
 # ============================================================
 # 图4：原始 PINN 消融
 # ============================================================
+
 
 def render_fig4(outdir: Path, dpi: int):
     sid = FIG4_SAMPLE
@@ -594,20 +607,31 @@ def render_fig4(outdir: Path, dpi: int):
     fig = plt.figure(figsize=(12.2, 5.25), facecolor="white")
     fig.suptitle(
         "图4  原始 PINN 消融实验代表性结果",
-        fontsize=17, y=0.982, color=NAVY,
-        fontproperties=ZH_FONT
+        fontsize=17,
+        y=0.982,
+        color=NAVY,
+        fontproperties=ZH_FONT,
     )
     fig.text(
-        0.5, 0.938,
+        0.5,
+        0.938,
         f"固定样本：{sid}；固定随机种子：{SEED}",
-        ha="center", fontsize=8.8, color="#555555",
-        fontproperties=ZH_FONT
+        ha="center",
+        fontsize=8.8,
+        color="#555555",
+        fontproperties=ZH_FONT,
     )
 
     gs = GridSpec(
-        2, 5, figure=fig,
-        left=0.035, right=0.985, bottom=0.075, top=0.855,
-        hspace=0.16, wspace=0.042
+        2,
+        5,
+        figure=fig,
+        left=0.035,
+        right=0.985,
+        bottom=0.075,
+        top=0.855,
+        hspace=0.16,
+        wspace=0.042,
     )
 
     ax = fig.add_subplot(gs[0, 0])
@@ -628,6 +652,7 @@ def render_fig4(outdir: Path, dpi: int):
 # 图6：Stage-B
 # ============================================================
 
+
 def render_fig6(outdir: Path, dpi: int):
     sid = FIG6_SAMPLE
     src = STAGEB_SOURCE / sid
@@ -647,11 +672,13 @@ def render_fig6(outdir: Path, dpi: int):
         ("原始 PINN", "pinn"),
     ]:
         rd = stageb_baseline_dir(method, sid)
-        methods.append((
-            label,
-            read_array(pred_file(rd, "background_pred")),
-            read_array(pred_file(rd, "residual_pred")),
-        ))
+        methods.append(
+            (
+                label,
+                read_array(pred_file(rd, "background_pred")),
+                read_array(pred_file(rd, "residual_pred")),
+            )
+        )
         print(f"[Fig6] {label}: {rd}")
 
     for label, branch in [
@@ -659,11 +686,13 @@ def render_fig6(outdir: Path, dpi: int):
         ("SGC-PINN", PAIR_SGC),
     ]:
         rd = stageb_pair_dir(branch, sid)
-        methods.append((
-            label,
-            read_array(pred_file(rd, "background_pred")),
-            read_array(pred_file(rd, "residual_pred")),
-        ))
+        methods.append(
+            (
+                label,
+                read_array(pred_file(rd, "background_pred")),
+                read_array(pred_file(rd, "residual_pred")),
+            )
+        )
         print(f"[Fig6] {label}: {rd}")
 
     bg_v = shared_range([bg_true] + [m[1] for m in methods])
@@ -676,22 +705,29 @@ def render_fig6(outdir: Path, dpi: int):
 
     fig = plt.figure(figsize=(12.8, 7.15), facecolor="white")
     fig.suptitle(
-        "图6  Stage-B 低频保护结构对比",
-        fontsize=17, y=0.985, color=NAVY,
-        fontproperties=ZH_FONT
+        "图6  Stage-B 低频保护结构对比", fontsize=17, y=0.985, color=NAVY, fontproperties=ZH_FONT
     )
     fig.text(
-        0.5, 0.949,
+        0.5,
+        0.949,
         f"固定频率重叠样本：{sid}",
-        ha="center", fontsize=9.1, color="#555555",
-        fontproperties=ZH_FONT
+        ha="center",
+        fontsize=9.1,
+        color="#555555",
+        fontproperties=ZH_FONT,
     )
 
     gs = GridSpec(
-        3, 5, figure=fig,
-        left=0.035, right=0.985, bottom=0.05, top=0.89,
-        hspace=0.25, wspace=0.042,
-        height_ratios=[0.82, 1.0, 1.0]
+        3,
+        5,
+        figure=fig,
+        left=0.035,
+        right=0.985,
+        bottom=0.05,
+        top=0.89,
+        hspace=0.25,
+        wspace=0.042,
+        height_ratios=[0.82, 1.0, 1.0],
     )
 
     source_panels = [
@@ -707,14 +743,14 @@ def render_fig6(outdir: Path, dpi: int):
     ax = fig.add_subplot(gs[0, 4])
     ax.axis("off")
     ax.text(
-        0.5, 0.52,
-        "保护区域阈值：\n"
-        "P ≥ 0.25 × Pmax\n\n"
-        "恢复背景共享显示范围\n"
-        "扣除结果共享另一显示范围",
-        ha="center", va="center", fontsize=9.6,
+        0.5,
+        0.52,
+        "保护区域阈值：\nP ≥ 0.25 × Pmax\n\n恢复背景共享显示范围\n扣除结果共享另一显示范围",
+        ha="center",
+        va="center",
+        fontsize=9.6,
         fontproperties=ZH_FONT,
-        bbox=dict(boxstyle="round,pad=0.55", fc="#f7f7f7", ec="#999999", lw=0.7)
+        bbox=dict(boxstyle="round,pad=0.55", fc="#f7f7f7", ec="#999999", lw=0.7),
     )
 
     for c, (ttl, bg, res) in enumerate(methods):
@@ -725,14 +761,16 @@ def render_fig6(outdir: Path, dpi: int):
         panel(ax, res, res_v, "背景扣除结果", mask=mask)
 
     fig.text(
-        0.035, 0.60, "恢复背景", fontsize=10.2, color=NAVY, weight="bold",
-        fontproperties=ZH_FONT
+        0.035, 0.60, "恢复背景", fontsize=10.2, color=NAVY, weight="bold", fontproperties=ZH_FONT
     )
     fig.text(
-        0.035, 0.307,
+        0.035,
+        0.307,
         "背景扣除结果（虚线：固定保护区域）",
-        fontsize=10.2, color=NAVY, weight="bold",
-        fontproperties=ZH_FONT
+        fontsize=10.2,
+        color=NAVY,
+        weight="bold",
+        fontproperties=ZH_FONT,
     )
 
     save(fig, outdir / "Fig6_StageB_protected_structure", dpi)
@@ -741,6 +779,7 @@ def render_fig6(outdir: Path, dpi: int):
 # ============================================================
 # 检查路径
 # ============================================================
+
 
 def check():
     print("=== Font ===")
@@ -769,18 +808,9 @@ def check():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--out",
-        type=Path,
-        default=ROOT / "paper_figures",
-        help="输出目录"
-    )
+    ap.add_argument("--out", type=Path, default=ROOT / "paper_figures", help="输出目录")
     ap.add_argument("--dpi", type=int, default=600)
-    ap.add_argument(
-        "--only",
-        choices=["fig3", "fig4", "fig6", "all"],
-        default="all"
-    )
+    ap.add_argument("--only", choices=["fig3", "fig4", "fig6", "all"], default="all")
     ap.add_argument("--check-only", action="store_true")
     args = ap.parse_args()
 

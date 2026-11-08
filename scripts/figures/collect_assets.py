@@ -51,9 +51,18 @@ from pathlib import Path
 # ---------------------------------------------------------------------
 
 PRUNE_DIRS = {
-    ".git", ".pixi", ".cache", "__pycache__", "node_modules",
-    "wandb", "tensorboard", "tb_logs", "figure_assets_export",
-    "figure_assets_auto", "dist", "build",
+    ".git",
+    ".pixi",
+    ".cache",
+    "__pycache__",
+    "node_modules",
+    "wandb",
+    "tensorboard",
+    "tb_logs",
+    "figure_assets_export",
+    "figure_assets_auto",
+    "dist",
+    "build",
 }
 
 SCI_EXTS = {".tif", ".tiff", ".npy", ".npz"}
@@ -62,72 +71,126 @@ TABLE_EXTS = {".csv", ".json", ".txt", ".md"}
 
 METHOD_ALIASES = {
     "gaussian": (
-        "fft_gaussian", "gaussian_filter", "gaussian", "gauss",
+        "fft_gaussian",
+        "gaussian_filter",
+        "gaussian",
+        "gauss",
     ),
     "dct2_ls": (
-        "fourier_ls", "dct2_ls", "dct_ii_ls", "dct-ii_ls", "dct_ls", "dct",
+        "fourier_ls",
+        "dct2_ls",
+        "dct_ii_ls",
+        "dct-ii_ls",
+        "dct_ls",
+        "dct",
     ),
     "original_pinn": (
-        "original_pinn", "raw_pinn", "baseline_pinn", "pinn",
+        "original_pinn",
+        "raw_pinn",
+        "baseline_pinn",
+        "pinn",
     ),
     "matched_budget_control": (
-        "data_finetune_control", "matched_budget_control",
-        "matched_budget", "budget_control", "control",
+        "data_finetune_control",
+        "matched_budget_control",
+        "matched_budget",
+        "budget_control",
+        "control",
     ),
     "sgc_pinn": (
-        "pinn_decoupled_gradient", "sgc_pinn", "sgc-pinn",
-        "staged_gradient", "gradient_coord",
+        "pinn_decoupled_gradient",
+        "sgc_pinn",
+        "sgc-pinn",
+        "staged_gradient",
+        "gradient_coord",
     ),
 }
 
 ABLATION_ALIASES = {
     "data_only": (
-        "data_only", "data-only", "dataonly",
+        "data_only",
+        "data-only",
+        "dataonly",
     ),
     "single_forcing": (
-        "single_forcing", "single-forcing", "single_component",
-        "single-component", "one_forcing", "one_component",
+        "single_forcing",
+        "single-forcing",
+        "single_component",
+        "single-component",
+        "one_forcing",
+        "one_component",
     ),
     "multi_fixed_centers": (
-        "multi_fixed_centers", "multi-fixed-centers",
-        "multi_forcing_fixed_centers", "fixed_centers",
-        "multi_fixed", "fixed_center",
+        "multi_fixed_centers",
+        "multi-fixed-centers",
+        "multi_forcing_fixed_centers",
+        "fixed_centers",
+        "multi_fixed",
+        "fixed_center",
     ),
     "multi_bounded_centers": (
-        "multi_bounded_centers", "multi-bounded-centers",
-        "multi_forcing_bounded_centers", "bounded_centers",
-        "bounded_center", "multi_bounded", "adjustable_centers",
+        "multi_bounded_centers",
+        "multi-bounded-centers",
+        "multi_forcing_bounded_centers",
+        "bounded_centers",
+        "bounded_center",
+        "multi_bounded",
+        "adjustable_centers",
     ),
 }
 
 ROLE_ALIASES = {
     "observed": (
-        "observed", "i_obs", "input", "obs",
+        "observed",
+        "i_obs",
+        "input",
+        "obs",
     ),
     "background_true": (
-        "background_true", "true_background", "gt_background", "b_true",
+        "background_true",
+        "true_background",
+        "gt_background",
+        "b_true",
     ),
     "clean_true": (
-        "clean_true", "reference_clean", "clean_reference",
-        "true_residual", "residual_true", "target_clean",
+        "clean_true",
+        "reference_clean",
+        "clean_reference",
+        "true_residual",
+        "residual_true",
+        "target_clean",
     ),
     "base_clean": (
-        "base_clean", "base_reference", "base_target",
+        "base_clean",
+        "base_reference",
+        "base_target",
     ),
     "protected_true": (
-        "protected_true", "protected_structure", "target_structure",
-        "protected", "structure_true",
+        "protected_true",
+        "protected_structure",
+        "target_structure",
+        "protected",
+        "structure_true",
     ),
     "background_pred": (
-        "background_pred", "pred_background", "estimated_background",
-        "background_est", "b_pred",
+        "background_pred",
+        "pred_background",
+        "estimated_background",
+        "background_est",
+        "b_pred",
     ),
     "residual_pred": (
-        "residual_pred", "pred_residual", "background_subtracted",
-        "subtracted", "corrected", "residual",
+        "residual_pred",
+        "pred_residual",
+        "background_subtracted",
+        "subtracted",
+        "corrected",
+        "residual",
     ),
     "mask": (
-        "protected_mask", "mask", "structure_mask",
+        "protected_mask",
+        "mask",
+        "structure_mask",
     ),
 }
 
@@ -137,6 +200,7 @@ SEED_PREFERENCE = ("20260728", "20260729", "20260730")
 # ---------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------
+
 
 @dataclass
 class Match:
@@ -168,6 +232,7 @@ class Reporter:
 # ---------------------------------------------------------------------
 # Generic helpers
 # ---------------------------------------------------------------------
+
 
 def norm(s: str) -> str:
     s = s.lower().replace("\\", "/")
@@ -237,17 +302,29 @@ def sample_id_candidates_from_paths(root: Path) -> set[str]:
         name = p.stem
         low = norm(name)
         for prefix in (
-            "observed_", "background_true_", "clean_true_",
-            "base_clean_", "protected_true_",
+            "observed_",
+            "background_true_",
+            "clean_true_",
+            "base_clean_",
+            "protected_true_",
         ):
             if low.startswith(prefix):
-                out.add(name[len(prefix):])
+                out.add(name[len(prefix) :])
         # Parent directory may itself be a sample folder.
         par = p.parent.name
-        if any(k in norm(par) for k in (
-            "single", "multi", "radial", "eccentric",
-            "protected", "overlap", "irregular", "edge",
-        )):
+        if any(
+            k in norm(par)
+            for k in (
+                "single",
+                "multi",
+                "radial",
+                "eccentric",
+                "protected",
+                "overlap",
+                "irregular",
+                "edge",
+            )
+        ):
             out.add(par)
     return out
 
@@ -388,7 +465,9 @@ def select_best_file(
     return Match(role, ranked[0][1], ranked[0][0], "")
 
 
-def copy_match(m: Match, dst: Path, reporter: Reporter, required: bool = True, dry_run: bool = False) -> None:
+def copy_match(
+    m: Match, dst: Path, reporter: Reporter, required: bool = True, dry_run: bool = False
+) -> None:
     if m.path is None:
         msg = f"{dst}: {m.role} not found"
         if required:
@@ -402,7 +481,9 @@ def copy_match(m: Match, dst: Path, reporter: Reporter, required: bool = True, d
         shutil.copy2(m.path, dst)
 
 
-def copy_related_preview(src: Path, dst_dir: Path, reporter: Reporter, dry_run: bool = False) -> None:
+def copy_related_preview(
+    src: Path, dst_dir: Path, reporter: Reporter, dry_run: bool = False
+) -> None:
     # If we chose TIFF/NPY, also copy same-stem preview if available.
     if src.suffix.lower() in PREVIEW_EXTS:
         return
@@ -416,16 +497,24 @@ def copy_related_preview(src: Path, dst_dir: Path, reporter: Reporter, dry_run: 
             break
 
 
-def copy_nearby_tables(anchor: Path, dst_dir: Path, reporter: Reporter, dry_run: bool = False) -> None:
+def copy_nearby_tables(
+    anchor: Path, dst_dir: Path, reporter: Reporter, dry_run: bool = False
+) -> None:
     # Search a few ancestors for relevant tables; copy only small text/table files.
     seen: set[Path] = set()
     for anc in [anchor.parent, *list(anchor.parents)[:4]]:
         if not anc.is_dir():
             continue
         for name in (
-            "metrics.csv", "manifest.csv", "summary.json", "grouped_results.csv",
-            "main_result_table.csv", "paired_comparisons.csv", "ablation_table.csv",
-            "variant_config.json", "config.json",
+            "metrics.csv",
+            "manifest.csv",
+            "summary.json",
+            "grouped_results.csv",
+            "main_result_table.csv",
+            "paired_comparisons.csv",
+            "ablation_table.csv",
+            "variant_config.json",
+            "config.json",
         ):
             p = anc / name
             if p.is_file() and p not in seen:
@@ -450,6 +539,7 @@ def make_zip(folder: Path, zip_path: Path) -> None:
 # ---------------------------------------------------------------------
 # Figure collectors
 # ---------------------------------------------------------------------
+
 
 def collect_fig3(
     all_files: Sequence[Path],
@@ -556,7 +646,13 @@ def collect_fig4(
         for role in ("observed", "background_true", "clean_true"):
             m = select_best_file(all_files, role, sample_id=sid)
             ext = m.path.suffix.lower() if m.path else ".tif"
-            copy_match(m, stage / "source" / f"{role}{ext}", reporter, required=(role == "observed"), dry_run=dry_run)
+            copy_match(
+                m,
+                stage / "source" / f"{role}{ext}",
+                reporter,
+                required=(role == "observed"),
+                dry_run=dry_run,
+            )
             if m.path:
                 copy_related_preview(m.path, stage / "source" / "preview", reporter, dry_run)
 
@@ -570,7 +666,9 @@ def collect_fig4(
             for role in ("background_pred", "residual_pred"):
                 m = select_best_file(all_files, role, sample_id=sid, variant=variant)
                 ext = m.path.suffix.lower() if m.path else ".tif"
-                copy_match(m, stage / variant / f"{role}{ext}", reporter, required=True, dry_run=dry_run)
+                copy_match(
+                    m, stage / variant / f"{role}{ext}", reporter, required=True, dry_run=dry_run
+                )
                 if m.path:
                     copy_related_preview(m.path, stage / variant / "preview", reporter, dry_run)
                     copy_nearby_tables(m.path, stage / "tables", reporter, dry_run)
@@ -635,7 +733,13 @@ def collect_fig6(
         for role in ("base_clean", "protected_true", "clean_true", "background_true", "observed"):
             m = select_best_file(all_files, role, sample_id=sid)
             ext = m.path.suffix.lower() if m.path else ".tif"
-            copy_match(m, case_dir / "source" / f"{role}{ext}", reporter, required=(role != "base_clean"), dry_run=dry_run)
+            copy_match(
+                m,
+                case_dir / "source" / f"{role}{ext}",
+                reporter,
+                required=(role != "base_clean"),
+                dry_run=dry_run,
+            )
             if m.path:
                 copy_related_preview(m.path, case_dir / "source" / "preview", reporter, dry_run)
 
@@ -650,7 +754,9 @@ def collect_fig6(
             for role in ("background_pred", "residual_pred"):
                 m = select_best_file(all_files, role, sample_id=sid, method=method)
                 ext = m.path.suffix.lower() if m.path else ".tif"
-                copy_match(m, case_dir / method / f"{role}{ext}", reporter, required=True, dry_run=dry_run)
+                copy_match(
+                    m, case_dir / method / f"{role}{ext}", reporter, required=True, dry_run=dry_run
+                )
                 if m.path:
                     copy_related_preview(m.path, case_dir / method / "preview", reporter, dry_run)
                     copy_nearby_tables(m.path, case_dir / "tables", reporter, dry_run)
@@ -659,7 +765,13 @@ def collect_fig6(
         mm = select_best_file(all_files, "mask", sample_id=sid)
         if mm.path:
             ext = mm.path.suffix.lower()
-            copy_match(mm, case_dir / "source" / f"protected_mask{ext}", reporter, required=False, dry_run=dry_run)
+            copy_match(
+                mm,
+                case_dir / "source" / f"protected_mask{ext}",
+                reporter,
+                required=False,
+                dry_run=dry_run,
+            )
 
     if not dry_run:
         (stage / "README.txt").write_text(
@@ -679,6 +791,7 @@ def collect_fig6(
 # Main
 # ---------------------------------------------------------------------
 
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -687,14 +800,20 @@ def main() -> int:
     ap.add_argument("--root", type=Path, default=Path("."), help="Stage11/project root")
     ap.add_argument("--out", type=Path, default=None, help="Output directory")
     ap.add_argument("--dry-run", action="store_true", help="Only report matches; copy nothing")
-    ap.add_argument("--strict", action="store_true", help="Exit nonzero if any required asset is missing")
+    ap.add_argument(
+        "--strict", action="store_true", help="Exit nonzero if any required asset is missing"
+    )
     ap.add_argument("--zip", action="store_true", help="Also create one combined all-assets ZIP")
 
     ap.add_argument("--fig3-low", default=None, help="Override Fig3 low/single sample ID")
     ap.add_argument("--fig3-high", default=None, help="Override Fig3 high/multi sample ID")
     ap.add_argument("--fig4-sample", default=None, help="Override Fig4 ablation sample ID")
-    ap.add_argument("--fig6-high", default=None, help="Override Fig6 protected-overlap high sample ID")
-    ap.add_argument("--fig6-low", default=None, help="Override Fig6 protected-overlap low sample ID")
+    ap.add_argument(
+        "--fig6-high", default=None, help="Override Fig6 protected-overlap high sample ID"
+    )
+    ap.add_argument(
+        "--fig6-low", default=None, help="Override Fig6 protected-overlap low sample ID"
+    )
 
     args = ap.parse_args()
 
@@ -703,8 +822,7 @@ def main() -> int:
         print(f"[ERROR] root not found: {root}", file=sys.stderr)
         return 2
 
-    out_root = (args.out.expanduser().resolve() if args.out
-                else root / "figure_assets_auto")
+    out_root = args.out.expanduser().resolve() if args.out else root / "figure_assets_auto"
     if not args.dry_run:
         out_root.mkdir(parents=True, exist_ok=True)
 
@@ -725,18 +843,17 @@ def main() -> int:
             rep.log("       " + sid)
 
     zips = []
-    zips.append(collect_fig3(
-        all_files, sample_ids, out_root, rep,
-        args.fig3_low, args.fig3_high, args.dry_run
-    ))
-    zips.append(collect_fig4(
-        all_files, sample_ids, out_root, rep,
-        args.fig4_sample, args.dry_run
-    ))
-    zips.append(collect_fig6(
-        all_files, sample_ids, out_root, rep,
-        args.fig6_high, args.fig6_low, args.dry_run
-    ))
+    zips.append(
+        collect_fig3(
+            all_files, sample_ids, out_root, rep, args.fig3_low, args.fig3_high, args.dry_run
+        )
+    )
+    zips.append(collect_fig4(all_files, sample_ids, out_root, rep, args.fig4_sample, args.dry_run))
+    zips.append(
+        collect_fig6(
+            all_files, sample_ids, out_root, rep, args.fig6_high, args.fig6_low, args.dry_run
+        )
+    )
 
     report_path = out_root / "AUTO_MATCH_REPORT.txt"
     if not args.dry_run:
@@ -766,7 +883,9 @@ def main() -> int:
         rep.log(f"required items missing: {len(rep.missing)}")
         if args.strict:
             return 3
-        rep.log("Tip: rerun with explicit --fig3-low/--fig3-high/--fig4-sample/--fig6-high overrides if needed.")
+        rep.log(
+            "Tip: rerun with explicit --fig3-low/--fig3-high/--fig4-sample/--fig6-high overrides if needed."
+        )
     else:
         rep.log("all required auto-matched assets found.")
 

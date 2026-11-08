@@ -142,12 +142,8 @@ def run_paired(
         show_progress=show_progress,
     )
 
-    model_params = int(
-        sum(v.numel() for k, v in model_state.items() if torch.is_tensor(v))
-    )
-    forcing_params = int(
-        sum(v.numel() for k, v in forcing_state.items() if torch.is_tensor(v))
-    )
+    model_params = int(sum(v.numel() for k, v in model_state.items() if torch.is_tensor(v)))
+    forcing_params = int(sum(v.numel() for k, v in forcing_state.items() if torch.is_tensor(v)))
 
     shared = {
         "stage1_background_pred": np.asarray(stage1["background_pred"], dtype=np.float32),
@@ -213,9 +209,7 @@ def fit_fixed_forcing(
     model = SkyglowMLP(stage1_config["hidden_dims"]).to(device)
     model.load_state_dict(model_state)
     model.eval()
-    alpha = torch.tensor(
-        float(stage1_config["alpha"]), dtype=torch.float32, device=device
-    )
+    alpha = torch.tensor(float(stage1_config["alpha"]), dtype=torch.float32, device=device)
 
     q_parts = []
     chunk = 8192
@@ -271,9 +265,7 @@ def fit_fixed_forcing(
 
     component_diag = forcing.diagnostics(
         alpha,
-        inactive_relative_threshold=float(
-            stage1_config["inactive_relative_threshold"]
-        ),
+        inactive_relative_threshold=float(stage1_config["inactive_relative_threshold"]),
     )
     diagnostics["components"] = component_diag
     state = _cpu_state(forcing.state_dict())
@@ -305,9 +297,7 @@ def finetune(
     model.train()
     params = [p for p in model.parameters() if p.requires_grad]
 
-    alpha = torch.tensor(
-        float(stage1_config["alpha"]), dtype=torch.float32, device=device
-    )
+    alpha = torch.tensor(float(stage1_config["alpha"]), dtype=torch.float32, device=device)
 
     forcing = None
     if use_physics:
@@ -399,9 +389,7 @@ def finetune(
             background, laplacian, forcing_pred, alpha
         )
 
-        data_grads = torch.autograd.grad(
-            data_loss, params, retain_graph=True, create_graph=False
-        )
+        data_grads = torch.autograd.grad(data_loss, params, retain_graph=True, create_graph=False)
         physics_grads = torch.autograd.grad(
             physics_loss, params, retain_graph=False, create_graph=False
         )
@@ -420,15 +408,12 @@ def finetune(
             torch.zeros((), dtype=torch.float64, device=device),
         )
         used_physics_grads = [
-            gp - coefficient.to(gp.dtype) * gd
-            for gd, gp in zip(data_grads, physics_grads)
+            gp - coefficient.to(gp.dtype) * gd for gd, gp in zip(data_grads, physics_grads)
         ]
         used_phys_norm = torch.sqrt(_sum_sq(used_physics_grads) + eps)
 
         lambda_eff = rho * data_norm / (used_phys_norm + eps)
-        lambda_eff = torch.clamp(
-            lambda_eff, min=lambda_min, max=lambda_max
-        )
+        lambda_eff = torch.clamp(lambda_eff, min=lambda_min, max=lambda_max)
         ramp = min(1.0, float(step) / ramp_steps)
         lambda_use = lambda_eff * ramp
 
@@ -505,12 +490,8 @@ def finetune(
         "gradient_conflict_fraction": (
             float(conflicts / logged_physics) if logged_physics else float("nan")
         ),
-        "mean_lambda_use": (
-            float(np.mean(lambda_values)) if lambda_values else 0.0
-        ),
-        "median_lambda_use": (
-            float(np.median(lambda_values)) if lambda_values else 0.0
-        ),
+        "mean_lambda_use": (float(np.mean(lambda_values)) if lambda_values else 0.0),
+        "median_lambda_use": (float(np.median(lambda_values)) if lambda_values else 0.0),
         "mean_scaled_physics_to_data_ratio": (
             float(np.mean(scaled_ratio_values)) if scaled_ratio_values else 0.0
         ),

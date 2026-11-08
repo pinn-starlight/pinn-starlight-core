@@ -1,4 +1,5 @@
 """Selection-artifact and lock provenance for Stage10-B."""
+
 from __future__ import annotations
 
 import hashlib

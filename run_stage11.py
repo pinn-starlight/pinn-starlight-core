@@ -1,4 +1,4 @@
-'''Stage11 clean experiment entry point with adaptive GPU task scheduling.
+"""Stage11 clean experiment entry point with adaptive GPU task scheduling.
 
 Scientific invariant
 --------------------
@@ -20,7 +20,8 @@ Scheduling policy
 
 This keeps the formal single-visible-GPU execution policy intact while using
 multiple physical GPUs for independent experimental tasks.
-''' 
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -30,15 +31,14 @@ import json
 import os
 import platform
 import shutil
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from pathlib import Path
 import subprocess
 import sys
 import threading
-from typing import Iterable
-
+from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 LOG_ROOT = ROOT / "logs"
@@ -87,8 +87,7 @@ def _query_nvidia_smi() -> list[GPUInfo]:
         proc = subprocess.run(
             command,
             cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
@@ -179,8 +178,7 @@ def _select_gpus(spec: str, all_gpus: list[GPUInfo]) -> list[GPUInfo]:
         if len(matches) != 1:
             available = ", ".join(f"{g.index}:{g.name}" for g in visible)
             raise ValueError(
-                f"--gpus token {token!r} did not uniquely match a visible GPU. "
-                f"Visible: {available}"
+                f"--gpus token {token!r} did not uniquely match a visible GPU. Visible: {available}"
             )
         if matches[0] not in selected:
             selected.append(matches[0])
@@ -215,7 +213,9 @@ def _validate_runtime_profile(gpus: list[GPUInfo]) -> dict:
     try:
         import torch
     except Exception as exc:
-        raise RuntimeError("PyTorch could not be imported in the selected Pixi environment.") from exc
+        raise RuntimeError(
+            "PyTorch could not be imported in the selected Pixi environment."
+        ) from exc
 
     runtime = str(torch.version.cuda or "")
     torch_version = str(torch.__version__)
@@ -238,7 +238,11 @@ def _validate_runtime_profile(gpus: list[GPUInfo]) -> dict:
                 "the remote-blackwell profile."
             )
 
-    if runtime.startswith("13.") and minimum_driver_major is not None and minimum_driver_major < 580:
+    if (
+        runtime.startswith("13.")
+        and minimum_driver_major is not None
+        and minimum_driver_major < 580
+    ):
         raise RuntimeError(
             f"PyTorch reports CUDA runtime {runtime}, but the oldest visible NVIDIA "
             f"driver is {minimum_driver_major}xx. CUDA 13.x needs an R580+ driver. "
@@ -277,7 +281,7 @@ def _single_gpu_env(
 
 
 def _gpu_health_probe(gpu: GPUInfo) -> dict:
-    code = r'''
+    code = r"""
 import json
 import torch
 
@@ -298,14 +302,13 @@ print(json.dumps({
     "visible_device_count": torch.cuda.device_count(),
     "probe_value": float(y[0, 0].item()),
 }))
-'''
+"""
     env = _single_gpu_env(gpu, scheduler_mode="health_probe")
     proc = subprocess.run(
         [sys.executable, "-c", code],
         cwd=ROOT,
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -369,11 +372,7 @@ def _run(
         bufsize=1,
     )
 
-    log_file = (
-        log_path.open("a", encoding="utf-8", buffering=1)
-        if log_path is not None
-        else None
-    )
+    log_file = log_path.open("a", encoding="utf-8", buffering=1) if log_path is not None else None
     try:
         assert proc.stdout is not None
         for line in proc.stdout:
@@ -471,7 +470,6 @@ def _print_plan(gpus: list[GPUInfo], plan: dict, runtime: dict) -> None:
     print()
 
 
-
 STAGE_A_DATA_DIR = ROOT / "collections" / "synthetic_formal"
 STAGE_A_MANIFEST = STAGE_A_DATA_DIR / "manifest.csv"
 STAGE_B_DATA_DIR = ROOT / "collections" / "synthetic_stage_b"
@@ -499,9 +497,7 @@ def _require_module(module: str, *, label: str) -> str:
     try:
         spec = importlib.util.find_spec(module)
     except (ImportError, AttributeError, ModuleNotFoundError) as exc:
-        raise RuntimeError(
-            f"Could not resolve {label} data-generator module {module!r}."
-        ) from exc
+        raise RuntimeError(f"Could not resolve {label} data-generator module {module!r}.") from exc
     if spec is None:
         raise RuntimeError(
             f"{label} data-generator module {module!r} was not found. "
@@ -574,14 +570,20 @@ def ensure_dataset(
     _validate_manifest(label, manifest)
     print(f"{label}: dataset ready: {manifest.relative_to(ROOT)}", flush=True)
 
+
 def run_a(*, force: bool, gpu: GPUInfo) -> None:
     env = _single_gpu_env(gpu, scheduler_mode="stage_a_standard_single_gpu")
     args = [
-        "--stage", "a",
-        "--mode", "standard",
-        "--phase", "all",
-        "--device", "cuda:0",
-        "--fourier-backend", "cuda",
+        "--stage",
+        "a",
+        "--mode",
+        "standard",
+        "--phase",
+        "all",
+        "--device",
+        "cuda:0",
+        "--fourier-backend",
+        "cuda",
     ]
     if force:
         args.append("--force")
@@ -603,11 +605,16 @@ def run_e4(*, force: bool, gpu: GPUInfo) -> None:
 def run_b(*, force: bool, gpu: GPUInfo) -> None:
     env = _single_gpu_env(gpu, scheduler_mode="stage_b_standard_single_gpu")
     args = [
-        "--stage", "b",
-        "--mode", "standard",
-        "--phase", "all",
-        "--device", "cuda:0",
-        "--fourier-backend", "cuda",
+        "--stage",
+        "b",
+        "--mode",
+        "standard",
+        "--phase",
+        "all",
+        "--device",
+        "cuda:0",
+        "--fourier-backend",
+        "cuda",
     ]
     if force:
         args.append("--force")
@@ -640,12 +647,18 @@ def _run_one_cv_fold(*, fold: int, gpu: GPUInfo, force: bool) -> dict:
 
     try:
         args = [
-            "--stage", "a",
-            "--mode", "cv5",
-            "--fold", str(fold),
-            "--phase", "all",
-            "--device", "cuda:0",
-            "--fourier-backend", "cuda",
+            "--stage",
+            "a",
+            "--mode",
+            "cv5",
+            "--fold",
+            str(fold),
+            "--phase",
+            "all",
+            "--device",
+            "cuda:0",
+            "--fourier-backend",
+            "cuda",
         ]
         if force:
             args.append("--force")

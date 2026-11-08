@@ -1,4 +1,5 @@
 """Stage10-B cosine-domain LS validation selector using the Stage10-A search protocol."""
+
 from __future__ import annotations
 
 import argparse

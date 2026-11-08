@@ -59,11 +59,13 @@ SCI_EXTS = (".tif", ".tiff", ".npy")
 PREVIEW_EXTS = (".png",)
 ALL_EXTS = SCI_EXTS + PREVIEW_EXTS
 
+
 def first_existing(paths):
     for p in paths:
         if p.exists():
             return p
     return None
+
 
 def source_file(sample_dir: Path, sid: str, role: str) -> Path:
     cands = []
@@ -77,10 +79,22 @@ def source_file(sample_dir: Path, sid: str, role: str) -> Path:
         raise FileNotFoundError(f"找不到 source 文件: {sid} / {role}\n目录: {sample_dir}")
     return p
 
+
 def pred_file(run_dir: Path, role: str) -> Path:
     stems = {
-        "background_pred": ("background_pred", "pred_background", "estimated_background", "background"),
-        "residual_pred": ("residual_pred", "pred_residual", "background_subtracted", "corrected", "residual"),
+        "background_pred": (
+            "background_pred",
+            "pred_background",
+            "estimated_background",
+            "background",
+        ),
+        "residual_pred": (
+            "residual_pred",
+            "pred_residual",
+            "background_subtracted",
+            "corrected",
+            "residual",
+        ),
     }[role]
     cands = []
     for stem in stems:
@@ -90,6 +104,7 @@ def pred_file(run_dir: Path, role: str) -> Path:
     if p is None:
         raise FileNotFoundError(f"找不到 {role}: {run_dir}")
     return p
+
 
 def find_run_dir(root: Path, sid: str, require_seed=True) -> Path:
     """
@@ -116,6 +131,7 @@ def find_run_dir(root: Path, sid: str, require_seed=True) -> Path:
     candidates.sort(key=lambda x: (-x[0], x[1]))
     return candidates[0][2]
 
+
 def stagea_method_dir(method: str, sid: str) -> Path:
     if method == "gaussian":
         p = STAGEA_BASELINE / GAUSS_DIR / "deterministic" / sid
@@ -131,11 +147,13 @@ def stagea_method_dir(method: str, sid: str) -> Path:
         return find_run_dir(STAGEA_BASELINE / PINN_DIR, sid, require_seed=True)
     raise ValueError(method)
 
+
 def ablation_run_dir(variant: str, sid: str) -> Path:
     vr = STAGEA_ABLATION / ABLATION_DIRS[variant]
     if not vr.is_dir():
         raise FileNotFoundError(vr)
     return find_run_dir(vr, sid, require_seed=True)
+
 
 def stageb_method_dir(method: str, sid: str) -> Path:
     if method == "gaussian":
@@ -152,11 +170,13 @@ def stageb_method_dir(method: str, sid: str) -> Path:
         return find_run_dir(STAGEB_BASELINE / PINN_DIR, sid, require_seed=True)
     raise ValueError(method)
 
+
 def stageb_pair_dir(branch: str, sid: str) -> Path:
     p = STAGEB_PAIR / f"seed_{SEED}" / sid / branch
     if not p.is_dir():
         raise FileNotFoundError(p)
     return p
+
 
 def copy_science_and_preview(src: Path, dst_dir: Path, dst_stem: str):
     dst_dir.mkdir(parents=True, exist_ok=True)
@@ -168,18 +188,22 @@ def copy_science_and_preview(src: Path, dst_dir: Path, dst_stem: str):
         if png.is_file():
             shutil.copy2(png, dst_dir / f"{dst_stem}.png")
 
+
 def copy_source_roles(sample_root: Path, sid: str, roles, dst: Path):
     for role in roles:
         src = source_file(sample_root / sid, sid, role)
         copy_science_and_preview(src, dst, role)
+
 
 def copy_method_pair(run_dir: Path, dst: Path):
     for role in ("background_pred", "residual_pred"):
         src = pred_file(run_dir, role)
         copy_science_and_preview(src, dst, role)
 
+
 def write_readme(path: Path, txt: str):
     path.write_text(txt.strip() + "\n", encoding="utf-8")
+
 
 def zip_folder(folder: Path, zip_path: Path):
     if zip_path.exists():
@@ -189,10 +213,12 @@ def zip_folder(folder: Path, zip_path: Path):
             if p.is_file():
                 zf.write(p, p.relative_to(folder.parent))
 
+
 def reset_dir(p: Path):
     if p.exists():
         shutil.rmtree(p)
     p.mkdir(parents=True)
+
 
 def build_fig3():
     stage = OUT / "_stage_Fig3"
@@ -200,15 +226,15 @@ def build_fig3():
     for label, sid in (("A_low_single", FIG3_LOW), ("B_high_multi", FIG3_HIGH)):
         d = stage / label
         copy_source_roles(
-            STAGEA_SOURCE, sid,
-            ("observed", "background_true", "clean_true"),
-            d / "source"
+            STAGEA_SOURCE, sid, ("observed", "background_true", "clean_true"), d / "source"
         )
         copy_method_pair(stagea_method_dir("gaussian", sid), d / "gaussian")
         copy_method_pair(stagea_method_dir("dct", sid), d / "dct2_ls")
         copy_method_pair(stagea_method_dir("pinn", sid), d / "original_pinn")
 
-    write_readme(stage / "README.txt", f"""
+    write_readme(
+        stage / "README.txt",
+        f"""
 图3 Stage-A 代表性空间结果
 A = {FIG3_LOW}
 B = {FIG3_HIGH}
@@ -219,10 +245,12 @@ seed = {SEED}
 - background_true + 三个 background_pred 共用一组显示范围；
 - clean_true + 三个 residual_pred 共用另一组显示范围；
 - observed 可独立显示范围。
-""")
+""",
+    )
     z = OUT / "Fig3_assets.zip"
     zip_folder(stage, z)
     return z
+
 
 def build_fig4():
     stage = OUT / "_stage_Fig4"
@@ -230,9 +258,7 @@ def build_fig4():
     sid = FIG4_SAMPLE
 
     copy_source_roles(
-        STAGEA_SOURCE, sid,
-        ("observed", "background_true", "clean_true"),
-        stage / "source"
+        STAGEA_SOURCE, sid, ("observed", "background_true", "clean_true"), stage / "source"
     )
     for v in ABLATION_DIRS:
         rd = ablation_run_dir(v, sid)
@@ -245,7 +271,9 @@ def build_fig4():
         if p.is_file():
             shutil.copy2(p, stage / name)
 
-    write_readme(stage / "README.txt", f"""
+    write_readme(
+        stage / "README.txt",
+        f"""
 图4 原始 PINN 消融
 sample = {sid}
 seed = {SEED}
@@ -257,10 +285,12 @@ seed = {SEED}
 - multi_bounded_centers
 
 所有变体必须使用同一个样本、同一个显示范围。
-""")
+""",
+    )
     z = OUT / "Fig4_assets.zip"
     zip_folder(stage, z)
     return z
+
 
 def build_fig6():
     stage = OUT / "_stage_Fig6"
@@ -268,9 +298,10 @@ def build_fig6():
     sid = FIG6_SAMPLE
 
     copy_source_roles(
-        STAGEB_SOURCE, sid,
+        STAGEB_SOURCE,
+        sid,
         ("base_clean", "protected_true", "clean_true", "background_true", "observed"),
-        stage / "source"
+        stage / "source",
     )
     copy_method_pair(stageb_method_dir("gaussian", sid), stage / "gaussian")
     copy_method_pair(stageb_method_dir("dct", sid), stage / "dct2_ls")
@@ -278,7 +309,9 @@ def build_fig6():
     copy_method_pair(stageb_pair_dir(PAIR_CONTROL, sid), stage / "matched_budget_control")
     copy_method_pair(stageb_pair_dir(PAIR_SGC, sid), stage / "sgc_pinn")
 
-    write_readme(stage / "README.txt", f"""
+    write_readme(
+        stage / "README.txt",
+        f"""
 图6 Stage-B 低频保护结构
 sample = {sid}
 seed = {SEED}
@@ -295,10 +328,12 @@ protected_true >= 0.25 * peak
 
 恢复背景共享一组显示范围；
 所有背景扣除结果共享另一组显示范围。
-""")
+""",
+    )
     z = OUT / "Fig6_assets.zip"
     zip_folder(stage, z)
     return z
+
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
@@ -314,6 +349,7 @@ def main():
     print("\n完成：")
     for z in zips + [all_zip]:
         print(f"{z}  ({z.stat().st_size / 1024**2:.1f} MB)")
+
 
 if __name__ == "__main__":
     main()

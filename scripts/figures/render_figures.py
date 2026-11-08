@@ -37,9 +37,7 @@ from matplotlib.gridspec import GridSpec
 try:
     import tifffile
 except Exception as e:
-    raise SystemExit(
-        "缺少 tifffile。请在 pixi 环境确认依赖；错误：" + repr(e)
-    ) from e
+    raise SystemExit("缺少 tifffile。请在 pixi 环境确认依赖；错误：" + repr(e)) from e
 
 # ---------------------------------------------------------------------
 # 默认固定样本：避免看结果后再挑样本
@@ -58,12 +56,21 @@ DEFAULT_SEED = 20260728
 # ---------------------------------------------------------------------
 
 CN_CANDIDATES = [
-    "SimSun", "宋体", "Songti SC", "STSong",
-    "Noto Serif CJK SC", "Source Han Serif SC", "Source Han Serif CN",
+    "SimSun",
+    "宋体",
+    "Songti SC",
+    "STSong",
+    "Noto Serif CJK SC",
+    "Source Han Serif SC",
+    "Source Han Serif CN",
 ]
 EN_CANDIDATES = [
-    "Times New Roman", "Times", "Nimbus Roman", "Liberation Serif",
+    "Times New Roman",
+    "Times",
+    "Nimbus Roman",
+    "Liberation Serif",
 ]
+
 
 def pick_font(candidates: Sequence[str]) -> font_manager.FontProperties:
     for name in candidates:
@@ -80,6 +87,7 @@ def pick_font(candidates: Sequence[str]) -> font_manager.FontProperties:
     path = font_manager.findfont("DejaVu Serif")
     return font_manager.FontProperties(fname=path)
 
+
 CN_FONT = pick_font(CN_CANDIDATES)
 EN_FONT = pick_font(EN_CANDIDATES)
 
@@ -93,17 +101,20 @@ plt.rcParams["axes.unicode_minus"] = False
 
 SCI_EXTS = (".tif", ".tiff", ".npy", ".png")
 
+
 def first_existing(paths: Iterable[Path]) -> Path | None:
     for p in paths:
         if p.is_file():
             return p
     return None
 
+
 def first_existing_dir(paths: Iterable[Path]) -> Path | None:
     for p in paths:
         if p.is_dir():
             return p
     return None
+
 
 def read_array(path: Path) -> np.ndarray:
     ext = path.suffix.lower()
@@ -126,13 +137,16 @@ def read_array(path: Path) -> np.ndarray:
     a = a.astype(np.float32, copy=False)
     return a
 
+
 def resolve_source_file(sample_dir: Path, role: str, sid: str, required=True) -> Path | None:
     candidates = []
     for ext in SCI_EXTS:
-        candidates.extend([
-            sample_dir / f"{role}_{sid}{ext}",
-            sample_dir / f"{role}{ext}",
-        ])
+        candidates.extend(
+            [
+                sample_dir / f"{role}_{sid}{ext}",
+                sample_dir / f"{role}{ext}",
+            ]
+        )
     p = first_existing(candidates)
     if p is None and required:
         raise FileNotFoundError(
@@ -141,14 +155,21 @@ def resolve_source_file(sample_dir: Path, role: str, sid: str, required=True) ->
         )
     return p
 
+
 def resolve_pred_file(method_dir: Path, role: str, required=True) -> Path | None:
     names = {
         "background_pred": [
-            "background_pred", "pred_background", "estimated_background", "background",
+            "background_pred",
+            "pred_background",
+            "estimated_background",
+            "background",
         ],
         "residual_pred": [
-            "residual_pred", "pred_residual", "background_subtracted",
-            "corrected", "residual",
+            "residual_pred",
+            "pred_residual",
+            "background_subtracted",
+            "corrected",
+            "residual",
         ],
     }[role]
     candidates = []
@@ -157,11 +178,9 @@ def resolve_pred_file(method_dir: Path, role: str, required=True) -> Path | None
             candidates.append(method_dir / f"{stem}{ext}")
     p = first_existing(candidates)
     if p is None and required:
-        raise FileNotFoundError(
-            f"找不到 {role}\n目录: {method_dir}\n"
-            f"尝试文件名: {names}"
-        )
+        raise FileNotFoundError(f"找不到 {role}\n目录: {method_dir}\n尝试文件名: {names}")
     return p
+
 
 def locate_stageA_source(root: Path, sid: str) -> Path:
     cands = [
@@ -174,6 +193,7 @@ def locate_stageA_source(root: Path, sid: str) -> Path:
         raise FileNotFoundError("找不到 Stage-A source sample:\n" + "\n".join(map(str, cands)))
     return p
 
+
 def locate_stageB_source(root: Path, sid: str) -> Path:
     cands = [
         root / "collections" / "synthetic_stage_b" / sid,
@@ -184,6 +204,7 @@ def locate_stageB_source(root: Path, sid: str) -> Path:
     if p is None:
         raise FileNotFoundError("找不到 Stage-B source sample:\n" + "\n".join(map(str, cands)))
     return p
+
 
 def locate_e2_method(root: Path, method: str, sid: str, seed: int) -> Path:
     base = root / "experiments" / "outputs" / "e2_benchmark"
@@ -210,6 +231,7 @@ def locate_e2_method(root: Path, method: str, sid: str, seed: int) -> Path:
         )
     return p
 
+
 def locate_ablation_variant(root: Path, variant: str, sid: str, seed: int) -> Path:
     base_candidates = [
         root / "experiments" / "outputs" / "e3_ablation",
@@ -220,24 +242,31 @@ def locate_ablation_variant(root: Path, variant: str, sid: str, seed: int) -> Pa
         "data_only": ["data_only", "data-only"],
         "single": ["single_component", "single_forcing", "single-forcing"],
         "fixed": ["multi_fixed_centers", "multi_forcing_fixed_centers", "multi-fixed-centers"],
-        "bounded": ["multi_bounded_centers", "multi_forcing_bounded_centers", "multi-bounded-centers"],
+        "bounded": [
+            "multi_bounded_centers",
+            "multi_forcing_bounded_centers",
+            "multi-bounded-centers",
+        ],
     }[variant]
 
     cands = []
     for base in base_candidates:
         for alias in aliases:
-            cands.extend([
-                base / alias / f"seed_{seed}" / sid,
-                base / alias / sid / f"seed_{seed}",
-                base / sid / alias / f"seed_{seed}",
-                base / sid / alias,
-            ])
+            cands.extend(
+                [
+                    base / alias / f"seed_{seed}" / sid,
+                    base / alias / sid / f"seed_{seed}",
+                    base / sid / alias / f"seed_{seed}",
+                    base / sid / alias,
+                ]
+            )
     p = first_existing_dir(cands)
     if p is None:
         raise FileNotFoundError(
             f"找不到消融变体 {variant}, sample={sid}\n" + "\n".join(map(str, cands[:16]))
         )
     return p
+
 
 def locate_stageB_benchmark(root: Path, method: str, sid: str, seed: int) -> Path:
     base_candidates = [
@@ -268,6 +297,7 @@ def locate_stageB_benchmark(root: Path, method: str, sid: str, seed: int) -> Pat
         )
     return p
 
+
 def locate_stageB_pair(root: Path, branch: str, sid: str, seed: int) -> Path:
     bases = [
         root / "experiments" / "outputs" / "stage_b" / "final_pinn_validation",
@@ -293,9 +323,11 @@ def locate_stageB_pair(root: Path, branch: str, sid: str, seed: int) -> Path:
         )
     return p
 
+
 # ---------------------------------------------------------------------
 # 显示范围
 # ---------------------------------------------------------------------
+
 
 def sampled_values(arr: np.ndarray, max_n=400_000) -> np.ndarray:
     x = arr[np.isfinite(arr)].ravel()
@@ -303,6 +335,7 @@ def sampled_values(arr: np.ndarray, max_n=400_000) -> np.ndarray:
         return x
     step = max(1, x.size // max_n)
     return x[::step]
+
 
 def pooled_range(arrays: Sequence[np.ndarray], lo=1.0, hi=99.5) -> tuple[float, float]:
     xs = [sampled_values(a) for a in arrays]
@@ -314,20 +347,28 @@ def pooled_range(arrays: Sequence[np.ndarray], lo=1.0, hi=99.5) -> tuple[float, 
         vmax = vmin + 1e-6
     return float(vmin), float(vmax)
 
+
 def one_range(a: np.ndarray, lo=1.0, hi=99.5) -> tuple[float, float]:
     return pooled_range([a], lo, hi)
+
 
 # ---------------------------------------------------------------------
 # 绘图辅助
 # ---------------------------------------------------------------------
+
 
 def imshow_panel(ax, img, vrange, title=None, title_en=False, contour=None):
     ax.imshow(img, cmap="gray", vmin=vrange[0], vmax=vrange[1], interpolation="nearest")
     if contour is not None:
         # 仅用于标明固定保护区域，不改变科学像素
         try:
-            ax.contour(contour.astype(float), levels=[0.5], colors="white",
-                       linewidths=0.55, linestyles="--")
+            ax.contour(
+                contour.astype(float),
+                levels=[0.5],
+                colors="white",
+                linewidths=0.55,
+                linestyles="--",
+            )
         except Exception:
             pass
     ax.set_xticks([])
@@ -343,8 +384,10 @@ def imshow_panel(ax, img, vrange, title=None, title_en=False, contour=None):
             pad=4,
         )
 
+
 def add_group_label(fig, x, y, text):
     fig.text(x, y, text, fontproperties=CN_FONT, fontsize=10.5, weight="bold")
+
 
 def save_both(fig, outbase: Path, dpi: int):
     outbase.parent.mkdir(parents=True, exist_ok=True)
@@ -354,9 +397,11 @@ def save_both(fig, outbase: Path, dpi: int):
     print(f"[OK] {outbase.with_suffix('.png')}")
     print(f"[OK] {outbase.with_suffix('.pdf')}")
 
+
 # ---------------------------------------------------------------------
 # 图3
 # ---------------------------------------------------------------------
+
 
 def load_stageA_case(root: Path, sid: str, seed: int):
     src = locate_stageA_source(root, sid)
@@ -371,6 +416,7 @@ def load_stageA_case(root: Path, sid: str, seed: int):
         out[f"{key}_res"] = read_array(resolve_pred_file(d, "residual_pred"))
     return out
 
+
 def render_fig3(root: Path, outdir: Path, low_sid: str, high_sid: str, seed: int, dpi: int):
     cases = [
         ("A  低污染 / 单源", load_stageA_case(root, low_sid, seed)),
@@ -380,23 +426,40 @@ def render_fig3(root: Path, outdir: Path, low_sid: str, high_sid: str, seed: int
     fig = plt.figure(figsize=(12.6, 7.55), facecolor="white")
     fig.suptitle(
         r"图3  $\mathrm{Stage\!-\!A}$ 代表性空间结果",
-        fontproperties=CN_FONT, fontsize=17.5, y=0.985, color="#173f6b"
+        fontproperties=CN_FONT,
+        fontsize=17.5,
+        y=0.985,
+        color="#173f6b",
     )
     fig.text(
-        0.5, 0.948, "两组固定代表样本的背景估计与背景扣除结果",
-        ha="center", fontproperties=CN_FONT, fontsize=9.8, color="0.25"
+        0.5,
+        0.948,
+        "两组固定代表样本的背景估计与背景扣除结果",
+        ha="center",
+        fontproperties=CN_FONT,
+        fontsize=9.8,
+        color="0.25",
     )
 
     outer = GridSpec(
-        4, 5, figure=fig,
-        left=0.035, right=0.985, bottom=0.055, top=0.89,
-        hspace=0.32, wspace=0.045,
-        height_ratios=[1.0, 0.95, 1.0, 0.95]
+        4,
+        5,
+        figure=fig,
+        left=0.035,
+        right=0.985,
+        bottom=0.055,
+        top=0.89,
+        hspace=0.32,
+        wspace=0.045,
+        height_ratios=[1.0, 0.95, 1.0, 0.95],
     )
 
     col_headers = [
-        ("观测图像", False), ("真实背景", False),
-        ("高斯滤波", False), ("DCT-II LS", True), ("原始 PINN", False)
+        ("观测图像", False),
+        ("真实背景", False),
+        ("高斯滤波", False),
+        ("DCT-II LS", True),
+        ("原始 PINN", False),
     ]
 
     for gi, (group_name, d) in enumerate(cases):
@@ -416,17 +479,23 @@ def render_fig3(root: Path, outdir: Path, low_sid: str, high_sid: str, seed: int
                 ax.set_title(
                     title,
                     fontproperties=EN_FONT if is_en else CN_FONT,
-                    fontsize=10.0, pad=7, color="#173f6b", weight="bold"
+                    fontsize=10.0,
+                    pad=7,
+                    color="#173f6b",
+                    weight="bold",
                 )
 
         # 第二行：clean 跨前两列
         ax_clean = fig.add_subplot(outer[r0 + 1, 0:2])
         imshow_panel(ax_clean, d["clean"], res_range, title="干净参考 / 真实残差")
-        for c, (key, title, is_en) in enumerate([
-            ("gauss_res", "高斯滤波扣除结果", False),
-            ("dct_res", "DCT-II LS 扣除结果", True),
-            ("pinn_res", "原始 PINN 扣除结果", False),
-        ], start=2):
+        for c, (key, title, is_en) in enumerate(
+            [
+                ("gauss_res", "高斯滤波扣除结果", False),
+                ("dct_res", "DCT-II LS 扣除结果", True),
+                ("pinn_res", "原始 PINN 扣除结果", False),
+            ],
+            start=2,
+        ):
             ax = fig.add_subplot(outer[r0 + 1, c])
             imshow_panel(ax, d[key], res_range, title=title, title_en=is_en)
 
@@ -436,9 +505,11 @@ def render_fig3(root: Path, outdir: Path, low_sid: str, high_sid: str, seed: int
 
     save_both(fig, outdir / "Fig3_StageA_spatial_results", dpi)
 
+
 # ---------------------------------------------------------------------
 # 图4
 # ---------------------------------------------------------------------
+
 
 def render_fig4(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
     src = locate_stageA_source(root, sid)
@@ -466,17 +537,31 @@ def render_fig4(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
     fig = plt.figure(figsize=(12.3, 5.45), facecolor="white")
     fig.suptitle(
         "图4  原始 PINN 消融实验代表性结果",
-        fontproperties=CN_FONT, fontsize=17.2, y=0.98, color="#173f6b"
+        fontproperties=CN_FONT,
+        fontsize=17.2,
+        y=0.98,
+        color="#173f6b",
     )
     fig.text(
-        0.5, 0.935, f"固定样本：{sid}；固定随机种子：{seed}",
-        ha="center", fontproperties=CN_FONT, fontsize=9.0, color="0.3"
+        0.5,
+        0.935,
+        f"固定样本：{sid}；固定随机种子：{seed}",
+        ha="center",
+        fontproperties=CN_FONT,
+        fontsize=9.0,
+        color="0.3",
     )
 
     gs = GridSpec(
-        2, 5, figure=fig,
-        left=0.035, right=0.985, bottom=0.075, top=0.855,
-        hspace=0.16, wspace=0.045
+        2,
+        5,
+        figure=fig,
+        left=0.035,
+        right=0.985,
+        bottom=0.075,
+        top=0.855,
+        hspace=0.16,
+        wspace=0.045,
     )
 
     # 第一列
@@ -494,9 +579,11 @@ def render_fig4(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
 
     save_both(fig, outdir / "Fig4_PINN_ablation", dpi)
 
+
 # ---------------------------------------------------------------------
 # 图6
 # ---------------------------------------------------------------------
+
 
 def render_fig6(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
     src = locate_stageB_source(root, sid)
@@ -514,24 +601,28 @@ def render_fig6(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
         ("原始 PINN", "pinn"),
     ]:
         d = locate_stageB_benchmark(root, key, sid, seed)
-        methods.append((
-            label,
-            read_array(resolve_pred_file(d, "background_pred")),
-            read_array(resolve_pred_file(d, "residual_pred")),
-            key == "dct",
-        ))
+        methods.append(
+            (
+                label,
+                read_array(resolve_pred_file(d, "background_pred")),
+                read_array(resolve_pred_file(d, "residual_pred")),
+                key == "dct",
+            )
+        )
 
     for label, branch in [
         ("匹配预算对照", "control"),
         ("SGC-PINN", "sgc"),
     ]:
         d = locate_stageB_pair(root, branch, sid, seed)
-        methods.append((
-            label,
-            read_array(resolve_pred_file(d, "background_pred")),
-            read_array(resolve_pred_file(d, "residual_pred")),
-            label == "SGC-PINN",
-        ))
+        methods.append(
+            (
+                label,
+                read_array(resolve_pred_file(d, "background_pred")),
+                read_array(resolve_pred_file(d, "residual_pred")),
+                label == "SGC-PINN",
+            )
+        )
 
     bg_range = pooled_range([bg_true] + [m[1] for m in methods])
     res_range = pooled_range([clean] + [m[2] for m in methods])
@@ -544,18 +635,32 @@ def render_fig6(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
     fig = plt.figure(figsize=(12.9, 7.35), facecolor="white")
     fig.suptitle(
         r"图6  $\mathrm{Stage\!-\!B}$ 低频保护结构对比",
-        fontproperties=CN_FONT, fontsize=17.2, y=0.985, color="#173f6b"
+        fontproperties=CN_FONT,
+        fontsize=17.2,
+        y=0.985,
+        color="#173f6b",
     )
     fig.text(
-        0.5, 0.948, f"固定频率重叠样本：{sid}",
-        ha="center", fontproperties=CN_FONT, fontsize=9.2, color="0.3"
+        0.5,
+        0.948,
+        f"固定频率重叠样本：{sid}",
+        ha="center",
+        fontproperties=CN_FONT,
+        fontsize=9.2,
+        color="0.3",
     )
 
     outer = GridSpec(
-        3, 5, figure=fig,
-        left=0.035, right=0.985, bottom=0.055, top=0.89,
-        hspace=0.26, wspace=0.045,
-        height_ratios=[0.82, 1.0, 1.0]
+        3,
+        5,
+        figure=fig,
+        left=0.035,
+        right=0.985,
+        bottom=0.055,
+        top=0.89,
+        hspace=0.26,
+        wspace=0.045,
+        height_ratios=[0.82, 1.0, 1.0],
     )
 
     # 顶部源数据条：4格 + 1格说明
@@ -572,12 +677,16 @@ def render_fig6(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
     ax_note = fig.add_subplot(outer[0, 4])
     ax_note.axis("off")
     ax_note.text(
-        0.5, 0.58,
+        0.5,
+        0.58,
         "固定保护区域\n"
         r"$P \geq 0.25\,P_{\mathrm{max}}$"
         "\n\n背景与残差分别\n采用统一显示范围",
-        ha="center", va="center", fontproperties=CN_FONT, fontsize=10.2,
-        bbox=dict(boxstyle="round,pad=0.55", fc="0.97", ec="0.65", lw=0.8)
+        ha="center",
+        va="center",
+        fontproperties=CN_FONT,
+        fontsize=10.2,
+        bbox=dict(boxstyle="round,pad=0.55", fc="0.97", ec="0.65", lw=0.8),
     )
 
     # 两行方法结果
@@ -592,9 +701,11 @@ def render_fig6(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
 
     save_both(fig, outdir / "Fig6_StageB_protected_structure", dpi)
 
+
 # ---------------------------------------------------------------------
 # 检查
 # ---------------------------------------------------------------------
+
 
 def check_paths(root: Path, args):
     print("中文字体:", CN_FONT.get_name(), CN_FONT.get_file())
@@ -620,9 +731,11 @@ def check_paths(root: Path, args):
     for b in ("control", "sgc"):
         print(f" {b}:", locate_stageB_pair(root, b, args.fig6_sample, args.seed))
 
+
 # ---------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------
+
 
 def main():
     ap = argparse.ArgumentParser(
@@ -647,11 +760,7 @@ def main():
     if not root.is_dir():
         raise SystemExit(f"工程根目录不存在: {root}")
 
-    outdir = (
-        args.outdir.expanduser().resolve()
-        if args.outdir
-        else root / "paper_figures"
-    )
+    outdir = args.outdir.expanduser().resolve() if args.outdir else root / "paper_figures"
 
     print("root   =", root)
     print("outdir =", outdir)
@@ -671,6 +780,7 @@ def main():
         render_fig6(root, outdir, args.fig6_sample, args.seed, args.dpi)
 
     print("\n完成。输出目录：", outdir)
+
 
 if __name__ == "__main__":
     main()

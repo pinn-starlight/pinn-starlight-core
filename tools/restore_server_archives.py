@@ -1,4 +1,5 @@
 """Restore Stage11 incremental archive ZIPs into a local project tree."""
+
 from __future__ import annotations
 
 import argparse

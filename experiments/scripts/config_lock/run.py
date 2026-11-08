@@ -82,7 +82,9 @@ def main(*, force: bool = False):
             "path": utils.project_relative(spec["path"]),
             "sha256": utils.file_sha256(spec["path"]),
             "formal_config_sha256": selected_artifacts[method]["formal_config_sha256"],
-            "source_bundle_sha256": selected_artifacts[method]["source_provenance"]["bundle_sha256"],
+            "source_bundle_sha256": selected_artifacts[method]["source_provenance"][
+                "bundle_sha256"
+            ],
         }
         for method, spec in SELECTORS.items()
     }
@@ -111,8 +113,12 @@ def main(*, force: bool = False):
         "data_provenance": {
             "manifest": utils.project_relative(MANIFEST),
             "manifest_sha256": utils.file_sha256(MANIFEST),
-            "dataset_protocol": utils.project_relative(utils.SYNTHETIC_ROOT / "dataset_protocol.json"),
-            "dataset_protocol_sha256": utils.file_sha256(utils.SYNTHETIC_ROOT / "dataset_protocol.json"),
+            "dataset_protocol": utils.project_relative(
+                utils.SYNTHETIC_ROOT / "dataset_protocol.json"
+            ),
+            "dataset_protocol_sha256": utils.file_sha256(
+                utils.SYNTHETIC_ROOT / "dataset_protocol.json"
+            ),
             "train_sample_ids": [row["sample_id"] for row in train_rows],
             "validation_sample_ids": [row["sample_id"] for row in validation_rows],
             "test_sample_ids": [
@@ -120,9 +126,7 @@ def main(*, force: bool = False):
             ],
         },
         "selection_artifacts": selection_snapshot,
-        "source_provenance": artifacts.source_provenance(
-            artifacts.FORMAL_SOURCE_DEPENDENCIES
-        ),
+        "source_provenance": artifacts.source_provenance(artifacts.FORMAL_SOURCE_DEPENDENCIES),
         "methods": {
             "fft_gaussian": gaussian,
             "fourier_ls": fourier,

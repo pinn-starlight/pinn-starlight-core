@@ -5,6 +5,7 @@ context and invokes the existing Stage10-A / Stage10-B selectors, freeze gates,
 and formal evaluators in separate Python processes so every module sees the
 same fold-specific manifest and output namespace.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,8 +44,14 @@ def _phase_modules(stage: str, phase: str, *, force: bool, device: str, fourier_
         if phase == "select":
             return [
                 ("experiments.scripts.selection.gaussian", force_arg),
-                ("experiments.scripts.selection.fourier_ls", [*force_arg, "--backend", fourier_backend]),
-                ("experiments.scripts.selection.pinn", [*force_arg, "--device", device, "--laplacian-backend", "autograd"]),
+                (
+                    "experiments.scripts.selection.fourier_ls",
+                    [*force_arg, "--backend", fourier_backend],
+                ),
+                (
+                    "experiments.scripts.selection.pinn",
+                    [*force_arg, "--device", device, "--laplacian-backend", "autograd"],
+                ),
             ]
         if phase == "lock":
             return [("experiments.scripts.config_lock.run", force_arg)]
@@ -58,8 +65,14 @@ def _phase_modules(stage: str, phase: str, *, force: bool, device: str, fourier_
         if phase == "select":
             return [
                 ("experiments.scripts.stage_b.select_gaussian", force_arg),
-                ("experiments.scripts.stage_b.select_fourier_ls", [*force_arg, "--backend", fourier_backend]),
-                ("experiments.scripts.stage_b.select_pinn", [*force_arg, "--device", device, "--laplacian-backend", "autograd"]),
+                (
+                    "experiments.scripts.stage_b.select_fourier_ls",
+                    [*force_arg, "--backend", fourier_backend],
+                ),
+                (
+                    "experiments.scripts.stage_b.select_pinn",
+                    [*force_arg, "--device", device, "--laplacian-backend", "autograd"],
+                ),
             ]
         if phase == "lock":
             return [("experiments.scripts.stage_b.lock", force_arg)]

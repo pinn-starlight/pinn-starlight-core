@@ -1,4 +1,5 @@
 """Stage11-B frozen follow-up validation for the final improved PINN."""
+
 from __future__ import annotations
 
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST

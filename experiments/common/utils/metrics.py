@@ -1,4 +1,3 @@
-
 """E1-E4 shared metrics with raw scientific arrays and auditable detection modes.
 
 Current protocol
@@ -63,9 +62,7 @@ def build_detection_image(raw_image, mode=FORMAL_DETECTION_MODE) -> np.ndarray:
     raw = scores.get_image(raw_image, clip=False)
     mode = str(mode)
     if mode not in DETECTION_MODES:
-        raise ValueError(
-            f"unknown detection mode: {mode}; expected one of {DETECTION_MODES}"
-        )
+        raise ValueError(f"unknown detection mode: {mode}; expected one of {DETECTION_MODES}")
     if mode == "raw":
         return raw.astype(np.float32, copy=False)
     if mode == "nonnegative":
@@ -166,19 +163,12 @@ def measure_raw_aperture_flux(
     yy, xx = np.mgrid[ymin : ymax + 1, xmin : xmax + 1]
     radius_sq = (xx - x) ** 2 + (yy - y) ** 2
     aperture_mask = radius_sq <= aperture_radius**2
-    annulus_mask = (
-        (radius_sq >= annulus_inner_radius**2)
-        & (radius_sq <= annulus_outer_radius**2)
-    )
+    annulus_mask = (radius_sq >= annulus_inner_radius**2) & (radius_sq <= annulus_outer_radius**2)
     cutout = image[ymin : ymax + 1, xmin : xmax + 1]
     if not np.any(aperture_mask):
         return float("nan")
 
-    local_background = (
-        float(np.median(cutout[annulus_mask]))
-        if np.any(annulus_mask)
-        else 0.0
-    )
+    local_background = float(np.median(cutout[annulus_mask])) if np.any(annulus_mask) else 0.0
     flux = np.sum(cutout[aperture_mask] - local_background, dtype=np.float64)
     return float(flux)
 
@@ -273,11 +263,7 @@ def star_metrics(
             continue
         relative_flux_errors.append(abs(pred_flux - true_flux) / abs(true_flux))
 
-    flux_metric = (
-        float(np.mean(relative_flux_errors))
-        if relative_flux_errors
-        else float("nan")
-    )
+    flux_metric = float(np.mean(relative_flux_errors)) if relative_flux_errors else float("nan")
 
     return {
         "star_precision": float(precision),

@@ -156,10 +156,7 @@ def _estimate_background_with_settings(
         fft_workers=fft_workers,
     )
 
-    states = [
-        _component_state_from_geometry(workspace, row, alpha=alpha)
-        for row in geometry
-    ]
+    states = [_component_state_from_geometry(workspace, row, alpha=alpha) for row in geometry]
     g, q = _gram_from_states(workspace, states)
     current = _profile_from_gram(
         workspace["base_smooth_objective"],
@@ -282,9 +279,9 @@ def _estimate_background_with_settings(
                     outer_bar.set_postfix(objective=f"{current['objective']:.4g}")
 
             completed_sweeps = sweep + 1
-            relative_improvement = (
-                sweep_start - float(current["objective"])
-            ) / max(abs(sweep_start), 1e-12)
+            relative_improvement = (sweep_start - float(current["objective"])) / max(
+                abs(sweep_start), 1e-12
+            )
             if relative_improvement < RELATIVE_OBJECTIVE_EARLY_STOP:
                 break
     finally:
@@ -322,9 +319,7 @@ def _estimate_background_with_settings(
                 "relative_weight": float(relative[index]),
                 "active": bool(relative[index] >= INACTIVE_RELATIVE_THRESHOLD),
                 "canonical_rms_before_normalization": float(scales[index]),
-                "negative_energy_fraction": forcing_negative_energy_fraction(
-                    forcing_images[index]
-                ),
+                "negative_energy_fraction": forcing_negative_energy_fraction(forcing_images[index]),
             }
         )
     strongest = max(components, key=lambda item: item["weight"])
@@ -524,11 +519,15 @@ def _same_value(actual, expected):
 
 
 def _resolve_backend(backend=None):
-    requested = str(
-        backend
-        if backend is not None
-        else os.environ.get("PINN_STARLIGHT_FOURIER_BACKEND", "auto")
-    ).strip().lower()
+    requested = (
+        str(
+            backend
+            if backend is not None
+            else os.environ.get("PINN_STARLIGHT_FOURIER_BACKEND", "auto")
+        )
+        .strip()
+        .lower()
+    )
     aliases = {
         "gpu": "cuda",
         "cuda_float64": "cuda",
@@ -572,9 +571,9 @@ def _dct_1d_torch(values, dim=-1):
     spectrum = torch.fft.fft(reordered, dim=1)
     k = -torch.arange(n, dtype=values.dtype, device=values.device) * math.pi / (2.0 * n)
     transformed = spectrum.real * torch.cos(k)[None, :] - spectrum.imag * torch.sin(k)[None, :]
-    transformed[:, 0] /= (math.sqrt(n) * 2.0)
+    transformed[:, 0] /= math.sqrt(n) * 2.0
     if n > 1:
-        transformed[:, 1:] /= (math.sqrt(n / 2.0) * 2.0)
+        transformed[:, 1:] /= math.sqrt(n / 2.0) * 2.0
     transformed = 2.0 * transformed
     return transformed.reshape(shape).movedim(-1, dim)
 
@@ -691,18 +690,14 @@ def _prepare_workspace(observed, lambda_ls, alpha, *, backend=None, fft_workers=
         workspace["transfer_b"] * workspace["d0_spectrum"]
         + float(lambda_ls) * workspace["transfer_p"] * workspace["p0_spectrum"]
     )
-    workspace["base_smooth_objective"] = (
-        _spectral_mean_inner(
-            workspace,
-            workspace["d0_spectrum"],
-            workspace["d0_spectrum"],
-        )
-        + float(lambda_ls)
-        * _spectral_mean_inner(
-            workspace,
-            workspace["p0_spectrum"],
-            workspace["p0_spectrum"],
-        )
+    workspace["base_smooth_objective"] = _spectral_mean_inner(
+        workspace,
+        workspace["d0_spectrum"],
+        workspace["d0_spectrum"],
+    ) + float(lambda_ls) * _spectral_mean_inner(
+        workspace,
+        workspace["p0_spectrum"],
+        workspace["p0_spectrum"],
     )
     return workspace
 
@@ -729,10 +724,9 @@ def _screened_operator_symbol_torch(shape, alpha, device):
     hy = 2.0 / height
     q = torch.arange(height, dtype=torch.float64, device=device)[:, None]
     p = torch.arange(width, dtype=torch.float64, device=device)[None, :]
-    laplacian_symbol = (
-        -4.0 * torch.sin(math.pi * q / (2.0 * height)).square() / (hy * hy)
-        -4.0 * torch.sin(math.pi * p / (2.0 * width)).square() / (hx * hx)
-    )
+    laplacian_symbol = -4.0 * torch.sin(math.pi * q / (2.0 * height)).square() / (
+        hy * hy
+    ) - 4.0 * torch.sin(math.pi * p / (2.0 * width)).square() / (hx * hx)
     return laplacian_symbol - float(alpha)
 
 
@@ -772,11 +766,7 @@ def _build_forcing_component_cached_numpy(workspace, row, *, alpha):
     dx_rot = cos_theta * dx + sin_theta * dy
     dy_rot = -sin_theta * dx + cos_theta * dy
     envelope = np.exp(
-        -0.5
-        * (
-            (dx_rot / max(sigma_x, 1e-12)) ** 2
-            + (dy_rot / max(sigma_y, 1e-12)) ** 2
-        )
+        -0.5 * ((dx_rot / max(sigma_x, 1e-12)) ** 2 + (dy_rot / max(sigma_y, 1e-12)) ** 2)
     )
     component = q * envelope
     axis = workspace["canonical_axis"]
@@ -793,11 +783,7 @@ def _build_forcing_component_cached_numpy(workspace, row, *, alpha):
     cdx_rot = cos_theta * cdx + sin_theta * cdy
     cdy_rot = -sin_theta * cdx + cos_theta * cdy
     cenvelope = np.exp(
-        -0.5
-        * (
-            (cdx_rot / max(sigma_x, 1e-12)) ** 2
-            + (cdy_rot / max(sigma_y, 1e-12)) ** 2
-        )
+        -0.5 * ((cdx_rot / max(sigma_x, 1e-12)) ** 2 + (cdy_rot / max(sigma_y, 1e-12)) ** 2)
     )
     canonical = cq * cenvelope
     scale = float(np.sqrt(np.mean(canonical * canonical) + RMS_EPSILON))
@@ -823,10 +809,7 @@ def _build_forcing_component_torch(workspace, row, *, alpha):
         dy_rot = -sin_theta * dx + cos_theta * dy
         envelope = torch.exp(
             -0.5
-            * (
-                (dx_rot / max(sigma_x, 1e-12)).square()
-                + (dy_rot / max(sigma_y, 1e-12)).square()
-            )
+            * ((dx_rot / max(sigma_x, 1e-12)).square() + (dy_rot / max(sigma_y, 1e-12)).square())
         )
         component = q * envelope
 
@@ -844,10 +827,7 @@ def _build_forcing_component_torch(workspace, row, *, alpha):
         cdy_rot = -sin_theta * cdx + cos_theta * cdy
         cenvelope = torch.exp(
             -0.5
-            * (
-                (cdx_rot / max(sigma_x, 1e-12)).square()
-                + (cdy_rot / max(sigma_y, 1e-12)).square()
-            )
+            * ((cdx_rot / max(sigma_x, 1e-12)).square() + (cdy_rot / max(sigma_y, 1e-12)).square())
         )
         canonical = cq * cenvelope
         scale_tensor = torch.sqrt(torch.mean(canonical.square()) + RMS_EPSILON)
@@ -858,9 +838,7 @@ def _build_forcing_component_torch(workspace, row, *, alpha):
 def _component_state_from_array(workspace, component, *, scale):
     if workspace["backend"] == "cpu":
         array = np.asarray(component, dtype=np.float64)
-        component_spectrum = fft.dctn(
-            array, type=2, norm="ortho", workers=workspace["fft_workers"]
-        )
+        component_spectrum = fft.dctn(array, type=2, norm="ortho", workers=workspace["fft_workers"])
     else:
         with torch.no_grad():
             if isinstance(component, np.ndarray):
@@ -880,9 +858,7 @@ def _gram_from_states(workspace, states):
     q = np.empty((k_count, k_count), dtype=np.float64)
     for i, state_i in enumerate(states):
         spectrum_i = state_i["component_spectrum"]
-        g[i] = _spectral_mean_inner(
-            workspace, workspace["g_reference_spectrum"], spectrum_i
-        )
+        g[i] = _spectral_mean_inner(workspace, workspace["g_reference_spectrum"], spectrum_i)
         for j in range(i + 1):
             spectrum_j = states[j]["component_spectrum"]
             value = _spectral_mean_inner(
@@ -953,10 +929,7 @@ def _reconstruct_background(workspace, states, weights):
         forcing_spectrum = np.zeros_like(workspace["b0_spectrum"])
         for weight, state in zip(weights, states):
             forcing_spectrum += float(weight) * state["component_spectrum"]
-        spectrum = (
-            workspace["b0_spectrum"]
-            + workspace["transfer_b"] * forcing_spectrum
-        )
+        spectrum = workspace["b0_spectrum"] + workspace["transfer_b"] * forcing_spectrum
         return fft.idctn(
             spectrum,
             type=2,
@@ -966,13 +939,8 @@ def _reconstruct_background(workspace, states, weights):
     with torch.no_grad():
         forcing_spectrum = torch.zeros_like(workspace["b0_spectrum"])
         for weight, state in zip(weights, states):
-            forcing_spectrum = (
-                forcing_spectrum + float(weight) * state["component_spectrum"]
-            )
-        spectrum = (
-            workspace["b0_spectrum"]
-            + workspace["transfer_b"] * forcing_spectrum
-        )
+            forcing_spectrum = forcing_spectrum + float(weight) * state["component_spectrum"]
+        spectrum = workspace["b0_spectrum"] + workspace["transfer_b"] * forcing_spectrum
         result = _idct2_torch(spectrum)
         return result.detach().cpu().numpy().astype(np.float64, copy=False)
 
@@ -991,10 +959,9 @@ def _screened_operator_symbol(shape, alpha):
     hy = 2.0 / height
     q = np.arange(height, dtype=np.float64)[:, None]
     p = np.arange(width, dtype=np.float64)[None, :]
-    laplacian_symbol = (
-        -4.0 * np.sin(np.pi * q / (2.0 * height)) ** 2 / (hy * hy)
-        -4.0 * np.sin(np.pi * p / (2.0 * width)) ** 2 / (hx * hx)
-    )
+    laplacian_symbol = -4.0 * np.sin(np.pi * q / (2.0 * height)) ** 2 / (hy * hy) - 4.0 * np.sin(
+        np.pi * p / (2.0 * width)
+    ) ** 2 / (hx * hx)
     return laplacian_symbol - float(alpha)
 
 
@@ -1006,10 +973,9 @@ def _apply_screened_operator(image, alpha):
     hy = 2.0 / height
     padded = np.pad(array, ((1, 1), (1, 1)), mode="edge")
     center = padded[1:-1, 1:-1]
-    laplacian = (
-        (padded[1:-1, 2:] - 2.0 * center + padded[1:-1, :-2]) / (hx * hx)
-        + (padded[2:, 1:-1] - 2.0 * center + padded[:-2, 1:-1]) / (hy * hy)
-    )
+    laplacian = (padded[1:-1, 2:] - 2.0 * center + padded[1:-1, :-2]) / (hx * hx) + (
+        padded[2:, 1:-1] - 2.0 * center + padded[:-2, 1:-1]
+    ) / (hy * hy)
     return laplacian - float(alpha) * array
 
 

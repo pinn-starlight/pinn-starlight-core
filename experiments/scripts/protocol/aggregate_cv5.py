@@ -5,6 +5,7 @@ multiple synthetic variants or stochastic seeds as independent camera samples,
 this script first averages metrics *within each fold and method*, then reports
 mean/std across the five held-out folds.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -122,7 +123,9 @@ def aggregate(stage: str, *, require_all_folds: bool = True) -> Path:
             f"Stage11-{stage.upper()} CV5 results are incomplete; missing folds: {missing}"
         )
     if not fold_rows:
-        raise FileNotFoundError(f"No Stage11-{stage.upper()} CV5 metric files found under {CV_ROOT}")
+        raise FileNotFoundError(
+            f"No Stage11-{stage.upper()} CV5 metric files found under {CV_ROOT}"
+        )
 
     output_root = PROJECT_ROOT / "experiments" / "outputs" / "cv5_summary" / f"stage_{stage}"
     _write_csv(output_root / "fold_method_summary.csv", fold_rows)
@@ -134,7 +137,9 @@ def aggregate(stage: str, *, require_all_folds: bool = True) -> Path:
         record = {"method": method, "fold_count": len(subset)}
         for metric in metrics:
             values = [float(row[metric]) for row in subset if math.isfinite(float(row[metric]))]
-            record[f"{metric}_mean_across_folds"] = float(np.mean(values)) if values else float("nan")
+            record[f"{metric}_mean_across_folds"] = (
+                float(np.mean(values)) if values else float("nan")
+            )
             record[f"{metric}_std_across_folds"] = _std(values)
         overall.append(record)
     _write_csv(output_root / "method_summary_across_folds.csv", overall)
@@ -143,12 +148,19 @@ def aggregate(stage: str, *, require_all_folds: bool = True) -> Path:
     levels = set()
     for rows in raw_by_fold.values():
         for row in rows:
-            levels.add((row["method"], row.get(grouping_key, row.get("background_type", "")), row.get("intensity_level", "")))
+            levels.add(
+                (
+                    row["method"],
+                    row.get(grouping_key, row.get("background_type", "")),
+                    row.get("intensity_level", ""),
+                )
+            )
     for method, group_name, intensity in sorted(levels):
         per_fold = []
         for fold, rows in raw_by_fold.items():
             subset = [
-                row for row in rows
+                row
+                for row in rows
                 if row["method"] == method
                 and row.get(grouping_key, row.get("background_type", "")) == group_name
                 and row.get("intensity_level", "") == intensity

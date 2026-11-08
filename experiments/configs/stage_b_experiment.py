@@ -12,6 +12,7 @@ The candidate spaces, training budgets, architectures, numerical solvers and
 execution policies are inherited unchanged from Stage10-A. Only the synthetic
 scene distribution changes.
 """
+
 from __future__ import annotations
 
 from copy import deepcopy

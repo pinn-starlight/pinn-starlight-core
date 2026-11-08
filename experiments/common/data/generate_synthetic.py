@@ -107,9 +107,7 @@ def build_star_reference(clean_true):
         "count_capped": bool(count_capped),
         "detection_image": {
             "reference_mode": metrics.REFERENCE_DETECTION_MODE,
-            "reference_rule": metrics.DETECTION_IMAGE_RULES[
-                metrics.REFERENCE_DETECTION_MODE
-            ],
+            "reference_rule": metrics.DETECTION_IMAGE_RULES[metrics.REFERENCE_DETECTION_MODE],
             "debug_candidate_prediction_modes": list(metrics.DETECTION_MODES),
             "scientific_residual_clipping": False,
         },
@@ -161,8 +159,7 @@ def synthesize_from_clean(
 
     # No numerical clipping: float TIFFs preserve the exact additive model.
     observed = (
-        clean_true.astype(np.float32, copy=False)
-        + background_true.astype(np.float32, copy=False)
+        clean_true.astype(np.float32, copy=False) + background_true.astype(np.float32, copy=False)
     ).astype(np.float32)
 
     observation_model = {
@@ -188,9 +185,7 @@ def synthesize_from_clean(
         "background_seed": int(geometry_seed),
         "numeric_clipping": False,
         "multiplicative_rescaling": False,
-        "additive_identity_max_abs": float(
-            np.max(np.abs(observed - clean_true - background_true))
-        ),
+        "additive_identity_max_abs": float(np.max(np.abs(observed - clean_true - background_true))),
         "observed_min": float(observed.min()),
         "observed_max": float(observed.max()),
         "outside_0_1_fraction": float(np.mean((observed < 0.0) | (observed > 1.0))),
@@ -274,16 +269,11 @@ def save_sample(
 def _clean_candidates(manifest_path):
     with Path(manifest_path).open("r", encoding="utf-8-sig", newline="") as file:
         rows = list(csv.DictReader(file))
-    by_id = {
-        row["image_id"]: row
-        for row in rows
-        if row.get("usage") == "synthetic_base_candidate"
-    }
+    by_id = {row["image_id"]: row for row in rows if row.get("usage") == "synthetic_base_candidate"}
     missing = [base_id for base_id in FIXED_BASE_SPLIT if base_id not in by_id]
     if missing:
         raise ValueError(
-            "formal synthetic split is missing required base images: "
-            + ", ".join(missing)
+            "formal synthetic split is missing required base images: " + ", ".join(missing)
         )
     return [by_id[base_id] for base_id in FIXED_BASE_SPLIT]
 
@@ -341,7 +331,9 @@ def _prepare_native_reference(input_file, output_root, base_id, center_crop_size
     }.items():
         path = audit_root / f"{name}.tif"
         utils.save_float_tiff(path, image)
-        utils.save_display_png(audit_root / f"{name}.png", image, clip=(name != "clean_true_flattened"))
+        utils.save_display_png(
+            audit_root / f"{name}.png", image, clip=(name != "clean_true_flattened")
+        )
         paths[name] = utils.project_relative(path)
     audit_path = audit_root / "audit.json"
     audit_record = {
@@ -369,9 +361,7 @@ def _prepare_native_reference(input_file, output_root, base_id, center_crop_size
             f"native-background audit JSON could not be read back: {audit_path.resolve()}"
         ) from exc
     if persisted_audit.get("base_id") != str(base_id) or "audit" not in persisted_audit:
-        raise OSError(
-            f"native-background audit JSON is incomplete: {audit_path.resolve()}"
-        )
+        raise OSError(f"native-background audit JSON is incomplete: {audit_path.resolve()}")
 
     if bool(config.get("strict_audit", True)) and not bool(audit["pass"]):
         failed_checks = [
@@ -414,19 +404,19 @@ def build_dataset(
             for intensity_level in INTENSITY_LEVELS:
                 sample_id = f"{base_id}_{background_type}_{intensity_level}"
                 row = save_sample(
-                        input_file=input_file,
-                        output_root=output_root,
-                        sample_id=sample_id,
-                        base_id=base_id,
-                        split=split,
-                        background_type=background_type,
-                        intensity_level=intensity_level,
-                        geometry_seed=geometry_seed,
-                        clean_true=clean_true,
-                        star_reference=star_reference,
-                        native_background_record=native_background_record,
-                        center_crop_size=center_crop_size,
-                        )
+                    input_file=input_file,
+                    output_root=output_root,
+                    sample_id=sample_id,
+                    base_id=base_id,
+                    split=split,
+                    background_type=background_type,
+                    intensity_level=intensity_level,
+                    geometry_seed=geometry_seed,
+                    clean_true=clean_true,
+                    star_reference=star_reference,
+                    native_background_record=native_background_record,
+                    center_crop_size=center_crop_size,
+                )
                 row["dataset_id"] = dataset_id
                 rows.append(row)
 
@@ -485,7 +475,7 @@ def build_dataset(
                 "seed": int(seed),
                 "seed_policy": {
                     "geometry": "hash(seed, base_id, background_type, geometry)",
-                    "low_high_share_geometry": True
+                    "low_high_share_geometry": True,
                 },
             },
             ensure_ascii=False,

@@ -1,4 +1,5 @@
 """正式实验共用的数据、随机种子和结果保存工具。"""
+
 import csv
 import json
 import os
@@ -119,14 +120,21 @@ def supported_image_files(directory: Path):
     """Return deterministic real-image candidates from one directory."""
     directory = Path(directory)
     extensions = {
-        ".nef", ".cr2", ".cr3", ".arw", ".dng",
-        ".tif", ".tiff", ".png", ".jpg", ".jpeg",
+        ".nef",
+        ".cr2",
+        ".cr3",
+        ".arw",
+        ".dng",
+        ".tif",
+        ".tiff",
+        ".png",
+        ".jpg",
+        ".jpeg",
     }
     if not directory.is_dir():
         return []
     return sorted(
-        path for path in directory.iterdir()
-        if path.is_file() and path.suffix.lower() in extensions
+        path for path in directory.iterdir() if path.is_file() and path.suffix.lower() in extensions
     )
 
 
@@ -139,10 +147,10 @@ def project_relative(path):
         return str(path)
 
 
-def prepare_output_root(path, force = False) -> Path:
+def prepare_output_root(path, force=False) -> Path:
     """
-        创建输出根目录，并且可以用参数强制覆盖
-        return Path
+    创建输出根目录，并且可以用参数强制覆盖
+    return Path
     """
     path = Path(path)
     if not path.exists():
@@ -161,7 +169,7 @@ def prepare_output_root(path, force = False) -> Path:
     return path
 
 
-def load_gray_image(path, downsample = 1) -> np.ndarray:
+def load_gray_image(path, downsample=1) -> np.ndarray:
     """读取一张线性灰度图，返回范围为 [0, 1] 的 float32 数组。"""
     path = to_absolute_path(path)
 
@@ -403,7 +411,7 @@ def save_run_metadata(output_dir: Path, config: dict):
     write_json(output_dir / "environment.json", environment)
 
 
-def save_display_png(path, image, clip = True):
+def save_display_png(path, image, clip=True):
     """保存论文展示用的 8 位灰度 PNG。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -512,8 +520,7 @@ def _cuda_device_index(device):
     index = int(index)
     if index < 0 or index >= int(torch.cuda.device_count()):
         raise ValueError(
-            f"CUDA device index {index} is invalid; "
-            f"device_count={torch.cuda.device_count()}"
+            f"CUDA device index {index} is invalid; device_count={torch.cuda.device_count()}"
         )
     return index
 
@@ -553,14 +560,8 @@ def _remove_forced_output(path: Path):
         raise ValueError("--force 不允许清理符号链接输出目录")
     resolved_path = path.resolve()
     resolved_output_root = OUTPUT_ROOT.resolve()
-    if (
-        resolved_path == resolved_output_root
-        or resolved_output_root not in resolved_path.parents
-    ):
-        raise ValueError(
-            "--force 只允许清理 experiments/outputs 下的输出目录："
-            f"{resolved_path}"
-        )
+    if resolved_path == resolved_output_root or resolved_output_root not in resolved_path.parents:
+        raise ValueError(f"--force 只允许清理 experiments/outputs 下的输出目录：{resolved_path}")
     shutil.rmtree(resolved_path)
 
 

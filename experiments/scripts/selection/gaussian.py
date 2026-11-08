@@ -32,9 +32,7 @@ def validation_mse_scores(validation_samples, candidates):
         losses = []
         for sample in samples:
             observed = sample["observed"] if isinstance(sample, dict) else sample[0]
-            background_true = (
-                sample["background_true"] if isinstance(sample, dict) else sample[1]
-            )
+            background_true = sample["background_true"] if isinstance(sample, dict) else sample[1]
             observed = np.asarray(observed, dtype=np.float32)
             background_true = np.asarray(background_true, dtype=np.float32)
             if observed.shape != background_true.shape:

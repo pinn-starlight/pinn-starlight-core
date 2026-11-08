@@ -5,6 +5,7 @@ contains only a manifest whose ``split`` column is reassigned by camera base,
 plus protocol/provenance JSON files.  Every variant from one camera base stays
 in the same group.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -89,9 +90,7 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
 
     protocol_path = source_root / "dataset_protocol.json"
     source_protocol = (
-        json.loads(protocol_path.read_text(encoding="utf-8"))
-        if protocol_path.is_file()
-        else {}
+        json.loads(protocol_path.read_text(encoding="utf-8")) if protocol_path.is_file() else {}
     )
     outputs = []
     for fold, split_map in enumerate(CV5_FOLDS):
@@ -103,11 +102,14 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
                 reusable = False
                 if existing_protocol_path.is_file() and existing_manifest.is_file():
                     try:
-                        existing_protocol = json.loads(existing_protocol_path.read_text(encoding="utf-8"))
+                        existing_protocol = json.loads(
+                            existing_protocol_path.read_text(encoding="utf-8")
+                        )
                         provenance = existing_protocol.get("source_dataset_provenance", {})
                         reusable = (
                             provenance.get("manifest_sha256") == _sha256(source_manifest)
-                            and existing_protocol.get("split_protocol", {}).get("base_split") == split_map
+                            and existing_protocol.get("split_protocol", {}).get("base_split")
+                            == split_map
                         )
                     except (OSError, json.JSONDecodeError):
                         reusable = False
@@ -168,7 +170,9 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
                     "manifest": str(source_manifest),
                     "manifest_sha256": _sha256(source_manifest),
                     "dataset_protocol": str(protocol_path) if protocol_path.is_file() else None,
-                    "dataset_protocol_sha256": _sha256(protocol_path) if protocol_path.is_file() else None,
+                    "dataset_protocol_sha256": _sha256(protocol_path)
+                    if protocol_path.is_file()
+                    else None,
                 },
             }
         )

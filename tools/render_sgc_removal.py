@@ -30,6 +30,7 @@ Usage
     python -m tools.render_sgc_removal --images 001 016
     python -m tools.render_sgc_removal --list
 """
+
 from __future__ import annotations
 
 import argparse
@@ -57,9 +58,9 @@ LABELS = {
 
 COLUMN_X = [(0, 692), (708, 1392), (1408, 2092), (2108, 2792), (2808, 3492), (3508, 4200)]
 ROW_Y = [(0, 700), (700, 1400)]
-CONTENT_Y = (123, 577)          # image pixels only, titles excluded
+CONTENT_Y = (123, 577)  # image pixels only, titles excluded
 OBSERVED_COL = 0
-SGC_COL = 5                     # last column == Final-PINN == SGC-PINN
+SGC_COL = 5  # last column == Final-PINN == SGC-PINN
 
 
 def _load_png(zf: zipfile.ZipFile, name: str) -> np.ndarray:
@@ -71,8 +72,9 @@ def _load_png(zf: zipfile.ZipFile, name: str) -> np.ndarray:
         return np.array(Image.open(io.BytesIO(handle.read())).convert("RGB"))
 
 
-def _stretch_panel(panel: np.ndarray, gamma: float, black_pct: float | None,
-                   white_pct: float | None) -> np.ndarray:
+def _stretch_panel(
+    panel: np.ndarray, gamma: float, black_pct: float | None, white_pct: float | None
+) -> np.ndarray:
     """Darken an already-rendered display panel.
 
     The stored E4 renders are 8-bit display images; the raw float arrays are not
@@ -175,35 +177,70 @@ def build_figure(observed, background, residual, title: str, out_png: Path, lang
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--images", nargs="*", default=None,
-                        help="suffixes like 001 016 (default: all)")
+    parser.add_argument(
+        "--images", nargs="*", default=None, help="suffixes like 001 016 (default: all)"
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--list", action="store_true", help="list available images")
     parser.add_argument("--verbose", action="store_true", help="print per-panel gamma")
-    parser.add_argument("--lang", choices=("zh", "en"), default="zh",
-                        help="figure label language")
-    parser.add_argument("--gamma", type=float, default=2.2,
-                        help="display gamma for observed/background; >1 darkens (default 2.2)")
-    parser.add_argument("--auto-level", action="store_true", default=True,
-                        help="derive gamma per panel so every image has the same "
-                             "perceived background brightness (default on)")
-    parser.add_argument("--no-auto-level", dest="auto_level", action="store_false",
-                        help="use the fixed --gamma / --residual-gamma instead")
-    parser.add_argument("--target-median", type=float, default=75.0,
-                        help="target median for every panel when auto-levelling (default 75)")
-    parser.add_argument("--match-b", action="store_true",
-                        help="auto-level to the 'B' tonality that was approved on "
-                             "real_high_001 (obs 78 / bg 63 / res 57)")
-    parser.add_argument("--residual-gamma", type=float, default=1.5,
-                        help="gamma for the residual panel (default 1.5). "
-                             "Use a smaller value to keep faint stars visible.")
-    parser.add_argument("--stretch", choices=("none", "percentile"), default="none",
-                        help="extra percentile re-stretch; default none because the "
-                             "server render is already normalised")
-    parser.add_argument("--black-pct", type=float, default=1.0,
-                        help="lower percentile when --stretch percentile (default 1.0)")
-    parser.add_argument("--white-pct", type=float, default=99.5,
-                        help="upper percentile when --stretch percentile (default 99.5)")
+    parser.add_argument("--lang", choices=("zh", "en"), default="zh", help="figure label language")
+    parser.add_argument(
+        "--gamma",
+        type=float,
+        default=2.2,
+        help="display gamma for observed/background; >1 darkens (default 2.2)",
+    )
+    parser.add_argument(
+        "--auto-level",
+        action="store_true",
+        default=True,
+        help="derive gamma per panel so every image has the same "
+        "perceived background brightness (default on)",
+    )
+    parser.add_argument(
+        "--no-auto-level",
+        dest="auto_level",
+        action="store_false",
+        help="use the fixed --gamma / --residual-gamma instead",
+    )
+    parser.add_argument(
+        "--target-median",
+        type=float,
+        default=75.0,
+        help="target median for every panel when auto-levelling (default 75)",
+    )
+    parser.add_argument(
+        "--match-b",
+        action="store_true",
+        help="auto-level to the 'B' tonality that was approved on "
+        "real_high_001 (obs 78 / bg 63 / res 57)",
+    )
+    parser.add_argument(
+        "--residual-gamma",
+        type=float,
+        default=1.5,
+        help="gamma for the residual panel (default 1.5). "
+        "Use a smaller value to keep faint stars visible.",
+    )
+    parser.add_argument(
+        "--stretch",
+        choices=("none", "percentile"),
+        default="none",
+        help="extra percentile re-stretch; default none because the "
+        "server render is already normalised",
+    )
+    parser.add_argument(
+        "--black-pct",
+        type=float,
+        default=1.0,
+        help="lower percentile when --stretch percentile (default 1.0)",
+    )
+    parser.add_argument(
+        "--white-pct",
+        type=float,
+        default=99.5,
+        help="upper percentile when --stretch percentile (default 99.5)",
+    )
     args = parser.parse_args(argv)
 
     if not REVIEW_ZIP.is_file():
@@ -218,7 +255,7 @@ def main(argv=None) -> int:
 
         selected = []
         for name in sorted(names):
-            image_id = name.rsplit("/", 2)[-2]          # real_high_001
+            image_id = name.rsplit("/", 2)[-2]  # real_high_001
             suffix = image_id.rsplit("_", 1)[-1]
             if args.images and suffix not in args.images:
                 continue
@@ -256,8 +293,11 @@ def main(argv=None) -> int:
             residual = _stretch_panel(raw_res, g_res, lo, hi)
             if args.verbose:
                 print(f"    gammas obs={g_obs:.2f} bg={g_bg:.2f} res={g_res:.2f}")
-            suffix = "_matchB" if (args.auto_level and args.match_b) else (
-                "_auto" if args.auto_level else "")
+            suffix = (
+                "_matchB"
+                if (args.auto_level and args.match_b)
+                else ("_auto" if args.auto_level else "")
+            )
             if not args.auto_level and args.gamma != 1.0:
                 suffix = f"_g{args.gamma:g}"
                 if args.residual_gamma is not None:

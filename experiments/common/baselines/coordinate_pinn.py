@@ -204,7 +204,6 @@ def train_background(
     return result
 
 
-
 def initial_centers_from_observed(observed, config=None):
     """Compute the formal observed-only forcing-center initialization once."""
     config = normalized_config(config)
@@ -215,6 +214,7 @@ def initial_centers_from_observed(observed, config=None):
         low_pass_sigma_fraction=float(config["forcing_low_pass_sigma_fraction"]),
         min_center_distance=float(config["forcing_min_center_distance"]),
     )
+
 
 def _build_forcing(observed, config: PINNConfig, device, *, initial_centers=None):
     sigma_min, sigma_max = (float(value) for value in config["forcing_sigma_bounds"])
@@ -318,11 +318,7 @@ def _train_steps(
         total_loss.backward()
         optimizer.step()
 
-        should_log = (
-            global_step == 1
-            or global_step % log_every == 0
-            or local_step + 1 == steps
-        )
+        should_log = global_step == 1 or global_step % log_every == 0 or local_step + 1 == steps
         if should_log:
             # Converting a CUDA scalar to Python synchronizes the device.  Keep
             # those synchronization points at the already-frozen history cadence
@@ -349,13 +345,16 @@ def _train_steps(
     return history, final_total, final_data, final_physics, final_sparse
 
 
-
 def resolve_laplacian_backend(value=None):
-    requested = str(
-        value
-        if value is not None
-        else os.environ.get("PINN_STARLIGHT_PINN_LAPLACIAN", "autograd")
-    ).strip().lower()
+    requested = (
+        str(
+            value
+            if value is not None
+            else os.environ.get("PINN_STARLIGHT_PINN_LAPLACIAN", "autograd")
+        )
+        .strip()
+        .lower()
+    )
     aliases = {
         "chain_rule": "analytic",
         "analytic_chain_rule": "analytic",
@@ -412,11 +411,9 @@ def _background_and_laplacian(model, coords):
     background = torch.sigmoid(logits)
     first = background * (1.0 - background)
     second = first * (1.0 - 2.0 * background)
-    background_lap = (
-        second * (dlogits_dx.square() + dlogits_dy.square())
-        + first * logits_lap
-    )
+    background_lap = second * (dlogits_dx.square() + dlogits_dy.square()) + first * logits_lap
     return background, background_lap
+
 
 def normalized_config(config) -> PINNConfig:
     result: PINNConfig = dict(DEFAULT_CONFIG)
@@ -451,7 +448,9 @@ def normalized_config(config) -> PINNConfig:
         result[key] = float(result[key])
     result["forcing_sigma_bounds"] = [float(value) for value in result["forcing_sigma_bounds"]]
     result["forcing_theta_bounds"] = [float(value) for value in result["forcing_theta_bounds"]]
-    result["forcing_initial_weights"] = [float(value) for value in result["forcing_initial_weights"]]
+    result["forcing_initial_weights"] = [
+        float(value) for value in result["forcing_initial_weights"]
+    ]
     result["center_refinement_enabled"] = bool(result["center_refinement_enabled"])
 
     if result["steps"] <= 0 or result["batch_size"] <= 0:
@@ -493,7 +492,9 @@ def _to_cpu(value):
 
 def _optimizer(model, forcing, config: PINNConfig):
     groups = [{"params": model.parameters(), "lr": float(config["model_lr"])}]
-    forcing_parameters = [parameter for parameter in forcing.parameters() if parameter.requires_grad]
+    forcing_parameters = [
+        parameter for parameter in forcing.parameters() if parameter.requires_grad
+    ]
     if float(config["physics_weight"]) > 0.0 and forcing_parameters:
         groups.append({"params": forcing_parameters, "lr": float(config["forcing_lr"])})
     return torch.optim.Adam(groups)
@@ -522,8 +523,7 @@ def _history_row(step, total, data, physics, sparse, forcing, alpha, config):
         "physics_loss": float(physics),
         "sparse_loss": float(sparse),
         "center_refinement_enabled_at_step": bool(
-            config["center_refinement_enabled"]
-            and int(step) > int(config["center_warmup_steps"])
+            config["center_refinement_enabled"] and int(step) > int(config["center_warmup_steps"])
         ),
         "effective_component_count": int(sum(item["active"] for item in components)),
         "center_x": float(strongest["center_x"]),
