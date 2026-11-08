@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Auto-match and collect frozen Stage11 scientific arrays for manuscript figures.
 
@@ -38,16 +37,14 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import os
 import re
 import shutil
 import sys
 import zipfile
-from collections import defaultdict
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
 
 # ---------------------------------------------------------------------
 # Constants / aliases
@@ -144,7 +141,7 @@ SEED_PREFERENCE = ("20260728", "20260729", "20260730")
 @dataclass
 class Match:
     role: str
-    path: Optional[Path]
+    path: Path | None
     score: float = 0.0
     note: str = ""
 
@@ -195,7 +192,7 @@ def token_score(text: str, positive: Sequence[str], negative: Sequence[str] = ()
     return score
 
 
-def iter_files(root: Path, allowed_exts: Optional[set[str]] = None) -> Iterable[Path]:
+def iter_files(root: Path, allowed_exts: set[str] | None = None) -> Iterable[Path]:
     root = root.resolve()
     for cur, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in PRUNE_DIRS and not d.startswith(".")]
@@ -266,7 +263,7 @@ def choose_sample(
     positive: Sequence[str],
     negative: Sequence[str] = (),
     prefer_prefixes: Sequence[str] = ("clean_single_001", "clean_single_002", "clean_stack_001"),
-) -> Optional[str]:
+) -> str | None:
     if not ids:
         return None
     ranked = []
@@ -355,9 +352,9 @@ def select_best_file(
     files: Sequence[Path],
     role: str,
     *,
-    sample_id: Optional[str] = None,
-    method: Optional[str] = None,
-    variant: Optional[str] = None,
+    sample_id: str | None = None,
+    method: str | None = None,
+    variant: str | None = None,
     extra_positive: Sequence[str] = (),
 ) -> Match:
     ranked: list[tuple[float, Path]] = []
@@ -459,8 +456,8 @@ def collect_fig3(
     sample_ids: Sequence[str],
     out_root: Path,
     reporter: Reporter,
-    low_id: Optional[str],
-    high_id: Optional[str],
+    low_id: str | None,
+    high_id: str | None,
     dry_run: bool,
 ) -> Path:
     low_id = low_id or choose_sample(
@@ -529,7 +526,7 @@ def collect_fig4(
     sample_ids: Sequence[str],
     out_root: Path,
     reporter: Reporter,
-    sample_override: Optional[str],
+    sample_override: str | None,
     dry_run: bool,
 ) -> Path:
     # Prefer a difficult high-pollution case where capacity differences are visible.
@@ -598,8 +595,8 @@ def collect_fig6(
     sample_ids: Sequence[str],
     out_root: Path,
     reporter: Reporter,
-    high_override: Optional[str],
-    low_override: Optional[str],
+    high_override: str | None,
+    low_override: str | None,
     dry_run: bool,
 ) -> Path:
     high_id = high_override or choose_sample(

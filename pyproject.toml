@@ -126,3 +126,29 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.pixi.tasks]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["experiments/outputs", "artifacts", "collections"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+ignore = [
+    # Adding strict= to every zip() would change failure behaviour; do it
+    # deliberately, one call site at a time.
+    "B905",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# These scripts prepend the repo to sys.path before importing project modules.
+"tools/*.py" = ["E402"]
+# Re-export surfaces.
+"src/pinn_starlight_core/physics/__init__.py" = ["F401"]
+# objective_one/callback close over loop variables but are consumed by
+# minimize() inside the same iteration, so they never escape the loop.
+"experiments/common/baselines/cosine_ls.py" = ["B023"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

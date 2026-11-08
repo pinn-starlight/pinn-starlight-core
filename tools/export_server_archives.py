@@ -19,14 +19,12 @@ import argparse
 import csv
 import hashlib
 import json
-import os
 import platform
 import subprocess
 import sys
 import time
 from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
-
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -424,7 +422,7 @@ def main():
 
     all_files.sort(key=lambda x: (PHASE_ORDER[x[0]], x[2]))
     by_phase = {name: [] for name, _ in PHASES}
-    for phase, path, rel, sig in all_files:
+    for phase, path, _rel, _sig in all_files:
         by_phase[phase].append(path)
 
     total_files = len(all_files)

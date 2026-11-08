@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 在远程服务器上把论文图 3 / 图 4 / 图 6 所需冻结实验数组整理并压缩。
 
@@ -97,7 +96,7 @@ def find_run_dir(root: Path, sid: str, require_seed=True) -> Path:
     在给定方法/变体根目录下寻找包含 sample id 且真正有 background_pred/residual_pred 的目录。
     """
     candidates = []
-    for cur, dirs, files in os.walk(root):
+    for cur, _dirs, files in os.walk(root):
         p = Path(cur)
         s = str(p)
         if sid not in s:
@@ -120,11 +119,13 @@ def find_run_dir(root: Path, sid: str, require_seed=True) -> Path:
 def stagea_method_dir(method: str, sid: str) -> Path:
     if method == "gaussian":
         p = STAGEA_BASELINE / GAUSS_DIR / "deterministic" / sid
-        if not p.is_dir(): raise FileNotFoundError(p)
+        if not p.is_dir():
+            raise FileNotFoundError(p)
         return p
     if method == "dct":
         p = STAGEA_BASELINE / DCT_DIR / "deterministic" / sid
-        if not p.is_dir(): raise FileNotFoundError(p)
+        if not p.is_dir():
+            raise FileNotFoundError(p)
         return p
     if method == "pinn":
         return find_run_dir(STAGEA_BASELINE / PINN_DIR, sid, require_seed=True)
@@ -139,11 +140,13 @@ def ablation_run_dir(variant: str, sid: str) -> Path:
 def stageb_method_dir(method: str, sid: str) -> Path:
     if method == "gaussian":
         p = STAGEB_BASELINE / GAUSS_DIR / "deterministic" / sid
-        if not p.is_dir(): raise FileNotFoundError(p)
+        if not p.is_dir():
+            raise FileNotFoundError(p)
         return p
     if method == "dct":
         p = STAGEB_BASELINE / DCT_DIR / "deterministic" / sid
-        if not p.is_dir(): raise FileNotFoundError(p)
+        if not p.is_dir():
+            raise FileNotFoundError(p)
         return p
     if method == "pinn":
         return find_run_dir(STAGEB_BASELINE / PINN_DIR, sid, require_seed=True)

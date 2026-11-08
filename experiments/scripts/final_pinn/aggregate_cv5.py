@@ -11,7 +11,6 @@ import numpy as np
 from experiments.common.utils import experiment_utils as utils
 from experiments.scripts.final_pinn.common import write_csv
 
-
 METRICS = (
     "bg_mae",
     "bg_rmse",

@@ -11,8 +11,8 @@ optimization problems.
 
 from __future__ import annotations
 
-from copy import deepcopy
 import math
+from copy import deepcopy
 
 FORMAL_CONFIG_SCHEMA_VERSION = 5
 FORMAL_SEEDS = (20260728, 20260729, 20260730)

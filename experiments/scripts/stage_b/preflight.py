@@ -10,15 +10,15 @@ It verifies:
 """
 from __future__ import annotations
 
-from collections import Counter, defaultdict
 import json
+from collections import Counter, defaultdict
+
 import numpy as np
 
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils.stage_b_anchor import load_stage_a_anchor
 from experiments.configs.stage_b_experiment import STAGE_B_CONFIG
-
 
 EXPECTED_COUNTS = {"train": 24, "validation": 8, "test": 8}
 

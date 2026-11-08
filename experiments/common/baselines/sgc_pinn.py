@@ -20,7 +20,6 @@ state and the same Stage-3 random batch sequence.
 
 from __future__ import annotations
 
-import math
 import time
 from typing import Any
 
@@ -29,12 +28,11 @@ import torch
 from scipy.optimize import nnls
 from tqdm import tqdm
 
+import pinn_starlight_core.nn.pinn_loss as pinn_loss
 from experiments.common.baselines import coordinate_pinn as base_pinn
 from experiments.common.utils import experiment_utils as utils
-import pinn_starlight_core.nn.pinn_loss as pinn_loss
 from pinn_starlight_core.data.image_loader import coordinate_grid
 from pinn_starlight_core.nn.pinn_layers import SkyglowMLP
-
 
 CONTROL_NAME = "data_finetune_control"
 METHOD_NAME = "pinn_decoupled_gradient"

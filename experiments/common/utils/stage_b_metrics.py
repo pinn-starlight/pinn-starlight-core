@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+
 import numpy as np
 
 from experiments.common.utils import metrics, scores
@@ -116,5 +117,7 @@ def _greedy_matches(reference_stars, predicted_stars, max_distance):
     for _, i, j in candidates:
         if i in used_i or j in used_j:
             continue
-        used_i.add(i); used_j.add(j); matches.append((i,j))
+        used_i.add(i)
+        used_j.add(j)
+        matches.append((i, j))
     return matches

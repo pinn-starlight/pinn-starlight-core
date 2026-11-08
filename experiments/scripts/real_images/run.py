@@ -4,13 +4,15 @@
 import argparse
 import time
 from pathlib import Path
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+
 from experiments.common.baselines import coordinate_pinn as pinn
-from experiments.common.baselines import sgc_pinn as final_pinn
-from experiments.common.baselines import fft_gaussian as fft
 from experiments.common.baselines import cosine_ls as fourier_ls
+from experiments.common.baselines import fft_gaussian as fft
+from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 from experiments.common.utils import selection_artifacts as artifacts
@@ -382,7 +384,7 @@ def _verify_legacy_lock_except_e4_runner(lock):
     if utils.file_sha256(protocol_path) != expected_protocol_sha:
         raise ValueError("Synthetic dataset protocol changed after Global Lock")
 
-    for method, info in lock.get("selection_artifacts", {}).items():
+    for _method, info in lock.get("selection_artifacts", {}).items():
         artifact_path = utils.to_absolute_path(info["path"])
         if not artifact_path.is_file():
             raise FileNotFoundError(f"Frozen selection artifact missing: {artifact_path}")

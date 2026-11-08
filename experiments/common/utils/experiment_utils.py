@@ -1,5 +1,4 @@
 """正式实验共用的数据、随机种子和结果保存工具。"""
-import argparse
 import csv
 import json
 import os
@@ -12,17 +11,17 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-import torch
 import tifffile as tif
+import torch
 from PIL import Image
 
-from pinn_starlight_core.data.image_loader import ImageLoader
 from experiments.configs.formal_experiment import (
     FORMAL_SEEDS,
     FOURIER_LS_CONFIG,
     formal_config_snapshot,
 )
 from experiments.configs.split_protocols import active_protocol_from_env
+from pinn_starlight_core.data.image_loader import ImageLoader
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BASE_OUTPUT_ROOT = PROJECT_ROOT / "experiments/outputs"
@@ -366,7 +365,7 @@ def load_global_configuration_lock(
         if file_sha256(protocol_path) != expected_protocol_sha:
             raise ValueError("Synthetic dataset protocol changed after Global Lock")
 
-        for method, info in lock.get("selection_artifacts", {}).items():
+        for _method, info in lock.get("selection_artifacts", {}).items():
             artifact_path = to_absolute_path(info["path"])
             if not artifact_path.is_file():
                 raise FileNotFoundError(f"Frozen selection artifact missing: {artifact_path}")

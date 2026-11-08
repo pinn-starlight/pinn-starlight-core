@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import argparse
 
-from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.baselines import coordinate_pinn as pinn
+from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import selection_artifacts as artifacts
 from experiments.configs.formal_experiment import (

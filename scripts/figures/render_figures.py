@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 直接在远程 Stage11 / pixi 环境生成论文图 3、图 4、图 6。
 不打包原始数组，不重跑实验，不修改任何实验结果。
@@ -24,23 +23,23 @@
 from __future__ import annotations
 
 import argparse
-import sys
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable, Sequence
 
-import numpy as np
 import matplotlib
+import numpy as np
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
-from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+from matplotlib.gridspec import GridSpec
 
 try:
     import tifffile
 except Exception as e:
     raise SystemExit(
         "缺少 tifffile。请在 pixi 环境确认依赖；错误：" + repr(e)
-    )
+    ) from e
 
 # ---------------------------------------------------------------------
 # 默认固定样本：避免看结果后再挑样本
@@ -502,8 +501,6 @@ def render_fig4(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
 def render_fig6(root: Path, outdir: Path, sid: str, seed: int, dpi: int):
     src = locate_stageB_source(root, sid)
 
-    base_clean_path = resolve_source_file(src, "base_clean", sid, required=False)
-    base_clean = read_array(base_clean_path) if base_clean_path else None
     protected = read_array(resolve_source_file(src, "protected_true", sid))
     clean = read_array(resolve_source_file(src, "clean_true", sid))
     bg_true = read_array(resolve_source_file(src, "background_true", sid))

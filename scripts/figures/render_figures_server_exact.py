@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 直接从 Stage11 冻结实验输出生成论文图 3 / 图 4 / 图 6。
 
@@ -30,16 +29,14 @@ from __future__ import annotations
 import argparse
 import os
 import subprocess
-import sys
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable, Sequence
-
-import numpy as np
 
 import matplotlib
+import numpy as np
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib import font_manager
 from matplotlib.font_manager import FontProperties
 from matplotlib.gridspec import GridSpec
 
@@ -285,7 +282,7 @@ def find_dir_exact_or_recursive(
     prefer_parts = tuple(p.lower() for p in prefer_parts)
 
     matches = []
-    for cur, dirs, files in os.walk(root):
+    for cur, _dirs, files in os.walk(root):
         p = Path(cur)
         s = str(p).lower()
         if all(part in s for part in required_parts):
@@ -525,7 +522,7 @@ def render_fig3(outdir: Path, dpi: int):
 
     headers = ["观测图像", "真实背景", "高斯滤波", "DCT-II LS", "原始 PINN"]
 
-    for gi, (group_label, sid, d) in enumerate(groups):
+    for gi, (group_label, _sid, d) in enumerate(groups):
         r = gi * 2
 
         bg_v = shared_range([d["bg_true"], d["g_bg"], d["d_bg"], d["p_bg"]])

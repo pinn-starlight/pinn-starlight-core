@@ -12,7 +12,6 @@ process. Stage10-A source files are not modified.
 from __future__ import annotations
 
 import argparse
-import numpy as np
 
 from experiments.common.baselines import coordinate_pinn as pinn
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST

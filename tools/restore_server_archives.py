@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 from zipfile import ZipFile
 
-
 INTERNAL_MANIFEST = "__stage11_archive__/manifest.json"
 
 
@@ -78,12 +77,12 @@ def main():
         if path.name in expected_sha:
             actual = sha256(path)
             if actual != expected_sha[path.name]:
-                raise IOError(f"archive SHA256 mismatch: {path.name}")
+                raise OSError(f"archive SHA256 mismatch: {path.name}")
 
         with ZipFile(path, "r") as zf:
             bad = zf.testzip()
             if bad:
-                raise IOError(f"ZIP CRC failure in {path.name}: {bad}")
+                raise OSError(f"ZIP CRC failure in {path.name}: {bad}")
             if args.verify_only:
                 file_count += len(manifest["files"])
                 continue

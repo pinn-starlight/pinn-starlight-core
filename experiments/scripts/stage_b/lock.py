@@ -1,5 +1,6 @@
 """Create the Stage10-B Global Lock after all B selectors finish."""
 from __future__ import annotations
+
 import argparse
 from datetime import datetime
 
@@ -13,8 +14,8 @@ from experiments.configs.stage_b_experiment import (
     stage_b_selection_config,
 )
 from experiments.scripts.stage_b import (
-    select_gaussian,
     select_fourier_ls,
+    select_gaussian,
     select_pinn,
 )
 
@@ -47,7 +48,7 @@ FORMAL_SOURCE_FILES = (
 
 
 def main(*, force=False):
-    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=force)
+    utils.prepare_output_root(OUTPUT_ROOT, force=force)
 
     # Relevant A/B scientific compatibility only.  Do not run the whole A formal-config verifier.
     a_lock = load_stage_a_anchor()

@@ -1,5 +1,6 @@
 """Stage-B Gaussian validation selector."""
 from __future__ import annotations
+
 import argparse
 
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST

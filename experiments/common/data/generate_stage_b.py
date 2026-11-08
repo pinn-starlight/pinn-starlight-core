@@ -8,7 +8,6 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import json
 from datetime import datetime
 from pathlib import Path
 
@@ -217,7 +216,8 @@ def build_dataset(
     manifest_path = Path(output_root) / "manifest.csv"
     with manifest_path.open("w", encoding="utf-8-sig", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
-        writer.writeheader(); writer.writerows(rows)
+        writer.writeheader()
+        writer.writerows(rows)
     utils.write_json(Path(output_root) / "base_split.json", STAGE_B_BASE_SPLIT)
     utils.write_json(
         Path(output_root) / "dataset_protocol.json",

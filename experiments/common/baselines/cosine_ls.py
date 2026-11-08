@@ -36,7 +36,6 @@ from pinn_starlight_core.physics.forcing import (
     forcing_negative_energy_fraction,
 )
 
-
 _METHOD_CONFIG = FOURIER_LS_CONFIG["method"]
 ALPHA = float(_METHOD_CONFIG["alpha"])
 MAX_COMPONENTS = int(_METHOD_CONFIG["max_components"])
@@ -189,7 +188,6 @@ def _estimate_background_with_settings(
         for sweep in range(max_sweeps):
             sweep_start = float(current["objective"])
             for component_index in range(max_components):
-                base_geometry = geometry.copy()
                 inner_bar = (
                     tqdm(
                         total=component_maxiter,

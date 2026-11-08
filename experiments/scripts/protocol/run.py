@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 from experiments.configs.split_protocols import validate_fold
 from experiments.scripts.protocol.prepare_cv5 import prepare_stage

@@ -37,7 +37,6 @@ from experiments.configs.formal_experiment import SYNTHETIC_DATA_CONFIG
 from experiments.configs.split_protocols import active_base_split
 from pinn_starlight_core.data.image_loader import ImageLoader
 
-
 RAW_DOWNSAMPLE = 2
 STAR_THRESHOLD = 0.03
 STAR_FWHM = 3.0

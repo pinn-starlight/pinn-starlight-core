@@ -28,16 +28,13 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 
 import numpy as np
 
-from experiments.common.baselines import fft_gaussian as fft
-from experiments.common.baselines import cosine_ls as fourier_ls
 from experiments.common.utils import experiment_utils as utils
-from tools.code_check_demo import run_methods, stage1_config, stage3_config
+from tools.code_check_demo import run_methods
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_ROOT = utils.BASE_OUTPUT_ROOT / "code_check_demo"
@@ -110,9 +107,10 @@ def load_synthetic(name: str, max_side: int) -> dict:
 
     observed = utils.load_float_tiff(row["observed"])
     stride = max(1, int(np.ceil(max(observed.shape) / max_side)))
-    load = lambda key: np.ascontiguousarray(
-        utils.load_float_tiff(row[key])[::stride, ::stride], dtype=np.float32
-    )
+    def load(key):
+        return np.ascontiguousarray(
+            utils.load_float_tiff(row[key])[::stride, ::stride], dtype=np.float32
+        )
     return {
         "sample_id": name,
         "source": "synthetic",

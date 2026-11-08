@@ -4,19 +4,20 @@ This runner opens only the Stage-B test split after the Stage-B Global Lock
 exists. All B-specific selection/training has already finished.
 """
 from __future__ import annotations
+
 import argparse
+
 import numpy as np
 import torch
 
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
-from experiments.common.utils import reporting
-from experiments.common.utils import stage_b_metrics
+from experiments.common.utils import reporting, stage_b_metrics
 from experiments.common.utils import stage_b_provenance as provenance
 from experiments.configs.formal_experiment import FORMAL_EXECUTION_CONFIG
 from experiments.configs.stage_b_experiment import STAGE_B_CONFIG, stage_b_config_snapshot
 from experiments.scripts.benchmark import run_method
-from experiments.scripts.stage_b.lock import LOCK_PATH, FORMAL_SOURCE_FILES
+from experiments.scripts.stage_b.lock import FORMAL_SOURCE_FILES, LOCK_PATH
 
 OUTPUT_ROOT = utils.OUTPUT_ROOT / "stage_b/benchmark"
 METHODS = ("fft_gaussian", "fourier_ls", "pinn")
