@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from pinn_starlight_core.data.image_loader import ImageLoader
+from pinn_starlight_core.data.image_loader import ImageLoader, rgb_to_gray
 from pinn_starlight_core.physics.forcing import candidate_centers_from_observed
 
 
@@ -49,13 +49,7 @@ def _inverse_softplus(value: float) -> float:
 
 
 def _load_gray_image(loader: ImageLoader):
-    rgb = loader.rgb_data
-    gray = (
-        0.2126 * rgb[:, :, 0]
-        + 0.7152 * rgb[:, :, 1]
-        + 0.0722 * rgb[:, :, 2]
-    )
-    return gray
+    return rgb_to_gray(loader.rgb_data)
 
 
 class EffectiveForcingMixture(nn.Module):

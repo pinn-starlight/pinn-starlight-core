@@ -22,6 +22,20 @@ def coordinate_grid(height: int, width: int, device="cpu") -> torch.Tensor:
     return torch.stack((xx.reshape(-1), yy.reshape(-1)), dim=1)
 
 
+def rgb_to_gray(rgb):
+    """Rec. 709 luminance of an ``H x W x 3`` array.
+
+    No clipping is applied: callers that need a normalized brightness must
+    clamp afterwards, so this helper stays bit-identical for both the loader
+    path and the forcing diagnostics path.
+    """
+    return (
+        0.2126 * rgb[:, :, 0]
+        + 0.7152 * rgb[:, :, 1]
+        + 0.0722 * rgb[:, :, 2]
+    )
+
+
 # 暂时使用灰度图训练
 class ImageLoader:
     def __init__(self, path: Path | str, device="cpu", downsample=2):
@@ -75,12 +89,7 @@ class ImageLoader:
         return scale_val, data
 
     def get_gray_data(self):
-        rgb = self.rgb_data
-        gray = (
-            0.2126 * rgb[:, :, 0] +
-            0.7152 * rgb[:, :, 1] +
-            0.0722 * rgb[:, :, 2]
-        )
+        gray = rgb_to_gray(self.rgb_data)
 
         coords = coordinate_grid(self.H, self.W, self.device)
         brightness = torch.tensor(
