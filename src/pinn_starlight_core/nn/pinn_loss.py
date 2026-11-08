@@ -24,12 +24,6 @@ def mse_physics_from_laplacian(I_bg_pred, laplacian_pred, S_city, alpha):
     return (pde_residual ** 2).mean()
 
 
-def sparse_effective_forcing(weights):
-    """Mean non-negative component amplitude used by the Stage-10 L1 penalty."""
-    values = torch.as_tensor(weights)
-    return values.mean()
-
-
 def laplacian(I_bg_pred, point):
     grad = autograd.grad(
         I_bg_pred,
