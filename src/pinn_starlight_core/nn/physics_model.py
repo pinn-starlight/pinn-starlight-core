@@ -221,19 +221,13 @@ class EffectiveForcingMixture(nn.Module):
         dx_rot = cos_theta * dx + sin_theta * dy
         dy_rot = -sin_theta * dx + cos_theta * dy
         envelope = torch.exp(
-            -0.5
-            * (
-                (dx_rot / sigma_x.unsqueeze(0)) ** 2
-                + (dy_rot / sigma_y.unsqueeze(0)) ** 2
-            )
+            -0.5 * ((dx_rot / sigma_x.unsqueeze(0)) ** 2 + (dy_rot / sigma_y.unsqueeze(0)) ** 2)
         )
         return point_source * envelope
 
     def component_rms(self, alpha):
         canonical = self._unnormalized_components(self.canonical_grid, alpha)
-        return torch.sqrt(
-            torch.mean(canonical * canonical, dim=0) + self.rms_epsilon
-        )
+        return torch.sqrt(torch.mean(canonical * canonical, dim=0) + self.rms_epsilon)
 
     def forward(self, coords, alpha):
         components = self._unnormalized_components(coords, alpha)
@@ -249,28 +243,35 @@ class EffectiveForcingMixture(nn.Module):
         canonical = self._unnormalized_components(self.canonical_grid, alpha)
         rms = torch.sqrt(torch.mean(canonical * canonical, dim=0) + self.rms_epsilon)
         normalized = canonical / rms.unsqueeze(0)
-        negative_energy = torch.sum(torch.minimum(normalized, torch.zeros_like(normalized)) ** 2, dim=0)
+        negative_energy = torch.sum(
+            torch.minimum(normalized, torch.zeros_like(normalized)) ** 2, dim=0
+        )
         total_energy = torch.sum(normalized**2, dim=0).clamp_min(1e-12)
         negative_fraction = negative_energy / total_energy
         relative = weights / weights.max().clamp_min(1e-12)
         # One host transfer avoids dozens of scalar CUDA synchronizations at
         # every history checkpoint while preserving the exact diagnostics.
-        table = torch.stack(
-            (
-                self.initial_centers[:, 0],
-                self.initial_centers[:, 1],
-                centers[:, 0],
-                centers[:, 1],
-                sigma_x,
-                sigma_y,
-                theta,
-                weights,
-                relative,
-                rms,
-                negative_fraction,
-            ),
-            dim=1,
-        ).detach().cpu().numpy()
+        table = (
+            torch.stack(
+                (
+                    self.initial_centers[:, 0],
+                    self.initial_centers[:, 1],
+                    centers[:, 0],
+                    centers[:, 1],
+                    sigma_x,
+                    sigma_y,
+                    theta,
+                    weights,
+                    relative,
+                    rms,
+                    negative_fraction,
+                ),
+                dim=1,
+            )
+            .detach()
+            .cpu()
+            .numpy()
+        )
         components = []
         for index, row in enumerate(table):
             components.append(

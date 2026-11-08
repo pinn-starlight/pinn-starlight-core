@@ -3,6 +3,7 @@
 This module is a self-contained smoke run over local images; it is **not** part
 of the Stage-11 formal pipeline (see ``experiments/`` for that).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,15 @@ from pinn_starlight_core.nn import pinn_loss as losses
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INPUT_DIR = PROJECT_ROOT / "test"
 IMAGE_SUFFIXES = {
-    ".tif", ".tiff", ".png", ".jpg", ".jpeg", ".nef", ".cr2", ".dng", ".arw",
+    ".tif",
+    ".tiff",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".nef",
+    ".cr2",
+    ".dng",
+    ".arw",
 }
 
 
@@ -48,7 +57,10 @@ class DemoConfig:
     initial_sigma: float = 0.425
 
 
-def single_train(input_file, device, config: DemoConfig = DemoConfig()):
+DEFAULT_DEMO_CONFIG = DemoConfig()
+
+
+def single_train(input_file, device, config: DemoConfig = DEFAULT_DEMO_CONFIG):
     """Fit one image and return the final losses plus forcing diagnostics."""
     loader = ImageLoader(input_file, device)
     coords, values, _, _ = loader.get_gray_data()
@@ -148,8 +160,7 @@ def _collect_images(input_dir: Path):
     if not input_files:
         supported = ", ".join(sorted(IMAGE_SUFFIXES))
         raise FileNotFoundError(
-            f"No input images found in: {input_dir}\n"
-            f"Supported formats: {supported}"
+            f"No input images found in: {input_dir}\nSupported formats: {supported}"
         )
     return input_files
 

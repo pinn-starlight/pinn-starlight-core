@@ -14,14 +14,13 @@ def mse_data(I_obs, I_bg_pred):
 
 def mse_physics(I_bg_pred, S_city, alpha, coords):
     pde_residual = laplacian(I_bg_pred, coords) - alpha * I_bg_pred + S_city
-    return (pde_residual ** 2).mean()
-
+    return (pde_residual**2).mean()
 
 
 def mse_physics_from_laplacian(I_bg_pred, laplacian_pred, S_city, alpha):
     """Physics MSE when an equivalent Laplacian is supplied explicitly."""
     pde_residual = laplacian_pred - alpha * I_bg_pred + S_city
-    return (pde_residual ** 2).mean()
+    return (pde_residual**2).mean()
 
 
 def laplacian(I_bg_pred, point):
