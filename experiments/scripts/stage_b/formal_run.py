@@ -22,7 +22,8 @@ OUTPUT_ROOT = utils.OUTPUT_ROOT / "stage_b/benchmark"
 METHODS = ("fft_gaussian", "fourier_ls", "pinn")
 
 
-def _load_lock():
+def load_stage_b_lock():
+    """Load and verify the Stage-B Global Lock."""
     lock = utils.read_json(LOCK_PATH)
     if lock.get("lock_state") != "FROZEN" or not lock.get("formal_test_ready"):
         raise RuntimeError("Stage-B Global Lock is not formal-test ready")
@@ -177,7 +178,7 @@ def _failure_cases(rows):
 
 
 def main(*, force=False, smoke=False):
-    lock = _load_lock()
+    lock = load_stage_b_lock()
     output_root = utils.OUTPUT_ROOT / ("stage_b/smoke_after_lock" if smoke else "stage_b/benchmark")
     output_root = utils.prepare_output_root(output_root, force=force)
 

@@ -57,6 +57,7 @@ FORMAL_SOURCE_DEPENDENCIES = tuple(
             "experiments/scripts/real_images/run.py",
             "experiments/common/baselines/sgc_pinn.py",
             "experiments/scripts/final_pinn/common.py",
+            "experiments/scripts/final_pinn/followup.py",
             "experiments/scripts/final_pinn/stage_a.py",
             "experiments/scripts/final_pinn/aggregate_cv5.py",
         )

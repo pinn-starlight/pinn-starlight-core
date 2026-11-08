@@ -41,6 +41,7 @@ FORMAL_SOURCE_FILES = (
     "src/pinn_starlight_core/nn/pinn_loss.py",
     "experiments/scripts/stage_b/formal_run.py",
     "experiments/scripts/final_pinn/common.py",
+    "experiments/scripts/final_pinn/followup.py",
     "experiments/scripts/final_pinn/stage_b.py",
 )
 
