@@ -85,6 +85,43 @@ class EffectiveForcingMixture(nn.Module):
     ):
         super().__init__()
         self.device = torch.device(device)
+        self._configure(
+            max_components=max_components,
+            sigma_min=sigma_min,
+            sigma_max=sigma_max,
+            theta_bound=theta_bound,
+            center_refinement=center_refinement,
+            center_refinement_enabled=center_refinement_enabled,
+            rms_grid_size=rms_grid_size,
+            rms_epsilon=rms_epsilon,
+        )
+
+        gray_array = self._resolve_gray_image(loader, gray_img)
+        self.H, self.W = gray_array.shape
+
+        centers = self._resolve_initial_centers(
+            gray_array,
+            initial_centers,
+            winsor_percentile=winsor_percentile,
+            low_pass_sigma_fraction=low_pass_sigma_fraction,
+            min_center_distance=min_center_distance,
+        )
+        self._init_parameters(centers, initial_sigma, initial_weights)
+        self._init_canonical_grid()
+
+    def _configure(
+        self,
+        *,
+        max_components,
+        sigma_min,
+        sigma_max,
+        theta_bound,
+        center_refinement,
+        center_refinement_enabled,
+        rms_grid_size,
+        rms_epsilon,
+    ):
+        """Validate and store the scalar bounds that shape every template."""
         self.max_components = int(max_components)
         if self.max_components <= 0:
             raise ValueError("max_components must be positive")
@@ -99,6 +136,8 @@ class EffectiveForcingMixture(nn.Module):
         self.rms_grid_size = int(rms_grid_size)
         self.rms_epsilon = float(rms_epsilon)
 
+    def _resolve_gray_image(self, loader, gray_img):
+        """Return the observed image the forcing geometry is initialized from."""
         if gray_img is None:
             if loader is None:
                 raise ValueError("loader and gray_img cannot both be None")
@@ -106,35 +145,54 @@ class EffectiveForcingMixture(nn.Module):
         gray_array = np.asarray(gray_img, dtype=np.float32)
         if gray_array.ndim != 2 or not np.isfinite(gray_array).all():
             raise ValueError("gray_img must be a finite 2-D array")
-        self.H, self.W = gray_array.shape
+        return gray_array
 
+    def _resolve_initial_centers(
+        self,
+        gray_array,
+        initial_centers,
+        *,
+        winsor_percentile,
+        low_pass_sigma_fraction,
+        min_center_distance,
+    ):
+        """Detect centers from the observation, or validate ones supplied by a lock."""
         if initial_centers is None:
-            initial_centers = candidate_centers_from_observed(
+            return candidate_centers_from_observed(
                 gray_array,
                 max_components=self.max_components,
                 winsor_percentile=float(winsor_percentile),
                 low_pass_sigma_fraction=float(low_pass_sigma_fraction),
                 min_center_distance=float(min_center_distance),
             )
-        else:
-            initial_centers = np.asarray(initial_centers, dtype=np.float64)
-            if initial_centers.shape != (self.max_components, 2):
-                raise ValueError(
-                    "initial_centers must have shape "
-                    f"({self.max_components}, 2), got {initial_centers.shape}"
-                )
-            if not np.isfinite(initial_centers).all():
-                raise ValueError("initial_centers must be finite")
-            if np.any(initial_centers < -1.0) or np.any(initial_centers > 1.0):
-                raise ValueError("initial_centers must lie in normalized [-1, 1] coordinates")
+
+        centers = np.asarray(initial_centers, dtype=np.float64)
+        if centers.shape != (self.max_components, 2):
+            raise ValueError(
+                f"initial_centers must have shape ({self.max_components}, 2), got {centers.shape}"
+            )
+        if not np.isfinite(centers).all():
+            raise ValueError("initial_centers must be finite")
+        if np.any(centers < -1.0) or np.any(centers > 1.0):
+            raise ValueError("initial_centers must lie in normalized [-1, 1] coordinates")
+        return centers
+
+    def _init_parameters(self, centers, initial_sigma, initial_weights):
+        """Register the trainable geometry of every forcing component.
+
+        Parameters are stored unconstrained and mapped into their physical
+        range on read (tanh for centers and angles, sigmoid for sigmas,
+        softplus for weights), so optimization never leaves those bounds.
+        """
         self.register_buffer(
             "initial_centers",
-            torch.tensor(initial_centers, dtype=torch.float32, device=self.device),
+            torch.tensor(centers, dtype=torch.float32, device=self.device),
         )
         self.raw_center_offsets = nn.Parameter(
             torch.zeros((self.max_components, 2), dtype=torch.float32, device=self.device),
             requires_grad=self.center_refinement_enabled,
         )
+
         initial_sigma = float(initial_sigma)
         if not self.sigma_min < initial_sigma < self.sigma_max:
             raise ValueError("initial_sigma must lie strictly inside sigma bounds")
@@ -154,14 +212,16 @@ class EffectiveForcingMixture(nn.Module):
             torch.zeros(self.max_components, dtype=torch.float32, device=self.device)
         )
 
-        initial_weights = tuple(float(value) for value in initial_weights)
-        if len(initial_weights) < self.max_components:
+        weights = tuple(float(value) for value in initial_weights)
+        if len(weights) < self.max_components:
             raise ValueError("initial_weights must cover max_components")
-        raw_weights = [_inverse_softplus(value) for value in initial_weights[: self.max_components]]
+        raw_weights = [_inverse_softplus(value) for value in weights[: self.max_components]]
         self.raw_weights = nn.Parameter(
             torch.tensor(raw_weights, dtype=torch.float32, device=self.device)
         )
 
+    def _init_canonical_grid(self):
+        """Fixed grid used to normalize every template to unit RMS."""
         axis = torch.linspace(-1.0, 1.0, self.rms_grid_size, device=self.device)
         yy, xx = torch.meshgrid(axis, axis, indexing="ij")
         canonical = torch.stack((xx.reshape(-1), yy.reshape(-1)), dim=1)
@@ -185,19 +245,8 @@ class EffectiveForcingMixture(nn.Module):
         sigma_y = self.sigma_min + self.sigma_scale * torch.sigmoid(self.raw_sigma_y)
         return sigma_x, sigma_y
 
-    # Stage-9 compatibility helper: report the strongest component's two sigmas.
-    def get_sigma(self):
-        sigma_x, sigma_y = self.get_sigmas()
-        index = int(torch.argmax(self.get_weights().detach()).item())
-        return sigma_x[index : index + 1], sigma_y[index : index + 1]
-
     def get_thetas(self):
         return self.theta_bound * torch.tanh(self.raw_theta)
-
-    def get_theta(self):
-        theta = self.get_thetas()
-        index = int(torch.argmax(self.get_weights().detach()).item())
-        return theta[index : index + 1]
 
     def get_weights(self):
         return torch.nn.functional.softplus(self.raw_weights)
@@ -226,6 +275,12 @@ class EffectiveForcingMixture(nn.Module):
         return point_source * envelope
 
     def component_rms(self, alpha):
+        """Per-component RMS measured on the canonical grid.
+
+        Evaluation on a fixed grid (rather than on the sampled coordinates)
+        makes the normalization an image-independent constant, so training and
+        inference normalize identically.
+        """
         canonical = self._unnormalized_components(self.canonical_grid, alpha)
         return torch.sqrt(torch.mean(canonical * canonical, dim=0) + self.rms_epsilon)
 
@@ -241,7 +296,7 @@ class EffectiveForcingMixture(nn.Module):
         theta = self.get_thetas()
         weights = self.get_weights()
         canonical = self._unnormalized_components(self.canonical_grid, alpha)
-        rms = torch.sqrt(torch.mean(canonical * canonical, dim=0) + self.rms_epsilon)
+        rms = self.component_rms(alpha)
         normalized = canonical / rms.unsqueeze(0)
         negative_energy = torch.sum(
             torch.minimum(normalized, torch.zeros_like(normalized)) ** 2, dim=0
