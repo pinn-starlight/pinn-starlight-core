@@ -8,6 +8,7 @@ observed image only; synthetic truth is never passed across the Method boundary.
 
 from __future__ import annotations
 
+import copy
 import math
 import os
 import time
@@ -118,17 +119,9 @@ def train_background(
     generator = torch.Generator(device=device)
     generator.manual_seed(seed)
 
-    start_step = 0
-    history = []
-    elapsed_before = 0.0
-    if resume_state is not None:
-        model.load_state_dict(resume_state["model_state"])
-        forcing.load_state_dict(resume_state["forcing_state"])
-        optimizer.load_state_dict(resume_state["optimizer_state"])
-        start_step = int(resume_state["step"])
-        history = list(resume_state.get("history", []))
-        elapsed_before = float(resume_state.get("runtime_s", 0.0))
-        generator.set_state(resume_state["generator_state"])
+    start_step, history, elapsed_before = _restore_resume_state(
+        model, forcing, optimizer, generator, resume_state
+    )
 
     alpha = torch.tensor(float(config["alpha"]), dtype=torch.float32, device=device)
     started = time.perf_counter()
@@ -190,18 +183,44 @@ def train_background(
         "laplacian_backend": laplacian_backend,
     }
     if return_state:
-        result["state"] = _to_cpu(
-            {
-                "model_state": model.state_dict(),
-                "forcing_state": forcing.state_dict(),
-                "optimizer_state": optimizer.state_dict(),
-                "generator_state": generator.get_state(),
-                "step": final_step,
-                "history": history,
-                "runtime_s": runtime_s,
-            }
+        result["state"] = _capture_resume_state(
+            model, forcing, optimizer, generator, final_step, history, runtime_s
         )
     return result
+
+
+def _restore_resume_state(model, forcing, optimizer, generator, resume_state):
+    """Reload a checkpoint so a run continues exactly where it stopped."""
+    if resume_state is None:
+        return 0, [], 0.0
+
+    model.load_state_dict(resume_state["model_state"])
+    forcing.load_state_dict(resume_state["forcing_state"])
+    # torch's Optimizer.load_state_dict keeps references to the incoming
+    # momentum buffers and updates them in place, so a plain load would mutate
+    # the caller's checkpoint.  Copy first so a snapshot stays reusable.
+    optimizer.load_state_dict(copy.deepcopy(resume_state["optimizer_state"]))
+    generator.set_state(resume_state["generator_state"])
+    return (
+        int(resume_state["step"]),
+        list(resume_state.get("history", [])),
+        float(resume_state.get("runtime_s", 0.0)),
+    )
+
+
+def _capture_resume_state(model, forcing, optimizer, generator, step, history, runtime_s):
+    """Snapshot everything a later run needs in order to resume."""
+    return _to_cpu(
+        {
+            "model_state": model.state_dict(),
+            "forcing_state": forcing.state_dict(),
+            "optimizer_state": optimizer.state_dict(),
+            "generator_state": generator.get_state(),
+            "step": step,
+            "history": history,
+            "runtime_s": runtime_s,
+        }
+    )
 
 
 def initial_centers_from_observed(observed, config=None):
@@ -479,6 +498,13 @@ def normalized_config(config) -> PINNConfig:
 
 
 def _to_cpu(value):
+    """Deep-copy a nested state structure onto the CPU.
+
+    ``Tensor.cpu()`` is a no-op for tensors that already live on the CPU, so
+    the clone is what makes the snapshot independent: without it a returned
+    ``state`` aliases the live optimizer/model tensors and reusing it for a
+    second run silently produces different results.
+    """
     if isinstance(value, dict):
         return {key: _to_cpu(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -486,7 +512,7 @@ def _to_cpu(value):
     if isinstance(value, tuple):
         return tuple(_to_cpu(item) for item in value)
     if isinstance(value, torch.Tensor):
-        return value.detach().cpu()
+        return value.detach().cpu().clone()
     return value
 
 
