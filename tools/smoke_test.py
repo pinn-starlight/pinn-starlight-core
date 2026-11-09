@@ -222,6 +222,43 @@ def test_analytic_laplacian(ctx):
     return f"background err {b_err:.2e}, laplacian err {lap_err:.2e}"
 
 
+def test_forcing_construction(ctx):
+    """Both EffectiveForcingMixture entry points must agree.
+
+    The demo builds the mixture from an ``ImageLoader`` while the formal
+    experiments pass a raw array, so a break in one path stays invisible to
+    the other.  Assert they produce the same geometry and the same output.
+    """
+    from pinn_starlight_core.data.image_loader import ImageLoader, rgb_to_gray
+    from pinn_starlight_core.nn.physics_model import EffectiveForcingMixture
+
+    device = ctx["device"]
+    path = utils.NATIVE_TEST_IMAGE
+    if not path.is_file():
+        return "skipped (native test image missing)"
+
+    loader = ImageLoader(path, device, downsample=ctx["downsample"])
+    from_loader = EffectiveForcingMixture(device, loader=loader, max_components=2)
+    from_array = EffectiveForcingMixture(
+        device, gray_img=rgb_to_gray(loader.rgb_data), max_components=2
+    )
+
+    same_centers = torch.equal(from_loader.initial_centers, from_array.initial_centers)
+    if not same_centers:
+        raise AssertionError("initial centers differ between loader and array construction")
+
+    alpha = torch.tensor(0.5, device=device)
+    coords = torch.tensor([[-0.5, 0.2], [0.1, -0.4], [0.7, 0.7]], device=device)
+    with torch.no_grad():
+        out_loader = from_loader(coords, alpha)
+        out_array = from_array(coords, alpha)
+    if not torch.equal(out_loader, out_array):
+        raise AssertionError("forcing output differs between loader and array construction")
+    if not torch.isfinite(out_loader).all():
+        raise AssertionError("forcing output is not finite")
+    return f"{from_loader.max_components} components, max |S| {float(out_loader.abs().max()):.3e}"
+
+
 def test_data_loading(ctx):
     """Stage-A and Stage-B manifests + raw arrays load, and Stage-B truth is consistent."""
     a = _stage_a(ctx)
@@ -528,6 +565,7 @@ TESTS = [
     ("data", test_data_loading),
     ("fft_gaussian", test_fft_gaussian),
     ("fourier_ls", test_fourier_ls),
+    ("forcing", test_forcing_construction),
     ("pinn", test_pinn),
     ("final_pinn", test_final_pinn),
     ("metrics_a", test_metrics_stage_a),

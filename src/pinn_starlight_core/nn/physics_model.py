@@ -136,7 +136,8 @@ class EffectiveForcingMixture(nn.Module):
         self.rms_grid_size = int(rms_grid_size)
         self.rms_epsilon = float(rms_epsilon)
 
-    def _resolve_gray_image(self, loader, gray_img):
+    @staticmethod
+    def _resolve_gray_image(loader, gray_img):
         """Return the observed image the forcing geometry is initialized from."""
         if gray_img is None:
             if loader is None:
