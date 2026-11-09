@@ -21,6 +21,7 @@ state and the same Stage-3 random batch sequence.
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -272,7 +273,19 @@ def fit_fixed_forcing(
     return state, diagnostics
 
 
-def finetune(
+@dataclass
+class _FinetunePreparation:
+    """Everything the coordinated finetune loop needs, built once up front."""
+
+    model: torch.nn.Module
+    forcing: torch.nn.Module | None
+    optimizer: torch.optim.Optimizer
+    generator: torch.Generator
+    alpha: torch.Tensor
+    params: list
+
+
+def _prepare_finetune(
     *,
     observed,
     model_state,
@@ -283,19 +296,16 @@ def finetune(
     device,
     seed,
     use_physics,
-    show_progress,
 ):
-    utils.set_seed(int(seed))
-    utils.reset_peak_vram(device)
+    """Restore the stage-1 checkpoint and build the stage-3 optimizer.
 
-    height, width = observed.shape
-    coords = coordinate_grid(height, width, device)
-    values = torch.from_numpy(observed.reshape(-1)).to(device)
-
+    The forcing templates are frozen here: stage 3 only adapts the background
+    network, so their gradients are disabled before the loop starts.
+    """
     model = SkyglowMLP(stage1_config["hidden_dims"]).to(device)
     model.load_state_dict(model_state)
     model.train()
-    params = [p for p in model.parameters() if p.requires_grad]
+    params = [parameter for parameter in model.parameters() if parameter.requires_grad]
 
     alpha = torch.tensor(float(stage1_config["alpha"]), dtype=torch.float32, device=device)
 
@@ -317,6 +327,87 @@ def finetune(
     generator = torch.Generator(device=device)
     generator.manual_seed(int(seed))
 
+    return _FinetunePreparation(
+        model=model,
+        forcing=forcing,
+        optimizer=optimizer,
+        generator=generator,
+        alpha=alpha,
+        params=params,
+    )
+
+
+@dataclass
+class _FinetuneStats:
+    """Per-run accumulators for the balance diagnostics reported in the summary."""
+
+    conflicts: int = 0
+    logged: int = 0
+    lambda_use: list = field(default_factory=list)
+    scaled_ratio: list = field(default_factory=list)
+    target_ratio: list = field(default_factory=list)
+    balance_error: list = field(default_factory=list)
+
+    def record(self, *, cosine, lambda_use, scaled_ratio, target_ratio):
+        """Accumulate one logged step of the physics branch."""
+        self.logged += 1
+        self.conflicts += int(cosine < 0.0)
+        self.lambda_use.append(lambda_use)
+        self.scaled_ratio.append(scaled_ratio)
+        self.target_ratio.append(target_ratio)
+        self.balance_error.append(abs(scaled_ratio - target_ratio))
+
+    def conflict_fraction(self):
+        """Share of logged steps whose raw physics gradient opposed the data one."""
+        return float(self.conflicts / self.logged) if self.logged else float("nan")
+
+    @staticmethod
+    def mean(values):
+        return float(np.mean(values)) if values else 0.0
+
+    @staticmethod
+    def median(values):
+        return float(np.median(values)) if values else 0.0
+
+
+def finetune(
+    *,
+    observed,
+    model_state,
+    forcing_state,
+    stage1_config,
+    stage3_config,
+    initial_centers,
+    device,
+    seed,
+    use_physics,
+    show_progress,
+):
+    utils.set_seed(int(seed))
+    utils.reset_peak_vram(device)
+
+    height, width = observed.shape
+    coords = coordinate_grid(height, width, device)
+    values = torch.from_numpy(observed.reshape(-1)).to(device)
+
+    preparation = _prepare_finetune(
+        observed=observed,
+        model_state=model_state,
+        forcing_state=forcing_state,
+        stage1_config=stage1_config,
+        stage3_config=stage3_config,
+        initial_centers=initial_centers,
+        device=device,
+        seed=seed,
+        use_physics=use_physics,
+    )
+    model = preparation.model
+    forcing = preparation.forcing
+    optimizer = preparation.optimizer
+    generator = preparation.generator
+    alpha = preparation.alpha
+    params = preparation.params
+
     steps = int(stage3_config["steps"])
     batch_size = min(int(stage1_config["batch_size"]), int(coords.shape[0]))
     log_every = max(1, int(stage3_config["log_every"]))
@@ -326,12 +417,7 @@ def finetune(
     ramp_steps = max(1, int(stage3_config["ramp_steps"]))
 
     history = []
-    conflicts = 0
-    logged_physics = 0
-    lambda_values = []
-    scaled_ratio_values = []
-    target_ratio_values = []
-    balance_error_values = []
+    stats = _FinetuneStats()
 
     started = time.perf_counter()
     iterator = range(1, steps + 1)
@@ -455,12 +541,12 @@ def finetune(
                     "projection_applied": projected,
                 }
             )
-            logged_physics += 1
-            conflicts += int(cosine < 0.0)
-            lambda_values.append(lam)
-            scaled_ratio_values.append(actual_ratio)
-            target_ratio_values.append(target_ratio)
-            balance_error_values.append(abs(actual_ratio - target_ratio))
+            stats.record(
+                cosine=cosine,
+                lambda_use=lam,
+                scaled_ratio=actual_ratio,
+                target_ratio=target_ratio,
+            )
 
             if show_progress and hasattr(iterator, "set_postfix"):
                 iterator.set_postfix(
@@ -487,23 +573,13 @@ def finetune(
         "final_data_loss": float(final_data),
         "final_physics_loss": float(final_physics if use_physics else 0.0),
         "final_lambda_use": float(final_lambda if use_physics else 0.0),
-        "gradient_conflict_fraction": (
-            float(conflicts / logged_physics) if logged_physics else float("nan")
-        ),
-        "mean_lambda_use": (float(np.mean(lambda_values)) if lambda_values else 0.0),
-        "median_lambda_use": (float(np.median(lambda_values)) if lambda_values else 0.0),
-        "mean_scaled_physics_to_data_ratio": (
-            float(np.mean(scaled_ratio_values)) if scaled_ratio_values else 0.0
-        ),
-        "median_scaled_physics_to_data_ratio": (
-            float(np.median(scaled_ratio_values)) if scaled_ratio_values else 0.0
-        ),
-        "mean_target_scaled_physics_to_data_ratio": (
-            float(np.mean(target_ratio_values)) if target_ratio_values else 0.0
-        ),
-        "mean_absolute_balance_error": (
-            float(np.mean(balance_error_values)) if balance_error_values else 0.0
-        ),
+        "gradient_conflict_fraction": stats.conflict_fraction(),
+        "mean_lambda_use": stats.mean(stats.lambda_use),
+        "median_lambda_use": stats.median(stats.lambda_use),
+        "mean_scaled_physics_to_data_ratio": stats.mean(stats.scaled_ratio),
+        "median_scaled_physics_to_data_ratio": stats.median(stats.scaled_ratio),
+        "mean_target_scaled_physics_to_data_ratio": stats.mean(stats.target_ratio),
+        "mean_absolute_balance_error": stats.mean(stats.balance_error),
         "projection_enabled": bool(use_physics),
         # Reconstruction backup only.  Saving the final network state does not
         # alter the optimization; it lets a disposable server be retired after
