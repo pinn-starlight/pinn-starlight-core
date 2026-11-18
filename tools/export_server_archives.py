@@ -126,7 +126,7 @@ def _is_cache_or_admin(rel: str, archive_dir: Path) -> bool:
     if any(x in parts for x in ignored):
         return True
     # Local, already-packed archives must never be re-archived.
-    if parts and parts[0] == "artifacts":
+    if parts and parts[0] == "archived":
         return True
     try:
         archive_rel = "/" + archive_dir.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()

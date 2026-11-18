@@ -354,7 +354,7 @@ def _verify_legacy_lock_except_e4_runner(lock):
     if formal.get("sha256") != current_config_sha:
         raise ValueError(
             "Formal experiment config changed after Global Configuration Lock; "
-            "rebuild affected selection artifacts and the lock before test"
+            "rebuild affected selection archived and the lock before test"
         )
 
     manifest = utils.to_absolute_path(lock["data_provenance"]["manifest"])
@@ -462,7 +462,7 @@ def _save_inspection_checklist(path, image_name):
 | Large-scale gradient remains |  |  |  |  |  |
 | Stars absorbed into background |  |  |  |  |  |
 | Diffuse structure removed incorrectly |  |  |  |  |  |
-| Edge artifacts |  |  |  |  |  |
+| Edge archived |  |  |  |  |  |
 | Negative values |  |  |  |  |  |
 | New bright points |  |  |  |  |  |
 """

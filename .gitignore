@@ -48,8 +48,8 @@ logs/
 # collections/manifest.csv stays on disk but is no longer versioned.
 collections
 
-# --- large local artifacts (untracked; artifacts/README.md stays on disk) ---
-artifacts
+# --- large local archived (untracked; archived/README.md stays on disk) ---
+archived
 
 # --- misc -------------------------------------------------------------------
 .DS_Store

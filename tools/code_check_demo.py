@@ -14,7 +14,7 @@ figure is deliberately laid out like the paper's qualitative figures
 connect the demo to Fig. 3 / Fig. 8.
 
 The demo runs the same four methods as the paper.  Show
-``artifacts/review/e4_review_for_paper.zip`` for the archived real-image
+``archived/review/e4_review_for_paper.zip`` for the archived real-image
 results (see docs/CODE_CHECK_PLAYBOOK.md).
 
 Usage

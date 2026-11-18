@@ -41,7 +41,7 @@ from pathlib import Path
 import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REVIEW_ZIP = PROJECT_ROOT / "artifacts/review/e4_review_for_paper.zip"
+REVIEW_ZIP = PROJECT_ROOT / "archived/review/e4_review_for_paper.zip"
 DEFAULT_OUT = PROJECT_ROOT / "experiments/outputs/sgc_removal_figures"
 
 # Panel geometry measured from the archived renders (4200 x 1400, 6 x 2 grid).

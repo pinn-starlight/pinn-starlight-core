@@ -22,7 +22,7 @@
 - `run_stage2.py` 是正式实验的唯一调度入口；
 - `scripts/` 放论文图流水线和一次性运维脚本；
 - `tools/` 负责服务器结果搬运、离线重建与指标回填；
-- `collections/`、`test/` 是数据根，`experiments/outputs/`、`paper_figures/`、`artifacts/` 是输出/归档。
+- `collections/`、`test/` 是数据根，`experiments/outputs/`、`paper_figures/`、`archived` 是输出/归档。
 
 ---
 
@@ -76,7 +76,7 @@ python -m build --outdir build/dist
 ```
 
 注意 `build/` 是可整体删除的目录（`rm -rf build` 会连 `build/tmp/` 里的临时结果一起删掉）；
-需要长期保留的东西放 `experiments/outputs/` 或 `artifacts/`。
+需要长期保留的东西放 `experiments/outputs/` 或 `archived`。
 
 ---
 
@@ -271,7 +271,7 @@ scripts/
   -> verify_rebuild_ready.py     -> 完整性检查
 ```
 
-`export_server_archives.py` 会跳过 `artifacts/`、`.venv/`、`.idea/`、`.agents/`、缓存和原始 `collections/`/`test/` 数据，避免把本地归档再次打包。
+`export_server_archives.py` 会跳过 `archived`、`.venv/`、`.idea/`、`.agents/`、缓存和原始 `collections/`/`test/` 数据，避免把本地归档再次打包。
 
 ---
 
@@ -341,7 +341,7 @@ experiments/outputs/
 
 - `paper_figures/`：论文图 3/4/6（PNG + PDF）；
 - `logs/`：调度器与 CV5 fold 日志；
-- `artifacts/`：本地大文件归档（默认被 git 忽略）。
+- `archived`：本地大文件归档（默认被 git 忽略）。
 
 ---
 
@@ -463,7 +463,7 @@ pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/st
 pixi run -e remote python scripts/figures/render_figures_server_exact.py --out paper_figures --dpi 600
 
 # 归档恢复/重建
-pixi run -e remote python tools/restore_server_archives.py artifacts/transfers/stage11_transfer_archives .
+pixi run -e remote python tools/restore_server_archives.py archived/transfers/stage11_transfer_archives .
 pixi run -e remote python tools/rebuild_derived_outputs.py
 pixi run -e remote python tools/verify_rebuild_ready.py --require-derived
 
@@ -475,13 +475,13 @@ pixi run -e remote python tools/verify_rebuild_ready.py --require-derived
 ## 12. 历史与归档
 
 - `scripts/figures/legacy/`：旧版图脚本（`collect_figure_assets.py`、`collect_stage2_figure_assets.py`、`render_figures_exact_v1.py`），仅作历史参考。
-- `artifacts/`：
+- `archived`：
   - `transfers/stage11_transfer_archives/`：服务器搬运 ZIP（约 9.6 GB）；
   - `transfers/transfer_forced_reference_20260912_225540/`：forced-reference 回填批次；
   - `review/e4_review_for_paper.zip`：E4 审阅图；
   - `logs/`：已结束的 backfill 日志/PID/退出码；
   - `patches/PATCH_MANIFEST.json`：历史补丁清单。
-- `artifacts/` 除 `README.md` 外均被 `.gitignore` 忽略；确认备份后可释放空间。
+- `archived` 除 `README.md` 外均被 `.gitignore` 忽略；确认备份后可释放空间。
 
 ---
 

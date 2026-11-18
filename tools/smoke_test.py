@@ -823,7 +823,7 @@ def _preflight_data() -> None:
     print("\n".join(missing))
     print()
     print("This dataset is NOT tracked by git; it is extracted from the server")
-    print("transfer archives in artifacts/transfers/stage11_transfer_archives/.")
+    print("transfer archives in archived/transfers/stage11_transfer_archives/.")
     print()
     print("Fix with:")
     print("    bash tools/fetch_smoke_data.sh")

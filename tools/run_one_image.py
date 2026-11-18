@@ -39,7 +39,7 @@ from tools.code_check_demo import run_methods
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_ROOT = utils.BASE_OUTPUT_ROOT / "code_check_demo"
-ARCHIVES = PROJECT_ROOT / "artifacts/transfers/stage11_transfer_archives"
+ARCHIVES = PROJECT_ROOT / "archived/transfers/stage11_transfer_archives"
 INVENTORY = ARCHIVES / "archive_inventory.csv"
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".nef", ".cr2", ".dng", ".arw"}
 

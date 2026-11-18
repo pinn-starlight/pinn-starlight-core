@@ -21,7 +21,7 @@ python -m tools.smoke_test
 
 # 恢复
 pixi run -e remote python tools/restore_server_archives.py \
-    artifacts/transfers/stage11_transfer_archives .
+    archived/transfers/stage11_transfer_archives .
 
 # 重建派生文件并校验
 pixi run -e remote python tools/rebuild_derived_outputs.py
@@ -33,4 +33,4 @@ pixi run -e remote python tools/backfill_forced_reference_metrics.py
 
 单图命令行在 `experiments/cli.py`（`python -m experiments.cli --help`），不依赖服务器归档；这里只保留数据搬运与自检工具。
 
-注意：`export_server_archives.py` 的默认归档目录仍是仓库根目录下的 `stage11_transfer_archives/`；本地现有的归档已移动到 `artifacts/transfers/`。
+注意：`export_server_archives.py` 的默认归档目录仍是仓库根目录下的 `stage11_transfer_archives/`；本地现有的归档已移动到 `../archived`。

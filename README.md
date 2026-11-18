@@ -21,9 +21,9 @@
 | `research_diagnostics/` | 冻结的探索性诊断脚本 |
 | `collections/`、`test/` | 数据根：采集清单与原始测试图 |
 | `paper_figures/` | 已生成的论文图（输出） |
-| `artifacts/` | 本地大文件归档（含约 9.6 GB 服务器搬运包；已被 git 忽略） |
+| `archived` | 本地大文件归档（含约 9.6 GB 服务器搬运包；已被 git 忽略） |
 
-更细的目录/模块说明见 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)；各子系统的说明见 [experiments/README.md](experiments/README.md)、[tools/README.md](tools/README.md) 和 [artifacts/README.md](artifacts/README.md)。
+更细的目录/模块说明见 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)；各子系统的说明见 [experiments/README.md](experiments/README.md)、[tools/README.md](tools/README.md) 和 [artifacts/README.md](archived/README.md)。
 
 ## 环境
 
@@ -121,5 +121,5 @@ python -m experiments.scripts.diagnostics.mode_eval --suite smoke     # star / n
 ## 仓库约定
 
 - `__pycache__`、`.pytest_cache`、`.ruff_cache`、`*.egg-info/` 等生成物不入库。
-- `experiments/outputs/`、`logs/`、`artifacts/` 不入库。
+- `experiments/outputs/`、`logs/`、`archived` 不入库。
 - `scripts/figures/legacy/` 仅保留历史版本，当前流程不使用。
