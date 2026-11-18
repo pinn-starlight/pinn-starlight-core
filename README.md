@@ -70,6 +70,19 @@ python -m tools.smoke_test --only pinn  # 只跑某几项
 
 缺少样本数据时，先用 `bash tools/fetch_smoke_data.sh` 从归档解出约 280 MB 的最小数据集。
 
+## 机制诊断（非正式，validation only）
+
+`experiments/scripts/diagnostics/` 下的脚本回答机制问题，不进入论文主流程，也不替代 Stage-A/B/CV5/E4：
+
+```bash
+python -m experiments.scripts.diagnostics.init_memory --suite smoke   # 初始化优势能否保留 / 锚定强度
+python -m experiments.scripts.diagnostics.alpha_sweep --suite smoke   # 哪个 alpha 让物理损失降得最快
+```
+
+- 只读 validation split；不修改正式 config / lock / seed / 预算。
+- 输出写到 `experiments/outputs/diagnostics/`（已忽略）；`smoke` 只验证管道，`full` 才是声明过的诊断预算。
+- 协议、预算与读数注意事项见 [experiments/scripts/diagnostics/README.md](experiments/scripts/diagnostics/README.md)。
+
 ## 数据与输出
 
 - 默认数据根是仓库根目录下的 `collections/` 与 `test/`；也可以设置 `PINN_STARLIGHT_DATA_ROOT` 指向包含这两个目录的位置。

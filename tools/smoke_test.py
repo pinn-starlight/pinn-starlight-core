@@ -414,6 +414,127 @@ def test_final_pinn(ctx):
     )
 
 
+def test_alpha_sweep(ctx):
+    """Alpha probe: chunked trajectory, loss decomposition, Cosine-LS guard restore."""
+    from experiments.common.baselines import cosine_ls
+    from experiments.scripts.diagnostics import alpha_sweep as probe
+
+    # The Cosine-LS profile search dominates runtime; a coarser grid keeps the
+    # smoke check fast without changing the code path.
+    sample = _stage_a(ctx, ctx["downsample"] * 2)
+    steps = max(4, int(ctx["steps"]))
+    run = probe._run_pinn(
+        sample,
+        suite="smoke",
+        alpha=1.0,
+        forcing_alpha="coupled",
+        steps=steps,
+        chunk=max(2, steps // 2),
+        device=ctx["device"],
+        seed=20260728,
+    )
+    _assert_finite("alpha.background", run["background_pred"])
+    if not run["curve_rows"]:
+        raise AssertionError("alpha sweep produced no curve rows")
+    for row in run["curve_rows"]:
+        scale = max(1.0, abs(float(row["eval_physics_loss"])))
+        if abs(float(row["terms_error"])) > 1e-9 * scale:
+            raise AssertionError(
+                f"physics decomposition does not close: {row['terms_error']} vs {scale}"
+            )
+        _assert_finite("alpha.term_sum", row["terms_sum"])
+        if not np.isfinite(float(row["physics_loss"])) or float(row["physics_loss"]) <= 0.0:
+            raise AssertionError("non-positive physics loss in alpha sweep")
+
+    run_ls = probe._run_ls(sample, alpha=1.0)
+    _assert_finite("alpha.ls_background", run_ls["background_pred"])
+    if float(cosine_ls.ALPHA) != 0.5:
+        raise AssertionError("Cosine-LS alpha guard was not restored after the diagnostic call")
+    return (
+        f"{len(run['curve_rows'])} chunk rows, terms closure ok, "
+        f"ls objective {float(run_ls['info']['objective']):.3e}"
+    )
+
+
+def test_init_memory(ctx):
+    """Init-memory probe: two initializations, SGC finetune and attribution."""
+    from experiments.scripts.diagnostics import init_memory as probe
+
+    sample = _stage_b(ctx)
+    sample.update(
+        stride=int(ctx["downsample"]),
+        split="validation",
+        dataset="stage_b",
+        scene_type="protected_overlap",
+    )
+    init_steps = max(4, int(ctx["steps"]) // 2)
+    finetune_steps = max(4, int(ctx["steps"]))
+    rows = []
+    for init in ("data_first", "physics_first"):
+        config, centers, init_result, seconds = probe._train_init(
+            sample,
+            suite="smoke",
+            init=init,
+            device=ctx["device"],
+            seed=20260728,
+            show_progress=False,
+            steps=init_steps,
+        )
+        rows.append(
+            probe._cell_row(
+                sample=sample,
+                suite="smoke",
+                init=init,
+                arm="none",
+                anchor_weight=0.0,
+                steps=0,
+                background=init_result["background_pred"],
+                runtime_s=seconds,
+            )
+        )
+        forcing_state, _ = probe._fit_forcing(
+            sample, init_result, config, centers, suite="smoke", device=ctx["device"], seed=20260728
+        )
+        refined, _ = probe._run_finetune(
+            sample,
+            init_result,
+            config,
+            centers,
+            forcing_state,
+            arm="sgc",
+            suite="smoke",
+            anchor_weight=0.0,
+            steps=finetune_steps,
+            device=ctx["device"],
+            seed=20260728,
+            show_progress=False,
+        )
+        rows.append(
+            probe._cell_row(
+                sample=sample,
+                suite="smoke",
+                init=init,
+                arm="sgc",
+                anchor_weight=0.0,
+                steps=finetune_steps,
+                background=refined["background_pred"],
+                runtime_s=0.0,
+            )
+        )
+
+    attribution = probe.attribution_rows(rows)
+    if len(attribution) != 1:
+        raise AssertionError(f"expected one attribution row, got {len(attribution)}")
+    if not np.isfinite(float(attribution[0]["init_effect"])):
+        raise AssertionError("init_effect is not finite")
+    projections = [float(row["projection_ratio"]) for row in rows]
+    _assert_finite("init_memory.projection", projections)
+    return (
+        f"init projection {projections[0]:+.3f} -> {projections[2]:+.3f}, "
+        f"init effect {attribution[0]['init_effect']:+.3f}"
+    )
+
+
 def test_metrics_stage_a(ctx):
     """Stage-A metric stack (MAE/SSIM/PSNR + star photometry) evaluates a prediction."""
     from experiments.common.utils import metrics
@@ -568,6 +689,8 @@ TESTS = [
     ("forcing", test_forcing_construction),
     ("pinn", test_pinn),
     ("final_pinn", test_final_pinn),
+    ("alpha_sweep", test_alpha_sweep),
+    ("init_memory", test_init_memory),
     ("metrics_a", test_metrics_stage_a),
     ("metrics_b", test_metrics_stage_b),
     ("metrics_real", test_metrics_real),

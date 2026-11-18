@@ -125,6 +125,7 @@ experiments/
     ├── stage_b/                 # Stage-B：选择、lock、formal run
     ├── final_pinn/              # 最终 PINN 的配对评估与 CV5 聚合
     ├── protocol/                # Stage-A/B/CV5 的编排、准备与聚合
+    ├── diagnostics/             # 非正式机制探针（validation only）
     └── verify_cosine_ls/        # DCT-II LS 实现的数值自检
 ```
 
@@ -200,6 +201,8 @@ experiments/
 | `protocol/run.py` | 编排 | 用同一个代码路径跑 standard / cv5 的 A/B 阶段 |
 | `protocol/prepare_cv5.py` | CV5 准备 | 生成五折 split view（只改 manifest，不复制 TIFF） |
 | `protocol/aggregate_cv5.py` | CV5 汇总 | 按 fold × method 聚合并输出均值/标准差 |
+| `diagnostics/init_memory.py` | 机制探针 | 初始化优势在微调后的保留量与锚定强度；只读 validation |
+| `diagnostics/alpha_sweep.py` | 机制探针 | alpha 对物理损失下降速度/窗口的影响；只读 validation |
 | `verify_cosine_ls/run.py` | 自检 | 验证 DCT-II Neumann 实现 |
 
 ---
@@ -297,6 +300,9 @@ experiments/outputs/
 │   └── final_pinn_validation/        # Stage-B 最终 PINN 评估
 ├── cv5/
 │   └── fold_0 … fold_4/              # 每折独立的 selection/benchmark/final 输出
+├── diagnostics/                      # 非正式机制探针输出（已忽略）
+│   ├── init_memory/
+│   └── alpha_sweep/
 └── cv5_summary/
     ├── stage_a/                      # baseline 五折汇总
     ├── stage_b/
@@ -389,6 +395,7 @@ run_stage11.py
 - 新方法：放 `experiments/common/baselines/`，并在 `experiments/configs/formal_experiment.py` 登记；
 - 新指标：放 `experiments/common/utils/metrics.py` 或 `scores.py`；
 - 新实验阶段：放 `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage11.py` 编排；
+- 机制探针：放 `experiments/scripts/diagnostics/`，只读 validation、只写 `experiments/outputs/diagnostics/`，不得改动正式 config/lock；
 - 一次性脚本：放 `scripts/figures/`，不要堆回根目录；
 - 服务器数据工具：放 `tools/`；
 - 不要手改 `experiments/outputs/`、`paper_figures/` 里的结果；重新生成请走脚本。
@@ -411,6 +418,10 @@ pixi run -e remote python -m experiments.scripts.protocol.run \
 
 # 数据预检
 pixi run -e remote python -m experiments.scripts.preflight.run
+
+# 机制探针（非正式，validation only）
+python -m experiments.scripts.diagnostics.init_memory --suite smoke
+python -m experiments.scripts.diagnostics.alpha_sweep --suite smoke
 
 # 论文图
 pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage11 --dry-run
