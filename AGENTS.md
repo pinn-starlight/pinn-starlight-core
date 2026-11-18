@@ -7,11 +7,13 @@
 
 ## 一、铁律
 
-### 1. 所有改动都在 `dsh/` 分支，禁止碰 `main`
+### 1. 只有一条工作分支 `stage2_thu`，禁止碰 `main`
 
-- `main` 是基线（当前 `e8eb520`）。改动一律在 `dsh/<短描述>` 分支，如 `dsh/feat-e5-halo`。
-- 动手前先 `git branch --show-current` 确认当前 `dsh/` 分支。**新任务从当前 HEAD 拉分支**（保留未合并的重构），除非用户明确说从 `main` 拉。
-- 一个任务一个分支。改完停在该分支，报告：分支名 / 改动文件清单 / `git diff main --stat` / 验证结果。
+- `main` 是基线（当前 `e8eb520`）。**所有改动都在 `stage2_thu` 上做，不新建任何分支。**
+- 历史上按任务开 `dsh/*` 分支导致分支堆积、进度错位，已废弃这个做法；`dsh/` 前缀不再使用。
+- 动手前先 `git branch --show-current`；不是 `stage2_thu` 就先切过去，**不要拉新分支**。
+- 需要保留某次尝试时，用 commit 或 tag，不要用分支。
+- 改完停在工作区并报告：改动文件清单 / `git diff main --stat` / 验证结果。
 - 代码留在工作区：不 stash、不切回 `main`、不用 git worktree。
 
 ### 2. 禁止 AI 合并、推送、改写历史
@@ -83,7 +85,7 @@
 ## 四、改代码的流程
 
 1. `git status` 确认干净；有未提交改动先问用户，不自己提交或丢弃。
-2. 从当前 HEAD 拉 `dsh/<描述>`。
+2. 确认在 `stage2_thu` 上；**不要新建分支**，直接在当前 HEAD 上改。
 3. 动手前先给影响面：协议、数据、GPU、输出格式、已有数字会不会变；大功能先出方案再写。
 4. 小步改，跑 smoke test 相关子集（能全量就全量）。
 5. 中文 conventional commit：`feat(scope): ...` / `fix` / `refactor` / `docs` / `style` / `chore`，只提交本任务相关文件。
@@ -115,9 +117,9 @@
 
 ## 七、merge 流程（用户执行，AI 只讲解）
 
-1. `git diff main dsh/xxx --stat`，再逐行看；确认没有意外删除和夹带文件。
+1. `git diff main stage2_thu --stat`，再逐行看；确认没有意外删除和夹带文件。
 2. `git checkout main`——合并永远是"把 X 合进我现在所在的分支"。
-3. `git merge dsh/xxx`；用 Merge，不用 Rebase。
+3. `git merge stage2_thu`；用 Merge，不用 Rebase。
 4. `git ls-tree -r --name-only HEAD -- src/ experiments/` 确认文件真的在。
 
 冲突：手工删掉 `<<<<<<<` / `=======` / `>>>>>>>` 标记留想要的一边，`git add` 后 `git commit`；PyCharm 三栏窗口更直观。
