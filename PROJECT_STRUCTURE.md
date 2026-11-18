@@ -259,6 +259,7 @@ scripts/
 | `rebuild_derived_outputs.py` | 从冻结的 `background_pred.tif` 重建 observed/residual TIFF 与 PNG |
 | `verify_rebuild_ready.py` | 校验恢复后的 manifest、TIFF 与派生文件完整性 |
 | `backfill_forced_reference_metrics.py` | 仅评估：对冻结预测回填 forced-reference 指标 |
+| `run_diagnostics.sh` | 一键跑 `alpha_sweep` / `init_memory`：预检解释器、CUDA 与 validation 数据，双卡并行，日志落 `build/diag_logs/` |
 
 典型链路：
 

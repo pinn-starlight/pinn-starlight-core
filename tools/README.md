@@ -11,6 +11,7 @@ Stage2 的冒烟测试、服务器结果搬运与离线重建工具，全部从�
 | `rebuild_derived_outputs.py` | 由冻结的 `background_pred.tif` 重建 observed/residual TIFF 与 PNG；不重训 |
 | `verify_rebuild_ready.py` | 校验恢复后的 manifest 与 TIFF 完整性；`--require-derived` 可检查派生文件 |
 | `backfill_forced_reference_metrics.py` | 仅评估：对冻结预测回填 forced-reference 指标 |
+| `run_diagnostics.sh` | 一键跑 `alpha_sweep` / `init_memory` 机制探针：预检解释器 / CUDA / validation 数据，双卡并行或单卡串行，日志落 `build/diag_logs/` |
 
 示例：
 
@@ -18,6 +19,10 @@ Stage2 的冒烟测试、服务器结果搬运与离线重建工具，全部从�
 # 冒烟测试（CPU，无需 GPU；缺数据时先跑 fetch_smoke_data.sh）
 bash tools/fetch_smoke_data.sh
 python -m tools.smoke_test
+
+# 机制探针：先 smoke 验管道，再 full（双卡并行，自动分卡）
+bash tools/run_diagnostics.sh --suite smoke
+bash tools/run_diagnostics.sh --gpus 0,1
 
 # 恢复
 pixi run -e remote python tools/restore_server_archives.py \
