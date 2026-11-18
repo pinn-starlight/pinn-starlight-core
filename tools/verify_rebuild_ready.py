@@ -1,4 +1,4 @@
-"""Verify that a restored Stage11 tree is ready for offline paper analysis."""
+"""Verify that a restored Stage2 tree is ready for offline paper analysis."""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ def main():
 
     if missing or bad_tiffs or (args.require_derived and missing_derived):
         raise SystemExit(2)
-    print("Stage11 offline reconstruction readiness: PASS")
+    print("Stage2 offline reconstruction readiness: PASS")
 
 
 if __name__ == "__main__":

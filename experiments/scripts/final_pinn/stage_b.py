@@ -1,4 +1,4 @@
-"""Stage11-B frozen follow-up validation for the final improved PINN."""
+"""Stage2-B frozen follow-up validation for the final improved PINN."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def _load_sample(row):
 
 def _build_metadata(rows, smoke):
     return {
-        "experiment": "Stage11-B final PINN follow-up validation",
+        "experiment": "Stage2-B final PINN follow-up validation",
         "status": "frozen_followup_confirmation",
         "manifest": utils.project_relative(STAGE_B_MANIFEST),
         "stage_b_lock": utils.project_relative(
@@ -41,7 +41,7 @@ def _scene_fields(sample):
 
 
 SPEC = FollowupSpec(
-    name="Stage11-B",
+    name="Stage2-B",
     output_name="stage_b/final_pinn_validation",
     load_lock=load_stage_b_lock,
     config_key=("stage_b_config", "final_pinn_followup"),

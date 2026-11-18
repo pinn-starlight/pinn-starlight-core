@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-直接从 Stage11 冻结实验输出生成论文图 3 / 图 4 / 图 6。
+直接从 Stage2 冻结实验输出生成论文图 3 / 图 4 / 图 6。
 
 已按当前服务器目录结构写死：
 Stage-A source:
-  /workspace/stage11/collections/synthetic_formal
+  /workspace/stage2/collections/synthetic_formal
 Stage-A baseline:
-  /workspace/stage11/experiments/outputs/e2_benchmark
+  /workspace/stage2/experiments/outputs/e2_benchmark
 Stage-A SGC paired:
-  /workspace/stage11/experiments/outputs/final_pinn_validation
+  /workspace/stage2/experiments/outputs/final_pinn_validation
 Stage-A ablation:
-  /workspace/stage11/experiments/outputs/e3_ablation
+  /workspace/stage2/experiments/outputs/e3_ablation
 Stage-B source:
-  /workspace/stage11/collections/synthetic_stage_b
+  /workspace/stage2/collections/synthetic_stage_b
 Stage-B baseline:
-  /workspace/stage11/experiments/outputs/stage_b/benchmark
+  /workspace/stage2/experiments/outputs/stage_b/benchmark
 Stage-B SGC paired:
-  /workspace/stage11/experiments/outputs/stage_b/final_pinn_validation
+  /workspace/stage2/experiments/outputs/stage_b/final_pinn_validation
 
 运行环境：
   pixi run -e remote python scripts/figures/render_figures_server_exact.py
@@ -52,7 +52,7 @@ except ImportError as e:
 # 固定工程路径
 # ============================================================
 
-ROOT = Path("/workspace/stage11")
+ROOT = Path("/workspace/stage2")
 
 STAGEA_SOURCE = ROOT / "collections" / "synthetic_formal"
 STAGEA_BASELINE = ROOT / "experiments" / "outputs" / "e2_benchmark"

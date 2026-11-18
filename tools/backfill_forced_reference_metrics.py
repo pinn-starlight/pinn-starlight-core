@@ -1,4 +1,4 @@
-"""Backfill forced-reference photometry on frozen Stage11 predictions.
+"""Backfill forced-reference photometry on frozen Stage2 predictions.
 
 This tool is evaluation-only. It never retrains a model, changes a selection
 artifact, modifies a Global Lock, or overwrites formal benchmark outputs.

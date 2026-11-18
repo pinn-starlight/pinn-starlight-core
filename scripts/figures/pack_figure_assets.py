@@ -3,11 +3,11 @@
 在远程服务器上把论文图 3 / 图 4 / 图 6 所需冻结实验数组整理并压缩。
 
 运行：
-  cd /workspace/stage11
+  cd /workspace/stage2
   pixi run -e remote python scripts/figures/pack_figure_assets.py
 
 输出：
-  /workspace/stage11/figure_transfer/
+  /workspace/stage2/figure_transfer/
     Fig3_assets.zip
     Fig4_assets.zip
     Fig6_assets.zip
@@ -23,7 +23,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
-ROOT = Path("/workspace/stage11")
+ROOT = Path("/workspace/stage2")
 OUT = ROOT / "figure_transfer"
 SEED = 20260728
 

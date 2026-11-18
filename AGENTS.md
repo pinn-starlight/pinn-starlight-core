@@ -59,7 +59,7 @@
 | `src/pinn_starlight_core/` | 可安装核心包：MLP、损失、α / forcing、图像 IO；**不依赖 experiments** |
 | `experiments/configs/` | 配置唯一来源：方法登记、种子、候选空间、预算、split |
 | `experiments/common/{baselines,data,utils}/` | 四种方法、数据与背景、指标与实验基础设施 |
-| `experiments/scripts/<stage>/` | 各阶段入口，经 `protocol/run.py` 或 `run_stage11.py` 编排 |
+| `experiments/scripts/<stage>/` | 各阶段入口，经 `protocol/run.py` 或 `run_stage2.py` 编排 |
 | `experiments/scripts/diagnostics/` | 非正式机制探针；只读 validation，输出到 `experiments/outputs/diagnostics/` |
 | `experiments/cli.py`、`experiments/common/pipeline.py` | `pinn-starlight` 演示/发布 CLI；**不接入正式入口** |
 | `scripts/figures/` | 论文图 3/4/6 的收集与渲染（只读冻结结果） |
@@ -68,15 +68,15 @@
 | `collections/`、`test/` | 数据根（git 忽略） |
 | `artifacts/` | 本地大文件归档，只有 README 入库 |
 
-依赖方向单向：`run_stage11.py → experiments/scripts → experiments/{configs,common} → src/pinn_starlight_core`。
+依赖方向单向：`run_stage2.py → experiments/scripts → experiments/{configs,common} → src/pinn_starlight_core`。
 
 新增代码的位置约定：
 
 - 新方法 → `experiments/common/baselines/`，并在 `experiments/configs/formal_experiment.py` 登记；
 - 新指标 → `experiments/common/utils/metrics.py` 或 `scores.py`；
-- 新阶段 → `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage11.py` 编排；
+- 新阶段 → `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage2.py` 编排；
 - 机制探针 → `experiments/scripts/diagnostics/`，只读 validation，不得改动正式 config/lock；
-- CLI / 演示 → `experiments/cli.py` + `experiments/common/pipeline.py`，不要塞进 `run_stage11.py`；
+- CLI / 演示 → `experiments/cli.py` + `experiments/common/pipeline.py`，不要塞进 `run_stage2.py`；
 - 一次性脚本 / 出图 → `scripts/figures/`；搬运与复现 → `tools/`；别往仓库根目录堆；
 - 常量只在 `experiments/configs/`，不要在脚本里复制第二份。
 
@@ -111,7 +111,7 @@
 - **表 VII 机制实验脚本未入库**：只有归档 CSV；`research_diagnostics/pinn/pinn_preservation_frozen.py` 是同一条研究线的实现。
 - **`docs/` 被 `.gitignore` 忽略**：`CODE_MAP.md`、`CODE_CHECK_PLAYBOOK.md` 只在本地。
 - **数据体积大**：正式合成数据约 10.85 GB，`artifacts/` 约 9.6 GB，都不入库。
-- **文档计数以代码为准**：smoke 现在是 17 项、论文方法 4 个（`coordinate_pinn`、`sgc_pinn`、`fft_gaussian`、`cosine_ls`），启动器只有 `run_stage11.sh`；改工具后顺手更新 README / PROJECT_STRUCTURE。
+- **文档计数以代码为准**：smoke 现在是 17 项、论文方法 4 个（`coordinate_pinn`、`sgc_pinn`、`fft_gaussian`、`cosine_ls`），启动器只有 `run_stage2.sh`；改工具后顺手更新 README / PROJECT_STRUCTURE。
 
 ---
 

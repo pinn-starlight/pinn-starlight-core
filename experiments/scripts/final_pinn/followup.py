@@ -35,7 +35,7 @@ class FollowupSpec:
     """Stage-specific variation points of the final-PINN follow-up run."""
 
     name: str
-    """Human-readable stage label, e.g. ``"Stage11-A"``."""
+    """Human-readable stage label, e.g. ``"Stage2-A"``."""
 
     output_name: str
     """Output directory name relative to ``utils.OUTPUT_ROOT``."""

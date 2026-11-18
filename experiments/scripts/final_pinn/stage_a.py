@@ -1,4 +1,4 @@
-"""Stage11-A frozen follow-up validation: matched data-only vs final improved PINN.
+"""Stage2-A frozen follow-up validation: matched data-only vs final improved PINN.
 
 The current split context may be standard or one Stage-A CV5 fold.  This runner
 requires the corresponding Stage-A Global Configuration Lock to exist first.
@@ -23,7 +23,7 @@ def _load_lock():
 
 def _build_metadata(rows, smoke):
     return {
-        "experiment": "Stage11-A final PINN follow-up validation",
+        "experiment": "Stage2-A final PINN follow-up validation",
         "status": "frozen_followup_confirmation",
         "split_mode": utils.SPLIT_MODE,
         "cv_fold": utils.CV_FOLD,
@@ -37,7 +37,7 @@ def _build_metadata(rows, smoke):
 
 
 SPEC = FollowupSpec(
-    name="Stage11-A",
+    name="Stage2-A",
     output_name="final_pinn_validation",
     load_lock=_load_lock,
     config_key=("formal_config", "snapshot", "final_pinn_followup"),

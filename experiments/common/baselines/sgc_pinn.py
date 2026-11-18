@@ -1,8 +1,8 @@
-"""Stage11 final decoupled gradient-coordinated PINN.
+"""Stage2 final decoupled gradient-coordinated PINN.
 
 Formal follow-up method
 -----------------------
-This module contains only the final frozen method used by Stage11 confirmation
+This module contains only the final frozen method used by Stage2 confirmation
 runs.  It does not import or depend on research_diagnostics.
 
 Pipeline:
@@ -49,19 +49,19 @@ def normalized_followup_config(config: dict) -> dict:
     stage3 = dict(cfg["stage3"])
 
     if float(stage1["alpha"]) != 0.5:
-        raise ValueError("Stage11 final PINN requires alpha=0.5")
+        raise ValueError("Stage2 final PINN requires alpha=0.5")
     if float(stage1.get("physics_weight", 0.0)) != 0.0:
-        raise ValueError("Stage11 final PINN Stage 1 must be data-only")
+        raise ValueError("Stage2 final PINN Stage 1 must be data-only")
     if float(stage1.get("sparse_weight", 0.0)) != 0.0:
-        raise ValueError("Stage11 final PINN Stage 1 sparse weight must be zero")
+        raise ValueError("Stage2 final PINN Stage 1 sparse weight must be zero")
     if bool(stage2.get("geometry_refinement", False)):
-        raise ValueError("Stage11 final PINN freezes forcing geometry")
+        raise ValueError("Stage2 final PINN freezes forcing geometry")
     if bool(stage3.get("neumann_boundary_loss", False)):
-        raise ValueError("Stage11 final PINN has no PINN Neumann boundary loss")
+        raise ValueError("Stage2 final PINN has no PINN Neumann boundary loss")
     if not bool(stage3.get("conflict_projection", False)):
-        raise ValueError("Stage11 final PINN requires conflict projection")
+        raise ValueError("Stage2 final PINN requires conflict projection")
     if float(stage3["lambda_min"]) != 0.0:
-        raise ValueError("Stage11 exact gradient balance requires lambda_min=0")
+        raise ValueError("Stage2 exact gradient balance requires lambda_min=0")
     if not (0.0 < float(stage3["rho"]) <= 1.0):
         raise ValueError("rho must be in (0,1]")
     if int(stage1["steps"]) <= 0 or int(stage3["steps"]) <= 0:

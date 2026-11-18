@@ -19,7 +19,7 @@
 
 - `src/pinn_starlight_core/` 提供可复用的核心 PINN 组件与一个独立小 demo；
 - `experiments/` 实现四种论文方法、三种运行模式、Stage-A/B 数据与全部正式实验；
-- `run_stage11.py` 是正式实验的唯一调度入口；
+- `run_stage2.py` 是正式实验的唯一调度入口；
 - `scripts/` 放论文图流水线和一次性运维脚本；
 - `tools/` 负责服务器结果搬运、离线重建与指标回填；
 - `collections/`、`test/` 是数据根，`experiments/outputs/`、`paper_figures/`、`artifacts/` 是输出/归档。
@@ -37,8 +37,8 @@ pinn-starlight-core/
 ├── .python-version               # Python 3.11
 ├── .gitignore / .gitattributes
 │
-├── run_stage11.py                # 正式实验调度器（GPU 隔离、数据准备、阶段编排）
-├── run_stage11.sh                # Linux 启动器（GPU/驱动/Pixi 环境检查）
+├── run_stage2.py                # 正式实验调度器（GPU 隔离、数据准备、阶段编排）
+├── run_stage2.sh                # Linux 启动器（GPU/驱动/Pixi 环境检查）
 │
 ├── src/pinn_starlight_core/      # 可安装的核心包
 ├── experiments/                  # Stage-A/B、E1-E4、CV5 的实验代码
@@ -219,7 +219,7 @@ scripts/
     ├── collect_assets.py         # 自动匹配并收集冻结数组（推荐）
     ├── pack_figure_assets.py     # 按固定样本打包三张图的 ZIP
     ├── render_figures.py         # 参数化 --root 的渲染器
-    └── render_figures_server_exact.py  # 固定 /workspace/stage11 的精确渲染器
+    └── render_figures_server_exact.py  # 固定 /workspace/stage2 的精确渲染器
 ```
 
 这些脚本只读冻结结果，不训练模型、不修改原始输出。
@@ -323,7 +323,7 @@ experiments/outputs/
 
 ## 9. 运行主线
 
-正式入口统一是 `run_stage11.py`（由 `run_stage11.sh` 包装）。
+正式入口统一是 `run_stage2.py`（由 `run_stage2.sh` 包装）。
 
 ### 9.1 Stage-A（`a`）
 
@@ -387,7 +387,7 @@ experiments.scripts.real_images.run
 下图是主要依赖方向（`experiments/configs` 也会引用 `experiments/common` 中的场景定义）：
 
 ```text
-run_stage11.py
+run_stage2.py
   └── experiments/scripts/*            # 阶段编排、入口
         ├── experiments/configs/*      # 配置与协议
         ├── experiments/common/*       # 方法、数据、指标
@@ -398,9 +398,9 @@ run_stage11.py
 
 - 新方法：放 `experiments/common/baselines/`，并在 `experiments/configs/formal_experiment.py` 登记；
 - 新指标：放 `experiments/common/utils/metrics.py` 或 `scores.py`；
-- 新实验阶段：放 `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage11.py` 编排；
+- 新实验阶段：放 `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage2.py` 编排；
 - 机制探针：放 `experiments/scripts/diagnostics/`，只读 validation、只写 `experiments/outputs/diagnostics/`，不得改动正式 config/lock；
-- CLI 与演示：`experiments/cli.py` + `experiments/common/pipeline.py`；CLI 只做单图估计/环境检查，不进入 `run_stage11.py`；
+- CLI 与演示：`experiments/cli.py` + `experiments/common/pipeline.py`；CLI 只做单图估计/环境检查，不进入 `run_stage2.py`；
 - 一次性脚本：放 `scripts/figures/`，不要堆回根目录；
 - 服务器数据工具：放 `tools/`；
 - 不要手改 `experiments/outputs/`、`paper_figures/` 里的结果；重新生成请走脚本。
@@ -411,11 +411,11 @@ run_stage11.py
 
 ```bash
 # 正式实验
-./run_stage11.sh a
-./run_stage11.sh b
-./run_stage11.sh cv5
-./run_stage11.sh e4
-./run_stage11.sh all
+./run_stage2.sh a
+./run_stage2.sh b
+./run_stage2.sh cv5
+./run_stage2.sh e4
+./run_stage2.sh all
 
 # 单阶段（示例）
 pixi run -e remote python -m experiments.scripts.protocol.run \
@@ -434,8 +434,8 @@ python -m experiments.cli version
 python -m experiments.cli estimate --image photo.jpg --mode star
 
 # 论文图
-pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage11 --dry-run
-pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage11 --zip
+pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage2 --dry-run
+pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage2 --zip
 pixi run -e remote python scripts/figures/render_figures_server_exact.py --out paper_figures --dpi 600
 
 # 归档恢复/重建
@@ -450,7 +450,7 @@ pixi run -e remote python tools/verify_rebuild_ready.py --require-derived
 
 ## 12. 历史与归档
 
-- `scripts/figures/legacy/`：旧版图脚本（`collect_figure_assets.py`、`collect_stage11_figure_assets.py`、`render_figures_exact_v1.py`），仅作历史参考。
+- `scripts/figures/legacy/`：旧版图脚本（`collect_figure_assets.py`、`collect_stage2_figure_assets.py`、`render_figures_exact_v1.py`），仅作历史参考。
 - `artifacts/`：
   - `transfers/stage11_transfer_archives/`：服务器搬运 ZIP（约 9.6 GB）；
   - `transfers/transfer_forced_reference_20260912_225540/`：forced-reference 回填批次；
@@ -474,7 +474,7 @@ python -m compileall -q src experiments tools scripts
 PYTHONPATH=src python -c "import pinn_starlight_core; import experiments.scripts.protocol.run"
 
 # 入口帮助
-python run_stage11.py --help
+python run_stage2.py --help
 python tools/restore_server_archives.py --help
 python scripts/figures/collect_assets.py --help
 ```

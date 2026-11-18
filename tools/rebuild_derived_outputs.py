@@ -1,4 +1,4 @@
-"""Rebuild derivable Stage11 TIFF/PNG output files locally.
+"""Rebuild derivable Stage2 TIFF/PNG output files locally.
 
 This is intentionally *not* model retraining.  It rebuilds only data that was
 omitted from the high-priority transfer because it is mathematically
@@ -30,7 +30,7 @@ for _path in (PROJECT_ROOT, PROJECT_ROOT / "src"):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-# Import from the restored Stage11 project.
+# Import from the restored Stage2 project.
 from experiments.common.utils import experiment_utils as utils
 from experiments.scripts.real_images import run as e4_run
 

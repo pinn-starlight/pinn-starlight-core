@@ -59,7 +59,7 @@ for row in "${GPU_ROWS[@]}"; do
     fi
 done
 
-REQUESTED_ENV="${STAGE11_ENVIRONMENT:-auto}"
+REQUESTED_ENV="${STAGE2_ENVIRONMENT:-auto}"
 
 if [[ "$REQUESTED_ENV" != "auto" ]]; then
     PIXI_ENVIRONMENT="$REQUESTED_ENV"
@@ -70,7 +70,7 @@ if [[ "$REQUESTED_ENV" != "auto" ]]; then
 else
     if (( HAS_BLACKWELL == 1 )); then
         PIXI_ENVIRONMENT="remote-blackwell"
-    elif [[ -f "$PROJECT_ROOT/.stage11_local" ]]; then
+    elif [[ -f "$PROJECT_ROOT/.stage2_local" ]]; then
         PIXI_ENVIRONMENT="default"
     else
         PIXI_ENVIRONMENT="remote"
@@ -99,7 +99,7 @@ else
 fi
 
 echo
-echo "=== Stage11 launcher ==="
+echo "=== Stage2 launcher ==="
 echo "Host platform : $(uname -s 2>/dev/null || echo unknown)"
 for row in "${GPU_ROWS[@]}"; do
     echo "GPU           : $row"
@@ -110,7 +110,7 @@ if [[ "$PIXI_ENVIRONMENT" == "remote-blackwell" ]]; then
 else
     echo "CUDA profile  : torch 2.14.0 + cu126"
 fi
-echo "GPU scheduler : ${STAGE11_GPUS:-auto} (CV5 auto task parallelism)"
+echo "GPU scheduler : ${STAGE2_GPUS:-auto} (CV5 auto task parallelism)"
 echo "Data policy   : missing A/B data are generated; existing formal data are reused"
 echo "                --force retrains only; --force-data explicitly regenerates datasets"
 echo
@@ -126,13 +126,13 @@ for arg in "$@"; do
 done
 
 if (( HAS_GPUS_ARG == 0 )); then
-    RUNNER_ARGS+=("--gpus" "${STAGE11_GPUS:-auto}")
+    RUNNER_ARGS+=("--gpus" "${STAGE2_GPUS:-auto}")
 fi
-if [[ -n "${STAGE11_MAX_PARALLEL:-}" ]] && (( HAS_MAX_PARALLEL_ARG == 0 )); then
-    RUNNER_ARGS+=("--max-parallel" "$STAGE11_MAX_PARALLEL")
+if [[ -n "${STAGE2_MAX_PARALLEL:-}" ]] && (( HAS_MAX_PARALLEL_ARG == 0 )); then
+    RUNNER_ARGS+=("--max-parallel" "$STAGE2_MAX_PARALLEL")
 fi
 
 RUNNER_ARGS+=("$@")
 
 exec pixi run -e "$PIXI_ENVIRONMENT" --locked \
-    python -u run_stage11.py "${RUNNER_ARGS[@]}"
+    python -u run_stage2.py "${RUNNER_ARGS[@]}"

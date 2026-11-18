@@ -1,4 +1,4 @@
-"""Incrementally export Stage11 server results into priority ZIP parts.
+"""Incrementally export Stage2 server results into priority ZIP parts.
 
 Designed for a disposable one-day GPU server:
 - keeps the generated synthetic_formal and synthetic_stage_b datasets;
@@ -202,7 +202,7 @@ def classify(path: Path, archive_dir: Path) -> str | None:
         return "P07_remaining"
 
     # The rest of the project source snapshot is core unless it is a binary
-    # artifact.  This keeps exact Stage11 code/docs/pixi files.
+    # artifact.  This keeps exact Stage2 code/docs/pixi files.
     if not suffix or suffix in TEXT_EXTS:
         return "P00_core"
 
@@ -456,7 +456,7 @@ def main():
 
     total_files = len(all_files)
     total_bytes = sum(path.stat().st_size for _, path, _, _ in all_files)
-    print(f"Stage11 archive batch B{batch:03d} label={args.label!r}")
+    print(f"Stage2 archive batch B{batch:03d} label={args.label!r}")
     print(f"new/changed files: {total_files}")
     print(f"uncompressed: {total_bytes / (1024**3):.3f} GiB")
     for phase, _ in PHASES:
@@ -543,7 +543,7 @@ def main():
     _write_json(state_path, state)
 
     order_lines = [
-        "Stage11 transfer order (higher priority first within each batch)",
+        "Stage2 transfer order (higher priority first within each batch)",
         "===============================================================",
         "",
         "Always transfer archive_index.json and archive_inventory.csv as tiny metadata.",

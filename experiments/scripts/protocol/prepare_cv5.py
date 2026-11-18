@@ -1,4 +1,4 @@
-"""Create five grouped split *views* for Stage11-A and/or Stage11-B.
+"""Create five grouped split *views* for Stage2-A and/or Stage2-B.
 
 The scientific TIFF arrays are not duplicated or regenerated.  Each fold view
 contains only a manifest whose ``split`` column is reassigned by camera base,
@@ -75,7 +75,7 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
             else "python -m experiments.common.data.generate_stage_b --force"
         )
         raise FileNotFoundError(
-            f"Stage11-{stage.upper()} ordinary manifest is missing: {source_manifest}\n"
+            f"Stage2-{stage.upper()} ordinary manifest is missing: {source_manifest}\n"
             f"Generate the ordinary dataset first with: {generator}"
         )
 
@@ -84,8 +84,7 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
     missing = [base_id for base_id in BASE_IDS if base_id not in present]
     if missing:
         raise ValueError(
-            f"Stage11-{stage.upper()} source manifest is missing camera bases: "
-            + ", ".join(missing)
+            f"Stage2-{stage.upper()} source manifest is missing camera bases: " + ", ".join(missing)
         )
 
     protocol_path = source_root / "dataset_protocol.json"
@@ -144,7 +143,7 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
         }
         if counts != expected_counts:
             raise AssertionError(
-                f"Stage11-{stage.upper()} fold {fold} counts {counts} != {expected_counts}"
+                f"Stage2-{stage.upper()} fold {fold} counts {counts} != {expected_counts}"
             )
 
         (fold_root / "base_split.json").write_text(
@@ -187,7 +186,7 @@ def main(*, stage: str, force: bool = False) -> None:
     stages = ("a", "b") if stage == "all" else (stage,)
     for current in stages:
         outputs = prepare_stage(current, force=force)
-        print(f"Stage11-{current.upper()} CV5 split views prepared:")
+        print(f"Stage2-{current.upper()} CV5 split views prepared:")
         for manifest in outputs:
             print(" ", manifest)
 

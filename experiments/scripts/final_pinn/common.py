@@ -1,4 +1,4 @@
-"""Shared Stage11 final-PINN evaluation helpers."""
+"""Shared Stage2 final-PINN evaluation helpers."""
 
 from __future__ import annotations
 

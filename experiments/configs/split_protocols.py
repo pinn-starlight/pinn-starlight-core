@@ -1,4 +1,4 @@
-"""Stage11 camera-base split protocols.
+"""Stage2 camera-base split protocols.
 
 The five camera-acquired reference bases are the independent grouping units.
 All semi-synthetic variants derived from one base must remain in the same split.
@@ -56,7 +56,7 @@ CV5_SEQUENCE: tuple[str, ...] = (
 #   remaining three              -> train
 #
 # The sequence is fixed before formal evaluation.  It preserves the original
-# standard Stage11-A split as fold 0, then alternates single-frame and stacked
+# standard Stage2-A split as fold 0, then alternates single-frame and stacked
 # reference fields as far as possible.  No performance result is used to choose
 # any validation/test pairing.
 CV5_FOLDS: tuple[dict[str, str], ...] = tuple(

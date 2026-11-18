@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-直接在远程 Stage11 / pixi 环境生成论文图 3、图 4、图 6。
+直接在远程 Stage2 / pixi 环境生成论文图 3、图 4、图 6。
 不打包原始数组，不重跑实验，不修改任何实验结果。
 
 默认工程根目录：
-    /workspace/stage11
+    /workspace/stage2
 
 默认输出：
-    /workspace/stage11/paper_figures/
+    /workspace/stage2/paper_figures/
         Fig3_StageA_spatial_results.png/.pdf
         Fig4_PINN_ablation.png/.pdf
         Fig6_StageB_protected_structure.png/.pdf
 
 推荐运行：
-    cd /workspace/stage11
+    cd /workspace/stage2
     pixi run python scripts/figures/render_figures.py --root . --dpi 600
 
 可先只检查路径：
@@ -740,9 +740,9 @@ def check_paths(root: Path, args):
 def main():
     ap = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="直接从冻结 Stage11 实验数组渲染论文图3/图4/图6",
+        description="直接从冻结 Stage2 实验数组渲染论文图3/图4/图6",
     )
-    ap.add_argument("--root", type=Path, default=Path("/workspace/stage11"))
+    ap.add_argument("--root", type=Path, default=Path("/workspace/stage2"))
     ap.add_argument("--outdir", type=Path, default=None)
     ap.add_argument("--dpi", type=int, default=600)
     ap.add_argument("--seed", type=int, default=DEFAULT_SEED)

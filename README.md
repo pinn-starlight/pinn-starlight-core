@@ -62,16 +62,16 @@ python -m experiments.cli estimate --sample clean_single_002_multi_source_high -
 Linux：
 
 ```bash
-./run_stage11.sh a       # Stage-A：数据检查 -> 选择 -> 配置锁 -> E2 -> E3 -> Final PINN
-./run_stage11.sh b       # Stage-B 压力测试
-./run_stage11.sh cv5     # 5-fold 分组评估
-./run_stage11.sh e4      # 真实高污染图像四方法对比
-./run_stage11.sh all     # A -> B -> CV5 -> E4
+./run_stage2.sh a       # Stage-A：数据检查 -> 选择 -> 配置锁 -> E2 -> E3 -> Final PINN
+./run_stage2.sh b       # Stage-B 压力测试
+./run_stage2.sh cv5     # 5-fold 分组评估
+./run_stage2.sh e4      # 真实高污染图像四方法对比
+./run_stage2.sh all     # A -> B -> CV5 -> E4
 ```
 
-仓库只提供 `run_stage11.sh`；Windows 上直接调用 `python run_stage11.py a`（或 pixi 环境中的等价命令）。
+仓库只提供 `run_stage2.sh`；Windows 上直接调用 `python run_stage2.py a`（或 pixi 环境中的等价命令）。
 
-`run_stage11.sh` 会先检查 GPU、驱动与 Pixi 环境。每个科学子进程只看到一个 GPU（内部仍使用 `cuda:0`），调度策略的完整说明在 `run_stage11.py` 顶部。也可以直接调用模块，例如：
+`run_stage2.sh` 会先检查 GPU、驱动与 Pixi 环境。每个科学子进程只看到一个 GPU（内部仍使用 `cuda:0`），调度策略的完整说明在 `run_stage2.py` 顶部。也可以直接调用模块，例如：
 
 ```bash
 pixi run -e remote python -m experiments.scripts.protocol.run \

@@ -1,4 +1,4 @@
-"""Aggregate grouped-five-fold Stage11 results at the fold level.
+"""Aggregate grouped-five-fold Stage2 results at the fold level.
 
 The camera reference base is the independent grouping unit.  To avoid treating
 multiple synthetic variants or stochastic seeds as independent camera samples,
@@ -104,7 +104,7 @@ def aggregate(stage: str, *, require_all_folds: bool = True) -> Path:
         test_bases = sorted({row.get("base_id", "") for row in rows})
         if len([v for v in test_bases if v]) != 1:
             raise ValueError(
-                f"Stage11-{stage.upper()} fold {fold} should contain one held-out base, got {test_bases}"
+                f"Stage2-{stage.upper()} fold {fold} should contain one held-out base, got {test_bases}"
             )
         for method in methods:
             subset = [row for row in rows if row["method"] == method]
@@ -120,12 +120,10 @@ def aggregate(stage: str, *, require_all_folds: bool = True) -> Path:
 
     if require_all_folds and missing:
         raise FileNotFoundError(
-            f"Stage11-{stage.upper()} CV5 results are incomplete; missing folds: {missing}"
+            f"Stage2-{stage.upper()} CV5 results are incomplete; missing folds: {missing}"
         )
     if not fold_rows:
-        raise FileNotFoundError(
-            f"No Stage11-{stage.upper()} CV5 metric files found under {CV_ROOT}"
-        )
+        raise FileNotFoundError(f"No Stage2-{stage.upper()} CV5 metric files found under {CV_ROOT}")
 
     output_root = PROJECT_ROOT / "experiments" / "outputs" / "cv5_summary" / f"stage_{stage}"
     _write_csv(output_root / "fold_method_summary.csv", fold_rows)
@@ -194,7 +192,7 @@ def main():
     stages = ("a", "b") if args.stage == "all" else (args.stage,)
     for stage in stages:
         output = aggregate(stage, require_all_folds=not args.allow_incomplete)
-        print(f"Stage11-{stage.upper()} CV5 summary -> {output}")
+        print(f"Stage2-{stage.upper()} CV5 summary -> {output}")
 
 
 if __name__ == "__main__":

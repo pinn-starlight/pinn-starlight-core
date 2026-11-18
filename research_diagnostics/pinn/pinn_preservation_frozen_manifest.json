@@ -1,11 +1,11 @@
 {
   "schema": 2,
   "patch_name": "PINN preservation exploratory validation - frozen v2",
-  "basis": "current Stage11 source package supplied by user",
+  "basis": "current Stage2 source package supplied by user",
   "conflict_resolution_priority": [
-    "current Stage11 formal source/config",
-    "Stage11 final experiment protocol",
-    "current Stage11 writing documents",
+    "current Stage2 formal source/config",
+    "Stage2 final experiment protocol",
+    "current Stage2 writing documents",
     "Stage10 historical handoff/migration documents"
   ],
   "scientific_status": "posthoc_exploratory_mechanism_validation",

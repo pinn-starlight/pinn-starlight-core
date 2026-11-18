@@ -1,6 +1,6 @@
 """Frozen exploratory validation of conservative PINN decomposition.
 
-This module is deliberately NOT a new formal Stage11 experiment runner.
+This module is deliberately NOT a new formal Stage2 experiment runner.
 
 Frozen scientific boundary
 --------------------------
@@ -12,7 +12,7 @@ Frozen scientific boundary
 6. Runtime is logged for audit only and must not be used to select a method.
 7. Formal locks, E2/E3/E4, Stage-B formal outputs and CV5 outputs are never
    overwritten.
-8. The code refuses to run if the audited Stage11 scientific source files no
+8. The code refuses to run if the audited Stage2 scientific source files no
    longer match the source package against which this patch was written.
 
 The experiment asks a narrow mechanism question:
@@ -126,7 +126,7 @@ def main(*, suite: str, device_name: str | None, force: bool, save_arrays: bool)
     if output_root.exists() and any(output_root.iterdir()):
         raise FileExistsError(
             f"{output_root} is non-empty. Use --force only to replace this "
-            "diagnostic output; formal Stage11 outputs are never touched."
+            "diagnostic output; formal Stage2 outputs are never touched."
         )
     output_root.mkdir(parents=True, exist_ok=True)
 
@@ -496,7 +496,7 @@ def _verify_patch_and_sources():
             )
     if mismatches:
         raise RuntimeError(
-            "Stage11 scientific source differs from the version audited for this "
+            "Stage2 scientific source differs from the version audited for this "
             "patch. Do not guess or continue.\n" + "\n".join(mismatches)
         )
     return patch
@@ -1289,7 +1289,7 @@ def _write_mechanism_report(output_root, final_summary, init_summary, paired):
         "INTERPRETATION LIMIT",
         "These numbers may support or reject the initialization-order hypothesis.",
         "They do not establish a Pareto optimum and do not replace the frozen",
-        "Stage11 formal test/CV5 evidence. A later A+B confirmation, if run,",
+        "Stage2 formal test/CV5 evidence. A later A+B confirmation, if run,",
         "must be a separately frozen step after this validation-only exploration.",
     ]
 
@@ -1304,8 +1304,8 @@ def _platform_record(device):
         "torch_cuda_build": torch.version.cuda,
         "cuda_available": bool(torch.cuda.is_available()),
         "device_requested": str(device),
-        "stage11_machine_role": os.environ.get("STAGE11_MACHINE_ROLE"),
-        "stage11_pixi_environment": os.environ.get("STAGE11_PIXI_ENVIRONMENT"),
+        "stage2_machine_role": os.environ.get("STAGE2_MACHINE_ROLE"),
+        "stage2_pixi_environment": os.environ.get("STAGE2_PIXI_ENVIRONMENT"),
         "runtime_used_for_candidate_selection": False,
     }
     if device.type == "cuda":

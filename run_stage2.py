@@ -1,4 +1,4 @@
-"""Stage11 clean experiment entry point with adaptive GPU task scheduling.
+"""Stage2 clean experiment entry point with adaptive GPU task scheduling.
 
 Scientific invariant
 --------------------
@@ -95,11 +95,11 @@ def _query_nvidia_smi() -> list[GPUInfo]:
         )
     except FileNotFoundError as exc:
         raise RuntimeError(
-            "nvidia-smi was not found. Stage11 formal GPU runs require an NVIDIA GPU/driver."
+            "nvidia-smi was not found. Stage2 formal GPU runs require an NVIDIA GPU/driver."
         ) from exc
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
-            "nvidia-smi failed before Stage11 started:\n"
+            "nvidia-smi failed before Stage2 started:\n"
             + (exc.stderr or exc.stdout or "<no output>")
         ) from exc
 
@@ -161,7 +161,7 @@ def _filter_parent_visible(all_gpus: list[GPUInfo]) -> list[GPUInfo]:
 def _select_gpus(spec: str, all_gpus: list[GPUInfo]) -> list[GPUInfo]:
     visible = _filter_parent_visible(all_gpus)
     if not visible:
-        raise RuntimeError("No NVIDIA GPUs remain visible to Stage11.")
+        raise RuntimeError("No NVIDIA GPUs remain visible to Stage2.")
 
     spec = str(spec).strip()
     if not spec or spec.lower() in {"auto", "all"}:
@@ -219,8 +219,8 @@ def _validate_runtime_profile(gpus: list[GPUInfo]) -> dict:
 
     runtime = str(torch.version.cuda or "")
     torch_version = str(torch.__version__)
-    profile = os.environ.get("STAGE11_CUDA_PROFILE", "unknown")
-    environment = os.environ.get("STAGE11_PIXI_ENVIRONMENT", "unknown")
+    profile = os.environ.get("STAGE2_CUDA_PROFILE", "unknown")
+    environment = os.environ.get("STAGE2_PIXI_ENVIRONMENT", "unknown")
 
     blackwell = any(_is_blackwell_name(g.name) for g in gpus)
     majors = [m for m in (_driver_major(g.driver_version) for g in gpus) if m is not None]
@@ -234,7 +234,7 @@ def _validate_runtime_profile(gpus: list[GPUInfo]) -> dict:
         if runtime_parts and runtime_parts < (12, 8):
             raise RuntimeError(
                 "A Blackwell/RTX-50 GPU was detected, but the active PyTorch CUDA "
-                f"runtime is {runtime!r}. Start Stage11 with the launcher so it selects "
+                f"runtime is {runtime!r}. Start Stage2 with the launcher so it selects "
                 "the remote-blackwell profile."
             )
 
@@ -253,8 +253,8 @@ def _validate_runtime_profile(gpus: list[GPUInfo]) -> dict:
     return {
         "torch_version": torch_version,
         "torch_cuda_runtime": runtime,
-        "stage11_cuda_profile": profile,
-        "stage11_pixi_environment": environment,
+        "stage2_cuda_profile": profile,
+        "stage2_pixi_environment": environment,
         "blackwell_detected": blackwell,
         "minimum_driver_major": minimum_driver_major,
     }
@@ -269,10 +269,10 @@ def _single_gpu_env(
     env = os.environ.copy()
     env.setdefault("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
     env["CUDA_VISIBLE_DEVICES"] = gpu.cuda_visible_token
-    env["STAGE11_ASSIGNED_GPU_PHYSICAL_INDEX"] = str(gpu.index)
-    env["STAGE11_ASSIGNED_GPU_UUID"] = gpu.uuid
-    env["STAGE11_ASSIGNED_GPU_NAME"] = gpu.name
-    env["STAGE11_GPU_SCHEDULER_MODE"] = scheduler_mode
+    env["STAGE2_ASSIGNED_GPU_PHYSICAL_INDEX"] = str(gpu.index)
+    env["STAGE2_ASSIGNED_GPU_UUID"] = gpu.uuid
+    env["STAGE2_ASSIGNED_GPU_NAME"] = gpu.name
+    env["STAGE2_GPU_SCHEDULER_MODE"] = scheduler_mode
     env["PYTHONUTF8"] = "1"
     if fold is not None:
         env["PINN_STARLIGHT_SPLIT_MODE"] = "cv5"
@@ -411,7 +411,7 @@ def _write_json(path: Path, value: dict) -> None:
 
 def _scheduler_record_path(command: str) -> Path:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return LOG_ROOT / f"stage11_scheduler_{command}_{stamp}.json"
+    return LOG_ROOT / f"stage2_scheduler_{command}_{stamp}.json"
 
 
 def _assignment_plan(command: str, gpus: list[GPUInfo], max_parallel: int) -> dict:
@@ -449,9 +449,9 @@ def _assignment_plan(command: str, gpus: list[GPUInfo], max_parallel: int) -> di
 
 
 def _print_plan(gpus: list[GPUInfo], plan: dict, runtime: dict) -> None:
-    print("\n=== Stage11 adaptive GPU scheduler ===")
-    print(f"Pixi env      : {runtime.get('stage11_pixi_environment')}")
-    print(f"CUDA profile  : {runtime.get('stage11_cuda_profile')}")
+    print("\n=== Stage2 adaptive GPU scheduler ===")
+    print(f"Pixi env      : {runtime.get('stage2_pixi_environment')}")
+    print(f"CUDA profile  : {runtime.get('stage2_cuda_profile')}")
     print(f"PyTorch       : {runtime.get('torch_version')}")
     print(f"Torch CUDA    : {runtime.get('torch_cuda_runtime')}")
     print(f"Selected GPUs : {len(gpus)}")
@@ -510,7 +510,7 @@ def _archive_dataset_dir(dataset_dir: Path, *, label: str) -> Path | None:
     if not dataset_dir.exists():
         return None
 
-    archive_root = ROOT / "collections" / "_stage11_data_archive"
+    archive_root = ROOT / "collections" / "_stage2_data_archive"
     archive_root.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     target = archive_root / f"{dataset_dir.name}_{stamp}"
@@ -724,7 +724,7 @@ def run_cv5(*, force: bool, gpus: list[GPUInfo], max_parallel: int) -> None:
         _cv_worker(gpu=gpu, folds=folds, force=force)
     else:
         failures: list[str] = []
-        with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="stage11-gpu") as pool:
+        with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="stage2-gpu") as pool:
             futures = {
                 pool.submit(_cv_worker, gpu=gpu, folds=folds, force=force): (gpu, folds)
                 for gpu, folds in assignments
@@ -789,7 +789,7 @@ def main() -> None:
     parser.add_argument(
         "--stage-a-data-module",
         default=os.environ.get(
-            "STAGE11_STAGE_A_DATA_MODULE",
+            "STAGE2_STAGE_A_DATA_MODULE",
             "experiments.common.data.generate_synthetic",
         ),
         help=(
@@ -800,7 +800,7 @@ def main() -> None:
     parser.add_argument(
         "--stage-b-data-module",
         default=os.environ.get(
-            "STAGE11_STAGE_B_DATA_MODULE",
+            "STAGE2_STAGE_B_DATA_MODULE",
             "experiments.common.data.generate_stage_b",
         ),
         help=(

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto-match and collect frozen Stage11 scientific arrays for manuscript figures.
+Auto-match and collect frozen Stage2 scientific arrays for manuscript figures.
 
 Targets
 -------
@@ -19,7 +19,7 @@ Design goals
 
 Typical remote usage
 --------------------
-cd /workspace/stage11
+cd /workspace/stage2
 pixi run python scripts/figures/collect_assets.py --root . --zip
 
 Recommended first pass:
@@ -795,9 +795,9 @@ def collect_fig6(
 def main() -> int:
     ap = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Auto-match frozen Stage11 outputs and package assets for Figures 3, 4, and 6.",
+        description="Auto-match frozen Stage2 outputs and package assets for Figures 3, 4, and 6.",
     )
-    ap.add_argument("--root", type=Path, default=Path("."), help="Stage11/project root")
+    ap.add_argument("--root", type=Path, default=Path("."), help="Stage2/project root")
     ap.add_argument("--out", type=Path, default=None, help="Output directory")
     ap.add_argument("--dry-run", action="store_true", help="Only report matches; copy nothing")
     ap.add_argument(

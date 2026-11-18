@@ -1,4 +1,4 @@
-"""Aggregate Stage11-A final-PINN five-fold confirmation by camera-reference fold."""
+"""Aggregate Stage2-A final-PINN five-fold confirmation by camera-reference fold."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def main(*, allow_incomplete=False):
         if path.is_file():
             fold_rows[fold] = _read(path)
         elif not allow_incomplete:
-            raise FileNotFoundError(f"missing Stage11 final-PINN fold output: {path}")
+            raise FileNotFoundError(f"missing Stage2 final-PINN fold output: {path}")
 
     output_root = utils.BASE_OUTPUT_ROOT / "cv5_summary" / "stage_a_final_pinn"
     output_root.mkdir(parents=True, exist_ok=True)
@@ -102,7 +102,7 @@ def main(*, allow_incomplete=False):
         deltas.append(rec)
     write_csv(output_root / "paired_fold_deltas.csv", deltas)
 
-    print("Stage11-A final-PINN CV5 summary ->", output_root)
+    print("Stage2-A final-PINN CV5 summary ->", output_root)
 
 
 if __name__ == "__main__":
