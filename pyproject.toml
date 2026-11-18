@@ -19,10 +19,10 @@ dependencies = [
     "scikit-image>=0.26.0",
     "astropy",
     "photutils",
-    # torch 必须是直接依赖，[tool.uv.sources] 里的索引映射才对它生效；
-    # 作为 segmentation-models-pytorch 的传递依赖时会被解析成默认镜像上的构建。
-    "torch==2.14.0+cu126",
-    "torchvision==0.29.0+cu126",
+    # torch/torchvision 故意不放在这里：它们是 CUDA profile 相关依赖，由下面的
+    # [tool.pixi.feature.*] 按机器 GPU 选择 cu126 / cu130 版本。若放回 [project]
+    # 并配 [tool.uv.sources]，cu126 的索引映射会对所有环境生效，与 blackwell
+    # 特征的 cu130 索引冲突（Pixi 报 "conflicting indexes for package torch"）。
 ]
 
 [project.scripts]
@@ -33,15 +33,6 @@ pinn-starlight = "experiments.cli:main"
 dev = [
     "pytest>=9.0.3",
 ]
-
-[tool.uv.sources]
-torch = { index = "pytorch-cu126" }
-torchvision = { index = "pytorch-cu126" }
-
-[[tool.uv.index]]
-name = "pytorch-cu126"
-url = "https://download.pytorch.org/whl/cu126"
-explicit = true
 
 [[tool.uv.index]]
 name = "pypi-mirror"

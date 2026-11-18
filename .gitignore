@@ -44,11 +44,10 @@ logs/
 # Only collections/manifest.csv is tracked.  The 10.85 GB of synthetic arrays
 # and the camera reference candidates are rebuilt by the data generators and
 # must not enter version control.
-/collections
+collections
 
 # --- large local artifacts (README is the only tracked file) ----------------
-artifacts/
-!/artifacts/README.md
+artifacts
 
 # --- misc -------------------------------------------------------------------
 .DS_Store
