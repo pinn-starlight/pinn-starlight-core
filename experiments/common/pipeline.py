@@ -287,7 +287,15 @@ def load_dataset_sample(sample_id: str, *, max_side: int = 384, dataset: str = "
         ),
         "metadata": utils.read_json(utils.to_absolute_path(row["metadata"])),
         "dataset": dataset,
+        "scene_type": row.get("scene_type", row.get("background_type")),
     }
+    if dataset == "stage_b":
+        sample["base_clean"] = np.ascontiguousarray(
+            utils.load_float_tiff(row["base_clean"])[::stride, ::stride], dtype=np.float32
+        )
+        sample["protected_true"] = np.ascontiguousarray(
+            utils.load_float_tiff(row["protected_true"])[::stride, ::stride], dtype=np.float32
+        )
     return sample
 
 
@@ -306,6 +314,11 @@ def evaluate_synthetic(sample: dict, backgrounds: dict) -> dict:
         "clean_true": sample["clean_true"],
         "metadata": sample["metadata"],
     }
+    if sample.get("dataset") == "stage_b":
+        from experiments.common.utils import stage_b_metrics
+
+        full = {**full, **{key: sample[key] for key in ("base_clean", "protected_true")}}
+
     table = {}
     for name, background in backgrounds.items():
         prediction = {
@@ -313,7 +326,10 @@ def evaluate_synthetic(sample: dict, backgrounds: dict) -> dict:
             "residual_pred": utils.reconstruct_residual(sample["observed"], background),
         }
         try:
-            result = metrics.evaluate_synthetic(full, prediction)
+            if sample.get("dataset") == "stage_b":
+                result = stage_b_metrics.evaluate_stage_b(full, prediction)
+            else:
+                result = metrics.evaluate_synthetic(full, prediction)
         except Exception as exc:  # noqa: BLE001 - one method must not kill the run
             table[name] = {"error": f"{type(exc).__name__}: {exc}"}
             continue
@@ -327,6 +343,9 @@ def evaluate_synthetic(sample: dict, backgrounds: dict) -> dict:
                 "residual_ssim",
                 "star_f1",
                 "matched_star_mean_relative_flux_error",
+                "faint_star_recall",
+                "protected_projection_ratio",
+                "protected_region_mae",
             )
         }
     return table

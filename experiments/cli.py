@@ -396,7 +396,11 @@ def cmd_estimate(args) -> int:
         for name, row in table.items():
             if sample["downsample"] > 1:
                 # The frozen star reference is defined on the full-resolution grid.
-                for key in ("star_f1", "matched_star_mean_relative_flux_error"):
+                for key in (
+                    "star_f1",
+                    "matched_star_mean_relative_flux_error",
+                    "faint_star_recall",
+                ):
                     if key in row:
                         row[key] = None
             results.setdefault(name, {})["metrics"] = row
