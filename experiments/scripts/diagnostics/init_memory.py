@@ -428,6 +428,11 @@ def main(argv=None) -> int:
                 show_progress=not args.no_progress,
                 steps=budgets["init_steps"],
             )
+            print(
+                f"  [{sample['sample_id']}] init={init} {budgets['init_steps']} steps "
+                f"in {init_seconds:.1f}s",
+                flush=True,
+            )
             if "none" in finetunes:
                 cell_rows.append(
                     _cell_row(
@@ -445,8 +450,14 @@ def main(argv=None) -> int:
 
             forcing_state = None
             if any(arm != "data_only" for arm in finetunes if arm != "none"):
+                forcing_started = time.perf_counter()
                 forcing_state, _ = _fit_forcing(
                     sample, init_result, config, centers, suite=suite, device=device, seed=args.seed
+                )
+                print(
+                    f"  [{sample['sample_id']}] init={init} forcing fit "
+                    f"in {time.perf_counter() - forcing_started:.1f}s",
+                    flush=True,
                 )
 
             for arm in [item for item in finetunes if item != "none"]:
@@ -470,6 +481,12 @@ def main(argv=None) -> int:
                         seed=args.seed,
                         show_progress=not args.no_progress,
                     )
+                    elapsed = time.perf_counter() - started
+                    print(
+                        f"  [{sample['sample_id']}] init={init} {label} "
+                        f"{budgets['finetune_steps']} steps in {elapsed:.1f}s",
+                        flush=True,
+                    )
                     cell_rows.append(
                         _cell_row(
                             sample=sample,
@@ -479,7 +496,7 @@ def main(argv=None) -> int:
                             anchor_weight=weight,
                             steps=budgets["finetune_steps"],
                             background=result["background_pred"],
-                            runtime_s=time.perf_counter() - started,
+                            runtime_s=elapsed,
                             extra={
                                 "physics_loss_final": result.get("final_physics_loss"),
                                 "data_loss_final": result.get("final_data_loss"),
@@ -504,6 +521,10 @@ def main(argv=None) -> int:
                         device=device,
                         seed=args.seed,
                         show_progress=False,
+                    )
+                    print(
+                        f"  [{sample['sample_id']}] init={init} curve sgc {int(curve_step)} steps",
+                        flush=True,
                     )
                     cell_rows.append(
                         _cell_row(

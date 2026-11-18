@@ -25,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from tqdm import tqdm
 
 from experiments.common.baselines import coordinate_pinn as base_pinn
 from experiments.common.baselines import cosine_ls
@@ -113,6 +114,7 @@ def _run_pinn(
     chunk: int,
     device,
     seed: int,
+    show_progress: bool = False,
 ) -> dict:
     config = base_pinn.normalized_config(diag.pinn_config(suite=suite, steps=steps))
     centers = base_pinn.initial_centers_from_observed(sample["observed"], config)
@@ -147,6 +149,17 @@ def _run_pinn(
     history: list[dict] = []
     curve_rows: list[dict] = []
     started = time.perf_counter()
+    progress = (
+        tqdm(
+            total=steps,
+            desc=f"{forcing_alpha} alpha={alpha:g} {sample['sample_id'][-24:]}",
+            unit="step",
+            leave=False,
+            dynamic_ncols=True,
+        )
+        if show_progress
+        else None
+    )
     start = 0
     while start < steps:
         span = min(int(chunk), steps - start)
@@ -186,6 +199,11 @@ def _run_pinn(
             **terms,
         }
         curve_rows.append(row)
+        if progress is not None:
+            progress.update(span)
+
+    if progress is not None:
+        progress.close()
 
     background = base_pinn._predict_background(  # noqa: SLF001
         model, coords, height, width, int(config["prediction_batch_size"])
@@ -436,6 +454,12 @@ def main(argv=None) -> int:
                         chunk=chunk,
                         device=device,
                         seed=args.seed,
+                        show_progress=not args.no_progress,
+                    )
+                    print(
+                        f"  [{sample['sample_id']}] {protocol:>7s} alpha={alpha:<4g} "
+                        f"{steps} steps in {run['runtime_s']:.1f}s",
+                        flush=True,
                     )
                     curve_rows.extend(run["curve_rows"])
                     metrics_rows.append(
