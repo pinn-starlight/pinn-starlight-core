@@ -13,8 +13,10 @@ htmlcov/
 .pixi/*
 !.pixi/config.toml
 
-# --- build ------------------------------------------------------------------
+# --- build / generated ------------------------------------------------------
+# 生成物统一收在 build/ 下（dist/、tmp/、setuptools 工作区、ruff 缓存）。
 build/
+# 兜底：外部命令仍可能在根目录重建 dist/ 或 tmp/，继续忽略。
 dist/
 
 # --- IDE / local assistant files -------------------------------------------
@@ -41,12 +43,12 @@ logs/
 !/src/pinn_starlight_core/data/
 
 # --- generated datasets (regenerate from archives; never commit) ------------
-# Only collections/manifest.csv is tracked.  The 10.85 GB of synthetic arrays
-# and the camera reference candidates are rebuilt by the data generators and
-# must not enter version control.
+# The whole directory is untracked.  The 10.85 GB of synthetic arrays and the
+# camera reference candidates are rebuilt by the data generators;
+# collections/manifest.csv stays on disk but is no longer versioned.
 collections
 
-# --- large local artifacts (README is the only tracked file) ----------------
+# --- large local artifacts (untracked; artifacts/README.md stays on disk) ---
 artifacts
 
 # --- misc -------------------------------------------------------------------

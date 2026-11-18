@@ -131,6 +131,8 @@ namespaces = true
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Generated files live under build/ so the repository root stays source-only.
+cache-dir = "build/.ruff_cache"
 extend-exclude = ["experiments/outputs", "artifacts", "collections"]
 
 [tool.ruff.lint]

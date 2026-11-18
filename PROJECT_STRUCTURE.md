@@ -46,6 +46,7 @@ pinn-starlight-core/
 ├── tools/                        # 服务器归档/恢复/重建/回填工具
 ├── research_diagnostics/         # 冻结的探索性诊断
 │
+├── build/                        # 所有生成物（已忽略）：dist / tmp / lib / .ruff_cache
 ├── collections/                  # 数据清单与（运行后生成的）数据集
 ├── test/                         # 原始测试图像（native_test.tif）
 ├── paper_figures/                # 已生成的论文图 3/4/6
@@ -53,6 +54,29 @@ pinn-starlight-core/
 ├── logs/                         # 调度/训练日志（运行时生成，已忽略）
 └── artifacts/                    # 本地大文件归档（已忽略）
 ```
+
+### 生成物统一放在 `build/` 下
+
+根目录只放源码与配置。`dist/`、`tmp/`、`*.whl`、scratch 目录一律进 `build/`，
+不要再在根目录新建同名的生成目录：
+
+```text
+build/
+├── dist/            # uv build / python -m build 的产物
+├── tmp/             # 临时脚本输出、解压出来的归档
+├── lib/ bdist.*/    # setuptools 自己的构建工作区
+└── .ruff_cache/     # 由 pyproject [tool.ruff] cache-dir 指定
+```
+
+打包时显式指定输出目录：
+
+```bash
+uv build --out-dir build/dist
+python -m build --outdir build/dist
+```
+
+注意 `build/` 是可整体删除的目录（`rm -rf build` 会连 `build/tmp/` 里的临时结果一起删掉）；
+需要长期保留的东西放 `experiments/outputs/` 或 `artifacts/`。
 
 ---
 
