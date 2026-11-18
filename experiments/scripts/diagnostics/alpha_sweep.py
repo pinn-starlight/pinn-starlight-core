@@ -392,7 +392,7 @@ def main(argv=None) -> int:
     rows = harness.load_rows(args.dataset, args.samples or None)
     limit = args.max_samples or int(budget["max_samples"])
     rows = harness.require_available(
-        rows, args.dataset, allow_subset=(suite == "smoke"), limit=limit
+        rows, args.dataset, allow_subset=(suite == "smoke" and not args.samples), limit=limit
     )
     samples = [harness.load_sample(row, args.dataset, max_side) for row in rows]
 

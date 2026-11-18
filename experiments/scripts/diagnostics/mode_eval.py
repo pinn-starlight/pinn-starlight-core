@@ -205,7 +205,9 @@ def main(argv=None) -> int:
 
     rows = harness.load_rows(DATASET, args.samples or None)
     limit = args.max_samples or int(budget["max_samples"])
-    rows = harness.require_available(rows, DATASET, allow_subset=(suite == "smoke"), limit=limit)
+    rows = harness.require_available(
+        rows, DATASET, allow_subset=(suite == "smoke" and not args.samples), limit=limit
+    )
     samples = [harness.load_sample(row, DATASET, max_side) for row in rows]
 
     run_dir = harness.new_run_dir(PROBE, suite, args.out)
