@@ -6,6 +6,8 @@ Stage-A / Stage-B 正式实验代码。这里使用命名空间包（子目录�
 
 | 路径 | 作用 |
 | --- | --- |
+| `common/baselines/` | 四种论文方法 + `mode_switch.py` / `anchored_finetune.py`（模式与锚定，仅诊断/CLI） |
+| `common/pipeline.py` | CLI/演示共用的单图方法链 |
 | `common/data/` | 半合成数据生成（Stage-A/B）、native 背景估计 |
 | `common/utils/` | 指标、选择产物、实验 IO、Stage-B 专用工具 |
 | `configs/` | `formal_experiment.py`（Stage-A）、`stage_b_experiment.py`（Stage-B）、`split_protocols.py`（standard / CV5） |
@@ -18,7 +20,9 @@ Stage-A / Stage-B 正式实验代码。这里使用命名空间包（子目录�
 | `scripts/stage_b/` | Stage-B 的选择、preflight、lock、formal run |
 | `scripts/protocol/` | Stage-A/B 的阶段编排、CV5 准备与聚合 |
 | `scripts/final_pinn/` | 最终 PINN 的 Stage-A/B 配对评估与 CV5 聚合 |
+| `scripts/diagnostics/` | 非正式机制探针：`init_memory.py`、`alpha_sweep.py`、`mode_eval.py`（validation only） |
 | `scripts/verify_cosine_ls/` | DCT-II Neumann 实现自检 |
+| `cli.py` | `pinn-starlight` 演示/发布 CLI（不是 `run_stage11.py` 的一部分） |
 
 ## 阶段顺序
 
@@ -55,3 +59,4 @@ E4：
 - 配置是单一来源：方法候选空间、随机种子、执行预算都在 `configs/` 中，不要在各脚本里另写一份。
 - 选择阶段只接触 train/validation；test 数据在 Global Lock 之后才打开。
 - 顶层 `run_stage11.py` 负责 GPU 隔离、数据生成与阶段调度；这里的模块可以被单独调用，但正式实验应通过入口运行。
+- `scripts/diagnostics/`、`mode_switch.py`、`anchored_finetune.py` 和 `cli.py` 都是非正式的诊断/演示路径，不进入 Stage-A/B/CV5/E4 的正式数字。

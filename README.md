@@ -14,6 +14,8 @@
 | `experiments/scripts/stage_b/` | Stage-B 的选择、preflight、lock 与正式运行 |
 | `experiments/scripts/protocol/` | Stage-A / Stage-B / CV5 的阶段编排与聚合 |
 | `experiments/scripts/final_pinn/` | 最终 PINN 的配对评估与 CV5 聚合 |
+| `experiments/scripts/diagnostics/` | 非正式机制探针（初始化 / alpha，validation only） |
+| `experiments/cli.py` | `pinn-starlight` CLI：单图估计、doctor、样本列表 |
 | `scripts/figures/` | 论文图 3/4/6 的资产收集、渲染与打包 |
 | `tools/` | 服务器归档导出/恢复、派生文件重建、指标回填、完整性检查 |
 | `research_diagnostics/` | 冻结的探索性诊断脚本 |
@@ -31,6 +33,30 @@
 
 `pyproject.toml` 同时保留了 pixi 与 uv 配置；`pixi.lock` 与 `uv.lock` 都在版本控制中。
 
+## CLI（Release / 演示）
+
+`pinn-starlight` 是演示与发布用的单图命令行，不是正式实验入口。两种调用方式等价：
+
+```bash
+python -m experiments.cli estimate --image photo.jpg --mode star
+pinn-starlight estimate --image photo.jpg --mode star   # pip install -e . 后可用
+```
+
+常用子命令：
+
+```bash
+python -m experiments.cli version
+python -m experiments.cli doctor --json
+python -m experiments.cli samples --stage a
+python -m experiments.cli estimate --sample clean_single_002_multi_source_high --methods all
+```
+
+- `--mode star|nebula|balanced`：星点（SGC）、星云（joint PINN）、平衡（physics-first + 锚定，实验性）。
+- `--methods all` 跑四种论文方法；也可以只跑 `fft_gaussian,fourier_ls,pinn,final_pinn,balanced` 中的子集。
+- 输出写到 `--out/<sample>/`：`observed.tif`、每方法 `background.tif`/`residual.tif`、`preview.png`、`summary.json`。
+- 照片没有真值，只输出描述性指标；合成样本用冻结星表，但仍是 CPU/demo 预算，**不是论文数字**。
+- 退出码：0 成功、2 用法、3 环境、4 输入、5 方法失败。
+
 ## 运行正式实验
 
 Linux：
@@ -39,15 +65,11 @@ Linux：
 ./run_stage11.sh a       # Stage-A：数据检查 -> 选择 -> 配置锁 -> E2 -> E3 -> Final PINN
 ./run_stage11.sh b       # Stage-B 压力测试
 ./run_stage11.sh cv5     # 5-fold 分组评估
-./run_stage11.sh e4      # 真实高污染图像五方法对比
+./run_stage11.sh e4      # 真实高污染图像四方法对比
 ./run_stage11.sh all     # A -> B -> CV5 -> E4
 ```
 
-Windows PowerShell：
-
-```powershell
-.\run_stage11.ps1 a
-```
+仓库只提供 `run_stage11.sh`；Windows 上直接调用 `python run_stage11.py a`（或 pixi 环境中的等价命令）。
 
 `run_stage11.sh` 会先检查 GPU、驱动与 Pixi 环境。每个科学子进程只看到一个 GPU（内部仍使用 `cuda:0`），调度策略的完整说明在 `run_stage11.py` 顶部。也可以直接调用模块，例如：
 
@@ -61,7 +83,7 @@ pixi run -e remote python -m experiments.scripts.protocol.run \
 正式实验需要 GPU 和约 11 GB 合成数据，但整套科学代码路径可以在 CPU 上用小预算跑通：
 
 ```bash
-python -m tools.smoke_test              # 全部 12 项，约 20 秒
+python -m tools.smoke_test              # 全部 17 项，约 25 秒
 python -m tools.smoke_test --list       # 列出测试项
 python -m tools.smoke_test --only pinn  # 只跑某几项
 ```
@@ -77,6 +99,7 @@ python -m tools.smoke_test --only pinn  # 只跑某几项
 ```bash
 python -m experiments.scripts.diagnostics.init_memory --suite smoke   # 初始化优势能否保留 / 锚定强度
 python -m experiments.scripts.diagnostics.alpha_sweep --suite smoke   # 哪个 alpha 让物理损失降得最快
+python -m experiments.scripts.diagnostics.mode_eval --suite smoke     # star / nebula / balanced 的权衡
 ```
 
 - 只读 validation split；不修改正式 config / lock / seed / 预算。

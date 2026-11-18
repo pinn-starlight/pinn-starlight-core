@@ -535,6 +535,101 @@ def test_init_memory(ctx):
     )
 
 
+def test_modes(ctx):
+    """Mode switch: star equals the frozen SGC path, nebula/balanced stay finite."""
+    from experiments.common.baselines import mode_switch
+    from experiments.common.baselines import sgc_pinn as final_pinn
+
+    sample = _stage_a(ctx)
+    observed = sample["observed"]
+    config = mode_switch.build_config(suite="smoke", init_steps=6, finetune_steps=6, pinn_steps=6)
+    star = mode_switch.run_mode(
+        observed, mode="star", config=config, device=ctx["device"], seed=20260728
+    )
+    paired = final_pinn.run_paired(
+        observed,
+        config={
+            "stage1": config["stage1_data"],
+            "stage2": config["stage2"],
+            "stage3": config["stage3"],
+            "test_seeds": [20260728],
+        },
+        device=ctx["device"],
+        seed=20260728,
+        show_progress=False,
+    )
+    reference = paired["pinn_decoupled_gradient"]["background_pred"]
+    difference = float(np.max(np.abs(star["background_pred"] - reference)))
+    if difference > 1e-6:
+        raise AssertionError(
+            f"star mode drifted from the frozen SGC path: max|diff|={difference:.3e}"
+        )
+
+    for mode in ("nebula", "balanced"):
+        run = mode_switch.run_mode(
+            observed, mode=mode, config=config, device=ctx["device"], seed=20260728
+        )
+        _assert_finite(f"mode.{mode}", run["background_pred"])
+        if run["background_pred"].shape != observed.shape:
+            raise AssertionError(f"{mode} background shape mismatch")
+    return f"star matches SGC (max|diff|={difference:.1e}); nebula/balanced finite"
+
+
+def test_cli(ctx):
+    """Release CLI: version/doctor/estimate produce a valid summary JSON."""
+    import io
+    import json
+    import tempfile
+    from contextlib import redirect_stdout
+
+    from PIL import Image
+
+    from experiments.cli import main
+
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        if main(["version"]) != 0:
+            raise AssertionError("CLI version returned non-zero")
+        if main(["doctor", "--json"]) != 0:
+            raise AssertionError("CLI doctor returned non-zero")
+
+    with tempfile.TemporaryDirectory() as directory:
+        image_path = Path(directory) / "img.png"
+        rng = np.random.default_rng(7)
+        image = (rng.random((48, 56)) * 0.2 + 0.05).astype(np.float32)
+        Image.fromarray((np.clip(image, 0.0, 1.0) * 255).astype(np.uint8)).save(image_path)
+        out = Path(directory) / "out"
+        with redirect_stdout(buffer):
+            code = main(
+                [
+                    "estimate",
+                    "--image",
+                    str(image_path),
+                    "--methods",
+                    "fft_gaussian",
+                    "--steps",
+                    "3",
+                    "--max-side",
+                    "32",
+                    "--no-figure",
+                    "--json",
+                    "--out",
+                    str(out),
+                ]
+            )
+        if code != 0:
+            raise AssertionError(f"CLI estimate returned {code}")
+        summary_path = out / "img" / "summary.json"
+        if not summary_path.is_file():
+            raise AssertionError(f"CLI did not write {summary_path}")
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if "fft_gaussian" not in summary.get("methods", {}):
+            raise AssertionError("CLI summary is missing the fft_gaussian method")
+        if summary.get("input", {}).get("has_truth") is not False:
+            raise AssertionError("CLI should report has_truth=False for a photograph")
+    return "version/doctor/estimate ok; summary schema present"
+
+
 def test_metrics_stage_a(ctx):
     """Stage-A metric stack (MAE/SSIM/PSNR + star photometry) evaluates a prediction."""
     from experiments.common.utils import metrics
@@ -691,6 +786,8 @@ TESTS = [
     ("final_pinn", test_final_pinn),
     ("alpha_sweep", test_alpha_sweep),
     ("init_memory", test_init_memory),
+    ("modes", test_modes),
+    ("cli", test_cli),
     ("metrics_a", test_metrics_stage_a),
     ("metrics_b", test_metrics_stage_b),
     ("metrics_real", test_metrics_real),

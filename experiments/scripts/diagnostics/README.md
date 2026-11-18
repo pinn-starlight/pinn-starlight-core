@@ -6,6 +6,7 @@
 | --- | --- |
 | `init_memory.py` | physics-first 初始化的投影优势能保留多少？锚定强度要多大？背景代价多少？ |
 | `alpha_sweep.py` | 哪个 `alpha` 让 screened-Poisson 物理损失降得最快，发生在训练哪一段？ |
+| `mode_eval.py` | `star` / `nebula` / `balanced` 三种工作点的背景、星点与投影权衡 |
 
 共同边界：
 
@@ -67,8 +68,21 @@ python -m experiments.scripts.diagnostics.alpha_sweep --suite full --device cuda
 
 输出：`curves.csv`、`metrics.csv`、`summary.csv`、`cosine_ls_summary.csv`、`alpha_summary.json`；加 `--plot` 生成 `alpha_curves.png`。
 
+## 模式评估
+
+```bash
+python -m experiments.scripts.diagnostics.mode_eval --suite smoke
+
+python -m experiments.scripts.diagnostics.mode_eval --suite full --device cuda:0
+```
+
+- 默认 arms：`pinn_joint`（nebula）、`sgc`（star）、`balanced@λ`（λ 默认 0.25/0.5/0.75/1.0）。
+- `balanced` 的接受规则预先写在 `experiments/configs/diagnostics.py`：投影 ≥ 0.15 且 bg MAE ≤ 1.25×SGC；只是诊断建议，不用于选正式方法。
+- 输出：`runs.csv`、`paired_deltas.csv`、`summary.csv`、`summary.json`、`findings.md`。
+
 ## 读数注意
 
 - `--max-side` 会做 stride 降采样：投影比和背景指标仍可用，星点指标会被标记 `star_metrics_skipped`，不要和正式数字直接比。
 - 全量结论只认全分辨率、完整预算的 `--suite full` 输出；`smoke` 只看管道是否通。
 - 归档里已有的冻结结果（`pinn_preservation_exploratory_frozen_v2`）可以作为先验证据，但不要和新探针的运行目录混在一起。
+- 单图演示走 `experiments/cli.py`（`python -m experiments.cli estimate ...`），不要用诊断脚本代替 CLI。

@@ -1,6 +1,6 @@
 [project]
 name = "pinn-starlight-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Physics-inspired night-sky background estimation experiments"
 requires-python = ">=3.11,<3.12"
 dependencies = [
@@ -24,6 +24,7 @@ dependencies = [
 
 [project.scripts]
 pinn-starlight-core = "pinn_starlight_core.main:main"
+pinn-starlight = "experiments.cli:main"
 
 [dependency-groups]
 dev = [
@@ -120,10 +121,16 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+# Two roots: the installable core lives in src/, the research package (methods,
+# configs, CLI) lives at the repository root.  The wheel ships both so the
+# `pinn-starlight` entry point works outside the checkout.
+package-dir = {"" = "src", "experiments" = "experiments"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["pinn_starlight_core*", "experiments*"]
+exclude = ["experiments.outputs*"]
+namespaces = true
 
 [tool.pixi.tasks]
 

@@ -32,10 +32,7 @@ from pathlib import Path
 
 import numpy as np
 
-from experiments.common.baselines import coordinate_pinn as pinn
-from experiments.common.baselines import cosine_ls as fourier_ls
-from experiments.common.baselines import fft_gaussian as fft
-from experiments.common.baselines import sgc_pinn as final_pinn
+from experiments.common import pipeline
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 
@@ -82,136 +79,9 @@ def load_sample(sample_id: str, downsample: int) -> dict:
 # --------------------------------------------------------------------------
 # methods (same code the formal runners use, only tiny budgets)
 # --------------------------------------------------------------------------
-def stage1_config(steps: int) -> dict:
-    return pinn.normalized_config(
-        {
-            "hidden_dims": [128, 64],
-            "steps": int(steps),
-            "batch_size": 8192,
-            "model_lr": 1e-2,
-            "alpha": 0.5,
-            "physics_weight": 0.4,
-            "sparse_weight": 0.0,
-            "center_warmup_steps": min(200, max(1, steps // 3)),
-            "center_refinement_enabled": False,
-            "forcing_max_components": 3,
-            "forcing_rms_grid_size": 48,
-            "prediction_batch_size": 65536,
-            "log_every": max(1, steps // 5),
-        }
-    )
-
-
-def stage3_config(steps: int) -> dict:
-    return {
-        "steps": int(steps),
-        "model_lr": 2e-4,
-        "rho": 0.1,
-        "lambda_min": 0.0,
-        "lambda_max": 0.02,
-        "ramp_steps": max(1, steps // 2),
-        "conflict_projection": True,
-        "sparse_weight": 0.0,
-        "neumann_boundary_loss": False,
-        "gradient_balance_reference": "projected_regularizer_gradient",
-        "laplacian_backend": "analytic",
-        "log_every": max(1, steps // 5),
-    }
-
-
 def run_methods(sample: dict, steps: int, device) -> dict:
-    """Run the four paper methods with tiny CPU budgets.
-
-    Faithfulness notes:
-    * ``Original PINN`` uses the paper's joint data+physics objective
-      (physics_weight 0.4, sparse_weight 1e-3).
-    * ``SGC-PINN`` follows the paper's three stages: a **data-only** stage 1,
-      a fixed-geometry forcing fit, then a coordinated finetune with conflict
-      projection.  It must not inherit the joint objective from above.
-    """
-    observed = sample["observed"]
-    predictions, timings = {}, {}
-
-    started = time.perf_counter()
-    predictions["fft_gaussian"] = fft.estimate_background(observed, 0.02)
-    timings["fft_gaussian"] = time.perf_counter() - started
-
-    started = time.perf_counter()
-    predictions["fourier_ls"] = fourier_ls.estimate_background(
-        observed, 1e-3, 1e-4, backend="cpu", show_progress=False
-    )
-    timings["fourier_ls"] = time.perf_counter() - started
-
-    # --- Original PINN: joint data + physics -------------------------------
-    joint_cfg = stage1_config(steps)
-    joint_cfg["physics_weight"] = 0.4
-    joint_cfg["sparse_weight"] = 1e-3
-    centers = pinn.initial_centers_from_observed(observed, joint_cfg)
-    started = time.perf_counter()
-    joint = pinn.train_background(
-        observed,
-        config=joint_cfg,
-        device=device,
-        seed=20260728,
-        show_progress=False,
-        return_state=True,
-        laplacian_backend="analytic",
-        initial_centers=centers,
-    )
-    predictions["pinn"] = joint["background_pred"]
-    timings["pinn"] = time.perf_counter() - started
-
-    # --- SGC-PINN: data-only stage 1 -> forcing fit -> coordinated stage 3 --
-    sgc_cfg = stage1_config(steps)
-    sgc_cfg["physics_weight"] = 0.0
-    sgc_cfg["sparse_weight"] = 0.0
-    sgc_centers = pinn.initial_centers_from_observed(observed, sgc_cfg)
-    started = time.perf_counter()
-    stage1 = pinn.train_background(
-        observed,
-        config=sgc_cfg,
-        device=device,
-        seed=20260728,
-        show_progress=False,
-        return_state=True,
-        laplacian_backend="analytic",
-        initial_centers=sgc_centers,
-    )
-    forcing_state, _ = final_pinn.fit_fixed_forcing(
-        observed=observed,
-        model_state=stage1["state"]["model_state"],
-        stage1_config=sgc_cfg,
-        stage2_config={
-            "mode": "fixed_geometry_nonnegative_least_squares",
-            "prefit_points": 32768,
-            "fit_fraction": 0.8,
-            "geometry_refinement": False,
-            "uses_true_background": False,
-        },
-        initial_centers=sgc_centers,
-        device=device,
-        seed=20260728 + 1009,
-    )
-    refined = final_pinn.finetune(
-        observed=observed,
-        model_state=stage1["state"]["model_state"],
-        forcing_state=forcing_state,
-        stage1_config=sgc_cfg,
-        stage3_config=stage3_config(steps),
-        initial_centers=sgc_centers,
-        device=device,
-        seed=20260728 + 2003,
-        use_physics=True,
-        show_progress=False,
-    )
-    predictions["final_pinn"] = refined["background_pred"]
-    timings["final_pinn"] = time.perf_counter() - started
-
-    return {
-        "backgrounds": predictions,
-        "timings": timings,
-        "raw": {"pinn": joint, "final_pinn": refined},
-    }
+    """Compatibility wrapper: delegate to the shared demo pipeline."""
+    return pipeline.run_methods(sample["observed"], steps=steps, device=device)
 
 
 def evaluate(sample: dict, backgrounds: dict) -> dict:

@@ -10,7 +10,7 @@
 ### 1. 所有改动都在 `dsh/` 分支，禁止碰 `main`
 
 - `main` 是基线（当前 `e8eb520`）。改动一律在 `dsh/<短描述>` 分支，如 `dsh/feat-e5-halo`。
-- 当前 HEAD 在 `dsh/optimize-round2`，比 `main` 多 13 个未合并提交。**新任务从当前 HEAD 拉分支**（保留那批重构），除非用户明确说从 `main` 拉。
+- 动手前先 `git branch --show-current` 确认当前 `dsh/` 分支。**新任务从当前 HEAD 拉分支**（保留未合并的重构），除非用户明确说从 `main` 拉。
 - 一个任务一个分支。改完停在该分支，报告：分支名 / 改动文件清单 / `git diff main --stat` / 验证结果。
 - 代码留在工作区：不 stash、不切回 `main`、不用 git worktree。
 
@@ -41,7 +41,7 @@
 - 本机 `nvidia-smi` 不存在，`torch.cuda.is_available() == False`：Stage-A / Stage-B / CV5 / E4 的正式路径**跑不了**。
   不要为了"本地能跑"删掉 `_formal_device()` 的 CUDA 检查，也不要悄悄换成 CPU 预算。
 - 验证分级：
-  1. `.venv/bin/python -m tools.smoke_test`：13 项，CPU 约 20 秒，**退出码 0 才算过**。
+  1. `.venv/bin/python -m tools.smoke_test`：17 项，CPU 约 25 秒，**退出码 0 才算过**。
   2. 数据缺失时：`--only imports,laplacian,generators,inventory`。
   3. `.venv/bin/ruff check .` 和 `.venv/bin/ruff format --check .`（line-length 100）。
   4. 仓库**没有 pytest 用例**，`test/` 是数据目录不是测试目录；也没有 CI。
@@ -58,6 +58,8 @@
 | `experiments/configs/` | 配置唯一来源：方法登记、种子、候选空间、预算、split |
 | `experiments/common/{baselines,data,utils}/` | 四种方法、数据与背景、指标与实验基础设施 |
 | `experiments/scripts/<stage>/` | 各阶段入口，经 `protocol/run.py` 或 `run_stage11.py` 编排 |
+| `experiments/scripts/diagnostics/` | 非正式机制探针；只读 validation，输出到 `experiments/outputs/diagnostics/` |
+| `experiments/cli.py`、`experiments/common/pipeline.py` | `pinn-starlight` 演示/发布 CLI；**不接入正式入口** |
 | `scripts/figures/` | 论文图 3/4/6 的收集与渲染（只读冻结结果） |
 | `tools/` | smoke test、单图演示、服务器归档恢复/重建/回填 |
 | `research_diagnostics/` | 冻结的探索性诊断，不属于正式主流程 |
@@ -71,6 +73,8 @@
 - 新方法 → `experiments/common/baselines/`，并在 `experiments/configs/formal_experiment.py` 登记；
 - 新指标 → `experiments/common/utils/metrics.py` 或 `scores.py`；
 - 新阶段 → `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage11.py` 编排；
+- 机制探针 → `experiments/scripts/diagnostics/`，只读 validation，不得改动正式 config/lock；
+- CLI / 演示 → `experiments/cli.py` + `experiments/common/pipeline.py`，不要塞进 `run_stage11.py`；
 - 一次性脚本 / 出图 → `scripts/figures/`；搬运与复现 → `tools/`；别往仓库根目录堆；
 - 常量只在 `experiments/configs/`，不要在脚本里复制第二份。
 
@@ -104,7 +108,7 @@
 - **表 VII 机制实验脚本未入库**：只有归档 CSV；`research_diagnostics/pinn/pinn_preservation_frozen.py` 是同一条研究线的实现。
 - **`docs/` 被 `.gitignore` 忽略**：`CODE_MAP.md`、`CODE_CHECK_PLAYBOOK.md` 只在本地。
 - **数据体积大**：正式合成数据约 10.85 GB，`artifacts/` 约 9.6 GB，都不入库。
-- **文档有滞后**：README / PROJECT_STRUCTURE 写"12 项 smoke test""五种方法""`run_stage11.ps1`"，实际是 13 项、4 个方法（`coordinate_pinn`、`sgc_pinn`、`fft_gaussian`、`cosine_ls`）、只有 `.sh`。**以代码为准。**
+- **文档计数以代码为准**：smoke 现在是 17 项、论文方法 4 个（`coordinate_pinn`、`sgc_pinn`、`fft_gaussian`、`cosine_ls`），启动器只有 `run_stage11.sh`；改工具后顺手更新 README / PROJECT_STRUCTURE。
 
 ---
 

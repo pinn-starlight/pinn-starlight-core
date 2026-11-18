@@ -18,7 +18,7 @@
 `pinn-starlight-core` 是 PINN-Starlight 的 Stage-11 研究仓库：
 
 - `src/pinn_starlight_core/` 提供可复用的核心 PINN 组件与一个独立小 demo；
-- `experiments/` 实现五种方法、Stage-A/B 数据与全部正式实验；
+- `experiments/` 实现四种论文方法、三种运行模式、Stage-A/B 数据与全部正式实验；
 - `run_stage11.py` 是正式实验的唯一调度入口；
 - `scripts/` 放论文图流水线和一次性运维脚本；
 - `tools/` 负责服务器结果搬运、离线重建与指标回填；
@@ -39,7 +39,6 @@ pinn-starlight-core/
 │
 ├── run_stage11.py                # 正式实验调度器（GPU 隔离、数据准备、阶段编排）
 ├── run_stage11.sh                # Linux 启动器（GPU/驱动/Pixi 环境检查）
-├── run_stage11.ps1               # Windows PowerShell 启动器
 │
 ├── src/pinn_starlight_core/      # 可安装的核心包
 ├── experiments/                  # Stage-A/B、E1-E4、CV5 的实验代码
@@ -110,9 +109,11 @@ test/*.tif
 ```text
 experiments/
 ├── configs/                     # 配置唯一来源
+├── cli.py                       # pinn-starlight CLI（演示/发布，非正式入口）
 ├── common/
-│   ├── baselines/               # 五种方法实现
+│   ├── baselines/               # 四种方法实现 + 模式封装
 │   ├── data/                    # 数据生成与背景建模
+│   ├── pipeline.py              # CLI/演示共用的单图方法链
 │   └── utils/                   # IO、指标、选择产物、Stage-B 专用工具
 └── scripts/
     ├── preflight/               # 只读预检
@@ -121,7 +122,7 @@ experiments/
     ├── config_lock/             # Global Configuration Lock
     ├── e2/                      # E2：冻结 benchmark
     ├── e3/                      # E3：PINN 消融
-    ├── e4/                      # E4：真实图像五方法对比
+    ├── e4/                      # E4：真实图像四方法对比
     ├── stage_b/                 # Stage-B：选择、lock、formal run
     ├── final_pinn/              # 最终 PINN 的配对评估与 CV5 聚合
     ├── protocol/                # Stage-A/B/CV5 的编排、准备与聚合
@@ -131,7 +132,7 @@ experiments/
 
 `experiments/` 使用命名空间包组织（子目录没有 `__init__.py`），所有命令从仓库根目录运行。
 
-### 4.1 `common/baselines/`：五种方法
+### 4.1 `common/baselines/`：四种方法 + 运行模式
 
 | 文件 | 方法 | 角色 |
 | --- | --- | --- |
@@ -139,6 +140,8 @@ experiments/
 | `sgc_pinn.py` | SGC-PINN（最终方法） | Stage-11 最终方法：数据-only `B0` → 固定几何 forcing 拟合 → 解耦梯度微调 |
 | `fft_gaussian.py` | FFT-Gaussian | 频域高斯低通基线 |
 | `cosine_ls.py` | Cosine-LS（DCT-II 解析解） | 在 DCT-II 域解析求解 screened-Poisson；对 K 个 forcing 活跃集枚举 |
+| `mode_switch.py` | star / nebula / balanced | 三种工作点封装；balanced 用 physics-first 初始化 + 锚定微调，仅诊断/CLI 使用 |
+| `anchored_finetune.py` | 锚定微调 | 复制 SGC 投影逻辑并加初始化锚；anchor_weight=0 时委托正式 `finetune` |
 
 所有方法都遵守同一个边界：**只用观测值和 train/validation 做选择或训练，test 只在冻结之后打开**。
 
@@ -203,6 +206,7 @@ experiments/
 | `protocol/aggregate_cv5.py` | CV5 汇总 | 按 fold × method 聚合并输出均值/标准差 |
 | `diagnostics/init_memory.py` | 机制探针 | 初始化优势在微调后的保留量与锚定强度；只读 validation |
 | `diagnostics/alpha_sweep.py` | 机制探针 | alpha 对物理损失下降速度/窗口的影响；只读 validation |
+| `diagnostics/mode_eval.py` | 模式评估 | star / nebula / balanced 的背景、星点与投影权衡；只读 validation |
 | `verify_cosine_ls/run.py` | 自检 | 验证 DCT-II Neumann 实现 |
 
 ---
@@ -292,7 +296,7 @@ experiments/outputs/
 ├── e2_benchmark/                     # 三方法冻结 benchmark
 ├── e3_ablation/                      # Original-PINN 消融
 ├── final_pinn_validation/            # 最终 PINN 配对评估
-├── e4_real/                          # 真实图像五方法对比
+├── e4_real/                          # 真实图像四方法对比
 ├── stage_b/
 │   ├── selection/                    # 四个 Stage-B 选择器
 │   ├── configuration_lock/           # Stage-B Global Lock
@@ -319,7 +323,7 @@ experiments/outputs/
 
 ## 9. 运行主线
 
-正式入口统一是 `run_stage11.py`（由 `.sh`/`.ps1` 包装）。
+正式入口统一是 `run_stage11.py`（由 `run_stage11.sh` 包装）。
 
 ### 9.1 Stage-A（`a`）
 
@@ -363,7 +367,7 @@ protocol.prepare_cv5
 
 ```text
 experiments.scripts.real_images.run
-  -> 五种方法在 collections/real_high_pollution/ 上逐图推理
+  -> 四种方法在 collections/real_high_pollution/ 上逐图推理
   -> experiments/outputs/e4_real/
 ```
 
@@ -396,6 +400,7 @@ run_stage11.py
 - 新指标：放 `experiments/common/utils/metrics.py` 或 `scores.py`；
 - 新实验阶段：放 `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage11.py` 编排；
 - 机制探针：放 `experiments/scripts/diagnostics/`，只读 validation、只写 `experiments/outputs/diagnostics/`，不得改动正式 config/lock；
+- CLI 与演示：`experiments/cli.py` + `experiments/common/pipeline.py`；CLI 只做单图估计/环境检查，不进入 `run_stage11.py`；
 - 一次性脚本：放 `scripts/figures/`，不要堆回根目录；
 - 服务器数据工具：放 `tools/`；
 - 不要手改 `experiments/outputs/`、`paper_figures/` 里的结果；重新生成请走脚本。
@@ -422,6 +427,11 @@ pixi run -e remote python -m experiments.scripts.preflight.run
 # 机制探针（非正式，validation only）
 python -m experiments.scripts.diagnostics.init_memory --suite smoke
 python -m experiments.scripts.diagnostics.alpha_sweep --suite smoke
+python -m experiments.scripts.diagnostics.mode_eval --suite smoke
+
+# CLI（演示/发布）
+python -m experiments.cli version
+python -m experiments.cli estimate --image photo.jpg --mode star
 
 # 论文图
 pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage11 --dry-run
