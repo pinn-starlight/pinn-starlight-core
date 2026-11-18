@@ -26,6 +26,7 @@ from copy import deepcopy
 
 from experiments.configs.formal_experiment import (
     FINAL_PINN_FOLLOWUP_CONFIG,
+    FORMAL_SEEDS,
     PINN_CONFIG,
 )
 from experiments.configs.stage_b_experiment import STAGE_B_CONFIG
@@ -33,7 +34,7 @@ from experiments.configs.stage_b_experiment import STAGE_B_CONFIG
 DIAGNOSTIC_SCHEMA_VERSION = 1
 
 # One fixed seed, matching the frozen exploratory preservation probe.
-DIAGNOSTIC_SEED = 20260728
+DIAGNOSTIC_SEED = FORMAL_SEEDS[0]
 
 # Stage-B evaluation threshold, taken from the formal Stage-B config so the
 # diagnostic projection metric cannot silently drift from the paper one.

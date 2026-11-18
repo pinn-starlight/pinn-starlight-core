@@ -22,17 +22,10 @@ from experiments.common.baselines import mode_switch
 from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
+from experiments.configs.demo_methods import METHOD_NAMES, PAPER_METHODS
+from experiments.configs.formal_experiment import FORMAL_SEEDS
 
-METHOD_NAMES = ("fft_gaussian", "fourier_ls", "pinn", "final_pinn", "balanced")
-PAPER_METHODS = ("fft_gaussian", "fourier_ls", "pinn", "final_pinn")
-DISPLAY_NAMES = {
-    "fft_gaussian": "FFT-Gaussian",
-    "fourier_ls": "Cosine-LS",
-    "pinn": "Original PINN",
-    "final_pinn": "SGC-PINN",
-    "balanced": "Balanced (anchored)",
-}
-DEFAULT_SEED = 20260728
+DEFAULT_SEED = FORMAL_SEEDS[0]
 
 
 # --------------------------------------------------------------------------

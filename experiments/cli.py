@@ -23,6 +23,14 @@ import platform
 import sys
 from pathlib import Path
 
+from experiments.configs.demo_methods import (
+    DISPLAY_NAMES,
+    METHOD_NAMES,
+    MODE_TO_METHOD,
+    PAPER_METHODS,
+)
+from experiments.configs.formal_experiment import FORMAL_SEEDS
+
 TOOL_NAME = "pinn-starlight"
 SCHEMA_VERSION = 1
 
@@ -32,9 +40,7 @@ EXIT_ENV = 3
 EXIT_INPUT = 4
 EXIT_METHOD = 5
 
-MODE_TO_METHOD = {"star": "final_pinn", "nebula": "pinn", "balanced": "balanced"}
-METHOD_CHOICES = ("fft_gaussian", "fourier_ls", "pinn", "final_pinn", "balanced")
-PAPER_METHODS = ("fft_gaussian", "fourier_ls", "pinn", "final_pinn")
+METHOD_CHOICES = METHOD_NAMES
 
 
 # --------------------------------------------------------------------------
@@ -289,7 +295,6 @@ def _render_preview(path: Path, observed, backgrounds: dict) -> None:
     except Exception:  # noqa: BLE001 - preview is optional
         return
 
-    from experiments.common.pipeline import DISPLAY_NAMES
     from experiments.common.utils import experiment_utils as utils
 
     columns = [("Observed", observed, None)] + [
@@ -374,12 +379,12 @@ def cmd_estimate(args) -> int:
             )
             backgrounds[method] = run["backgrounds"][method]
             results[method] = {
-                "display": pipeline.DISPLAY_NAMES.get(method, method),
+                "display": DISPLAY_NAMES.get(method, method),
                 "runtime_s": float(run["timings"][method]),
             }
         except Exception as exc:  # noqa: BLE001 - one method must not kill the CLI
             results[method] = {
-                "display": pipeline.DISPLAY_NAMES.get(method, method),
+                "display": DISPLAY_NAMES.get(method, method),
                 "error": f"{type(exc).__name__}: {exc}",
             }
             warnings.append(f"{method} failed: {type(exc).__name__}: {exc}")
@@ -524,7 +529,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     estimate.add_argument("--max-side", type=int, default=384)
     estimate.add_argument("--steps", type=int, default=500)
-    estimate.add_argument("--seed", type=int, default=20260728)
+    estimate.add_argument("--seed", type=int, default=FORMAL_SEEDS[0])
     estimate.add_argument("--device", default="auto")
     estimate.add_argument("--out", type=Path, default=None)
     estimate.add_argument("--json", action="store_true")
