@@ -44,11 +44,7 @@ logs/
 # Only collections/manifest.csv is tracked.  The 10.85 GB of synthetic arrays
 # and the camera reference candidates are rebuilt by the data generators and
 # must not enter version control.
-/collections/clean_candidates/
-/collections/synthetic_formal/
-/collections/synthetic_stage_b/
-/collections/real_high_pollution/
-/collections/cv5/
+/collections
 
 # --- large local artifacts (README is the only tracked file) ----------------
 artifacts/
