@@ -192,7 +192,7 @@ def main():
         print("test arrays opened before lock: False")
         print(
             "Next: optional E0 smoke; rerun all four pre-test selectors; rebuild the "
-            "Global Configuration Lock; then run E2/E3/E4. Stage-9 archived are invalid."
+            "Global Configuration Lock; then run E2/E3/E4. Stage-9 artifacts are invalid."
         )
 
 

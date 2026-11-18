@@ -354,7 +354,7 @@ def load_global_configuration_lock(
         if formal.get("sha256") != current_config_sha:
             raise ValueError(
                 "Formal experiment config changed after Global Configuration Lock; "
-                "rebuild affected selection archived and the lock before test"
+                "rebuild affected selection artifacts and the lock before test"
             )
 
         manifest = to_absolute_path(lock["data_provenance"]["manifest"])

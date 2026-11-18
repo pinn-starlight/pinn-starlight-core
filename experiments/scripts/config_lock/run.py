@@ -1,7 +1,7 @@
 """Pure Stage-10 Global Configuration Lock gate.
 
 This script does not train, tune, or load synthetic image arrays. It verifies
-three pre-test selection archived, verifies their method-local dependencies,
+three pre-test selection artifacts, verifies their method-local dependencies,
 snapshots formal source/config state, and then opens the held-out test gate.
 """
 
@@ -140,7 +140,7 @@ def main(*, force: bool = False):
         },
         "next_stage": {
             "fourier_ls_pending": False,
-            "note": "All four pre-test archived verified; formal test gate is open.",
+            "note": "All four pre-test artifacts verified; formal test gate is open.",
         },
     }
 

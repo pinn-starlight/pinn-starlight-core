@@ -1,7 +1,7 @@
 """Generate the Stage10-B frequency-overlap stress-test dataset.
 
 This module only adds new Stage-B data.  It does not modify Stage10-A data,
-selection archived, checkpoints, or the Stage10-A Global Configuration Lock.
+selection artifacts, checkpoints, or the Stage10-A Global Configuration Lock.
 """
 
 from __future__ import annotations
