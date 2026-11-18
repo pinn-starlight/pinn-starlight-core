@@ -19,7 +19,10 @@ dependencies = [
     "scikit-image>=0.26.0",
     "astropy",
     "photutils",
-
+    # torch 必须是直接依赖，[tool.uv.sources] 里的索引映射才对它生效；
+    # 作为 segmentation-models-pytorch 的传递依赖时会被解析成默认镜像上的构建。
+    "torch==2.14.0+cu126",
+    "torchvision==0.29.0+cu126",
 ]
 
 [project.scripts]
