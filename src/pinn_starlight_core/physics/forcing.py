@@ -12,7 +12,6 @@ import math
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-
 DEFAULT_MAX_COMPONENTS = 3
 DEFAULT_WINSOR_PERCENTILE = 99.5
 DEFAULT_LOW_PASS_SIGMA_FRACTION = 0.04
@@ -98,9 +97,7 @@ def candidate_centers_from_observed(
             if len(selected) >= max_components:
                 break
     if len(selected) != max_components:
-        raise RuntimeError(
-            f"could not find {max_components} separated initialization centres"
-        )
+        raise RuntimeError(f"could not find {max_components} separated initialization centres")
     return np.asarray(selected, dtype=np.float64)
 
 
@@ -126,10 +123,7 @@ def _component_on_grid(
     dy_rot = -sin_theta * dx + cos_theta * dy
     envelope = np.exp(
         -0.5
-        * (
-            (dx_rot / max(float(sigma_x), 1e-12)) ** 2
-            + (dy_rot / max(float(sigma_y), 1e-12)) ** 2
-        )
+        * ((dx_rot / max(float(sigma_x), 1e-12)) ** 2 + (dy_rot / max(float(sigma_y), 1e-12)) ** 2)
     )
     return q * envelope
 

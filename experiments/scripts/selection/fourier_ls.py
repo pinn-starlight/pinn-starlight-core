@@ -188,7 +188,7 @@ def main(*, force: bool = False, backend=None, fft_workers=None):
     print(
         "Cosine-LS execution:",
         f"backend={resolved_backend}",
-        f"dtype=float64",
+        "dtype=float64",
         f"fft_workers={resolved_workers}",
     )
     output_root = utils.prepare_output_root(OUTPUT_ROOT, force=force)

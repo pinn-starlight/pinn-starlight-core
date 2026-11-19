@@ -1,10 +1,11 @@
-"""Create five grouped split *views* for Stage11-A and/or Stage11-B.
+"""Create five grouped split *views* for Stage2-A and/or Stage2-B.
 
 The scientific TIFF arrays are not duplicated or regenerated.  Each fold view
 contains only a manifest whose ``split`` column is reassigned by camera base,
 plus protocol/provenance JSON files.  Every variant from one camera base stays
 in the same group.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,7 +75,7 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
             else "python -m experiments.common.data.generate_stage_b --force"
         )
         raise FileNotFoundError(
-            f"Stage11-{stage.upper()} ordinary manifest is missing: {source_manifest}\n"
+            f"Stage2-{stage.upper()} ordinary manifest is missing: {source_manifest}\n"
             f"Generate the ordinary dataset first with: {generator}"
         )
 
@@ -83,15 +84,12 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
     missing = [base_id for base_id in BASE_IDS if base_id not in present]
     if missing:
         raise ValueError(
-            f"Stage11-{stage.upper()} source manifest is missing camera bases: "
-            + ", ".join(missing)
+            f"Stage2-{stage.upper()} source manifest is missing camera bases: " + ", ".join(missing)
         )
 
     protocol_path = source_root / "dataset_protocol.json"
     source_protocol = (
-        json.loads(protocol_path.read_text(encoding="utf-8"))
-        if protocol_path.is_file()
-        else {}
+        json.loads(protocol_path.read_text(encoding="utf-8")) if protocol_path.is_file() else {}
     )
     outputs = []
     for fold, split_map in enumerate(CV5_FOLDS):
@@ -103,11 +101,14 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
                 reusable = False
                 if existing_protocol_path.is_file() and existing_manifest.is_file():
                     try:
-                        existing_protocol = json.loads(existing_protocol_path.read_text(encoding="utf-8"))
+                        existing_protocol = json.loads(
+                            existing_protocol_path.read_text(encoding="utf-8")
+                        )
                         provenance = existing_protocol.get("source_dataset_provenance", {})
                         reusable = (
                             provenance.get("manifest_sha256") == _sha256(source_manifest)
-                            and existing_protocol.get("split_protocol", {}).get("base_split") == split_map
+                            and existing_protocol.get("split_protocol", {}).get("base_split")
+                            == split_map
                         )
                     except (OSError, json.JSONDecodeError):
                         reusable = False
@@ -142,7 +143,7 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
         }
         if counts != expected_counts:
             raise AssertionError(
-                f"Stage11-{stage.upper()} fold {fold} counts {counts} != {expected_counts}"
+                f"Stage2-{stage.upper()} fold {fold} counts {counts} != {expected_counts}"
             )
 
         (fold_root / "base_split.json").write_text(
@@ -168,7 +169,9 @@ def prepare_stage(stage: str, *, force: bool = False) -> list[Path]:
                     "manifest": str(source_manifest),
                     "manifest_sha256": _sha256(source_manifest),
                     "dataset_protocol": str(protocol_path) if protocol_path.is_file() else None,
-                    "dataset_protocol_sha256": _sha256(protocol_path) if protocol_path.is_file() else None,
+                    "dataset_protocol_sha256": _sha256(protocol_path)
+                    if protocol_path.is_file()
+                    else None,
                 },
             }
         )
@@ -183,7 +186,7 @@ def main(*, stage: str, force: bool = False) -> None:
     stages = ("a", "b") if stage == "all" else (stage,)
     for current in stages:
         outputs = prepare_stage(current, force=force)
-        print(f"Stage11-{current.upper()} CV5 split views prepared:")
+        print(f"Stage2-{current.upper()} CV5 split views prepared:")
         for manifest in outputs:
             print(" ", manifest)
 

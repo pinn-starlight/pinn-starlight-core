@@ -2,6 +2,7 @@
 
 This is a diagnostic only; it does not use formal train/validation/test arrays.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -20,9 +21,8 @@ def main() -> None:
         image = rng.normal(size=shape)
         spatial = solver._apply_screened_operator(image, alpha)
         transformed = fft.dctn(spatial, type=2, norm="ortho")
-        expected = (
-            solver._screened_operator_symbol(shape, alpha)
-            * fft.dctn(image, type=2, norm="ortho")
+        expected = solver._screened_operator_symbol(shape, alpha) * fft.dctn(
+            image, type=2, norm="ortho"
         )
         error = float(np.max(np.abs(transformed - expected)))
         if error > 1e-9:
@@ -35,9 +35,9 @@ def main() -> None:
     symbol = solver._screened_operator_symbol(shape, alpha)
     image_coeff = fft.dctn(image, type=2, norm="ortho")
     forcing_coeff = fft.dctn(forcing, type=2, norm="ortho")
-    background_coeff = (
-        image_coeff - lambda_ls * symbol * forcing_coeff
-    ) / (1.0 + lambda_ls * symbol**2)
+    background_coeff = (image_coeff - lambda_ls * symbol * forcing_coeff) / (
+        1.0 + lambda_ls * symbol**2
+    )
     cosine_solution = fft.idctn(background_coeff, type=2, norm="ortho")
 
     count = shape[0] * shape[1]
@@ -64,7 +64,9 @@ def main() -> None:
         if error > 1e-9:
             raise AssertionError(f"torch/scipy DCT-II mismatch: {error}")
         roundtrip = solver._idct2_torch(solver._dct2_torch(tensor))
-        error = float(np.max(np.abs(roundtrip.detach().cpu().numpy() - tensor.detach().cpu().numpy())))
+        error = float(
+            np.max(np.abs(roundtrip.detach().cpu().numpy() - tensor.detach().cpu().numpy()))
+        )
         if error > 1e-9:
             raise AssertionError(f"torch DCT-II roundtrip mismatch: {error}")
 

@@ -16,7 +16,6 @@ import math
 
 import numpy as np
 
-
 BACKGROUND_TYPES = (
     "single_radial",
     "single_eccentric",

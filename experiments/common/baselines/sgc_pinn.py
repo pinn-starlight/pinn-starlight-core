@@ -1,8 +1,8 @@
-"""Stage11 final decoupled gradient-coordinated PINN.
+"""Stage2 final decoupled gradient-coordinated PINN.
 
 Formal follow-up method
 -----------------------
-This module contains only the final frozen method used by Stage11 confirmation
+This module contains only the final frozen method used by Stage2 confirmation
 runs.  It does not import or depend on research_diagnostics.
 
 Pipeline:
@@ -20,8 +20,8 @@ state and the same Stage-3 random batch sequence.
 
 from __future__ import annotations
 
-import math
 import time
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -29,12 +29,11 @@ import torch
 from scipy.optimize import nnls
 from tqdm import tqdm
 
+import pinn_starlight_core.nn.pinn_loss as pinn_loss
 from experiments.common.baselines import coordinate_pinn as base_pinn
 from experiments.common.utils import experiment_utils as utils
-import pinn_starlight_core.nn.pinn_loss as pinn_loss
 from pinn_starlight_core.data.image_loader import coordinate_grid
 from pinn_starlight_core.nn.pinn_layers import SkyglowMLP
-
 
 CONTROL_NAME = "data_finetune_control"
 METHOD_NAME = "pinn_decoupled_gradient"
@@ -50,19 +49,19 @@ def normalized_followup_config(config: dict) -> dict:
     stage3 = dict(cfg["stage3"])
 
     if float(stage1["alpha"]) != 0.5:
-        raise ValueError("Stage11 final PINN requires alpha=0.5")
+        raise ValueError("Stage2 final PINN requires alpha=0.5")
     if float(stage1.get("physics_weight", 0.0)) != 0.0:
-        raise ValueError("Stage11 final PINN Stage 1 must be data-only")
+        raise ValueError("Stage2 final PINN Stage 1 must be data-only")
     if float(stage1.get("sparse_weight", 0.0)) != 0.0:
-        raise ValueError("Stage11 final PINN Stage 1 sparse weight must be zero")
+        raise ValueError("Stage2 final PINN Stage 1 sparse weight must be zero")
     if bool(stage2.get("geometry_refinement", False)):
-        raise ValueError("Stage11 final PINN freezes forcing geometry")
+        raise ValueError("Stage2 final PINN freezes forcing geometry")
     if bool(stage3.get("neumann_boundary_loss", False)):
-        raise ValueError("Stage11 final PINN has no PINN Neumann boundary loss")
+        raise ValueError("Stage2 final PINN has no PINN Neumann boundary loss")
     if not bool(stage3.get("conflict_projection", False)):
-        raise ValueError("Stage11 final PINN requires conflict projection")
+        raise ValueError("Stage2 final PINN requires conflict projection")
     if float(stage3["lambda_min"]) != 0.0:
-        raise ValueError("Stage11 exact gradient balance requires lambda_min=0")
+        raise ValueError("Stage2 exact gradient balance requires lambda_min=0")
     if not (0.0 < float(stage3["rho"]) <= 1.0):
         raise ValueError("rho must be in (0,1]")
     if int(stage1["steps"]) <= 0 or int(stage3["steps"]) <= 0:
@@ -144,12 +143,8 @@ def run_paired(
         show_progress=show_progress,
     )
 
-    model_params = int(
-        sum(v.numel() for k, v in model_state.items() if torch.is_tensor(v))
-    )
-    forcing_params = int(
-        sum(v.numel() for k, v in forcing_state.items() if torch.is_tensor(v))
-    )
+    model_params = int(sum(v.numel() for k, v in model_state.items() if torch.is_tensor(v)))
+    forcing_params = int(sum(v.numel() for k, v in forcing_state.items() if torch.is_tensor(v)))
 
     shared = {
         "stage1_background_pred": np.asarray(stage1["background_pred"], dtype=np.float32),
@@ -215,9 +210,7 @@ def fit_fixed_forcing(
     model = SkyglowMLP(stage1_config["hidden_dims"]).to(device)
     model.load_state_dict(model_state)
     model.eval()
-    alpha = torch.tensor(
-        float(stage1_config["alpha"]), dtype=torch.float32, device=device
-    )
+    alpha = torch.tensor(float(stage1_config["alpha"]), dtype=torch.float32, device=device)
 
     q_parts = []
     chunk = 8192
@@ -273,13 +266,108 @@ def fit_fixed_forcing(
 
     component_diag = forcing.diagnostics(
         alpha,
-        inactive_relative_threshold=float(
-            stage1_config["inactive_relative_threshold"]
-        ),
+        inactive_relative_threshold=float(stage1_config["inactive_relative_threshold"]),
     )
     diagnostics["components"] = component_diag
     state = _cpu_state(forcing.state_dict())
     return state, diagnostics
+
+
+@dataclass
+class _FinetunePreparation:
+    """Everything the coordinated finetune loop needs, built once up front."""
+
+    model: torch.nn.Module
+    forcing: torch.nn.Module | None
+    optimizer: torch.optim.Optimizer
+    generator: torch.Generator
+    alpha: torch.Tensor
+    params: list
+
+
+def _prepare_finetune(
+    *,
+    observed,
+    model_state,
+    forcing_state,
+    stage1_config,
+    stage3_config,
+    initial_centers,
+    device,
+    seed,
+    use_physics,
+):
+    """Restore the stage-1 checkpoint and build the stage-3 optimizer.
+
+    The forcing templates are frozen here: stage 3 only adapts the background
+    network, so their gradients are disabled before the loop starts.
+    """
+    model = SkyglowMLP(stage1_config["hidden_dims"]).to(device)
+    model.load_state_dict(model_state)
+    model.train()
+    params = [parameter for parameter in model.parameters() if parameter.requires_grad]
+
+    alpha = torch.tensor(float(stage1_config["alpha"]), dtype=torch.float32, device=device)
+
+    forcing = None
+    if use_physics:
+        forcing = base_pinn._build_forcing(
+            observed,
+            stage1_config,
+            device,
+            initial_centers=initial_centers,
+        ).to(device)
+        forcing.load_state_dict(forcing_state)
+        forcing.set_center_gradient_enabled(False)
+        forcing.eval()
+        for parameter in forcing.parameters():
+            parameter.requires_grad_(False)
+
+    optimizer = torch.optim.Adam(params, lr=float(stage3_config["model_lr"]))
+    generator = torch.Generator(device=device)
+    generator.manual_seed(int(seed))
+
+    return _FinetunePreparation(
+        model=model,
+        forcing=forcing,
+        optimizer=optimizer,
+        generator=generator,
+        alpha=alpha,
+        params=params,
+    )
+
+
+@dataclass
+class _FinetuneStats:
+    """Per-run accumulators for the balance diagnostics reported in the summary."""
+
+    conflicts: int = 0
+    logged: int = 0
+    lambda_use: list = field(default_factory=list)
+    scaled_ratio: list = field(default_factory=list)
+    target_ratio: list = field(default_factory=list)
+    balance_error: list = field(default_factory=list)
+
+    def record(self, *, cosine, lambda_use, scaled_ratio, target_ratio):
+        """Accumulate one logged step of the physics branch."""
+        self.logged += 1
+        self.conflicts += int(cosine < 0.0)
+        self.lambda_use.append(lambda_use)
+        self.scaled_ratio.append(scaled_ratio)
+        self.target_ratio.append(target_ratio)
+        self.balance_error.append(abs(scaled_ratio - target_ratio))
+
+    def conflict_fraction(self):
+        """Share of logged steps whose raw physics gradient opposed the data one."""
+        return float(self.conflicts / self.logged) if self.logged else float("nan")
+
+    @staticmethod
+    def mean(values):
+        return float(np.mean(values)) if values else 0.0
+
+    @staticmethod
+    def median(values):
+        return float(np.median(values)) if values else 0.0
 
 
 def finetune(
@@ -302,32 +390,23 @@ def finetune(
     coords = coordinate_grid(height, width, device)
     values = torch.from_numpy(observed.reshape(-1)).to(device)
 
-    model = SkyglowMLP(stage1_config["hidden_dims"]).to(device)
-    model.load_state_dict(model_state)
-    model.train()
-    params = [p for p in model.parameters() if p.requires_grad]
-
-    alpha = torch.tensor(
-        float(stage1_config["alpha"]), dtype=torch.float32, device=device
+    preparation = _prepare_finetune(
+        observed=observed,
+        model_state=model_state,
+        forcing_state=forcing_state,
+        stage1_config=stage1_config,
+        stage3_config=stage3_config,
+        initial_centers=initial_centers,
+        device=device,
+        seed=seed,
+        use_physics=use_physics,
     )
-
-    forcing = None
-    if use_physics:
-        forcing = base_pinn._build_forcing(
-            observed,
-            stage1_config,
-            device,
-            initial_centers=initial_centers,
-        ).to(device)
-        forcing.load_state_dict(forcing_state)
-        forcing.set_center_gradient_enabled(False)
-        forcing.eval()
-        for parameter in forcing.parameters():
-            parameter.requires_grad_(False)
-
-    optimizer = torch.optim.Adam(params, lr=float(stage3_config["model_lr"]))
-    generator = torch.Generator(device=device)
-    generator.manual_seed(int(seed))
+    model = preparation.model
+    forcing = preparation.forcing
+    optimizer = preparation.optimizer
+    generator = preparation.generator
+    alpha = preparation.alpha
+    params = preparation.params
 
     steps = int(stage3_config["steps"])
     batch_size = min(int(stage1_config["batch_size"]), int(coords.shape[0]))
@@ -338,12 +417,7 @@ def finetune(
     ramp_steps = max(1, int(stage3_config["ramp_steps"]))
 
     history = []
-    conflicts = 0
-    logged_physics = 0
-    lambda_values = []
-    scaled_ratio_values = []
-    target_ratio_values = []
-    balance_error_values = []
+    stats = _FinetuneStats()
 
     started = time.perf_counter()
     iterator = range(1, steps + 1)
@@ -401,9 +475,7 @@ def finetune(
             background, laplacian, forcing_pred, alpha
         )
 
-        data_grads = torch.autograd.grad(
-            data_loss, params, retain_graph=True, create_graph=False
-        )
+        data_grads = torch.autograd.grad(data_loss, params, retain_graph=True, create_graph=False)
         physics_grads = torch.autograd.grad(
             physics_loss, params, retain_graph=False, create_graph=False
         )
@@ -422,15 +494,12 @@ def finetune(
             torch.zeros((), dtype=torch.float64, device=device),
         )
         used_physics_grads = [
-            gp - coefficient.to(gp.dtype) * gd
-            for gd, gp in zip(data_grads, physics_grads)
+            gp - coefficient.to(gp.dtype) * gd for gd, gp in zip(data_grads, physics_grads)
         ]
         used_phys_norm = torch.sqrt(_sum_sq(used_physics_grads) + eps)
 
         lambda_eff = rho * data_norm / (used_phys_norm + eps)
-        lambda_eff = torch.clamp(
-            lambda_eff, min=lambda_min, max=lambda_max
-        )
+        lambda_eff = torch.clamp(lambda_eff, min=lambda_min, max=lambda_max)
         ramp = min(1.0, float(step) / ramp_steps)
         lambda_use = lambda_eff * ramp
 
@@ -472,12 +541,12 @@ def finetune(
                     "projection_applied": projected,
                 }
             )
-            logged_physics += 1
-            conflicts += int(cosine < 0.0)
-            lambda_values.append(lam)
-            scaled_ratio_values.append(actual_ratio)
-            target_ratio_values.append(target_ratio)
-            balance_error_values.append(abs(actual_ratio - target_ratio))
+            stats.record(
+                cosine=cosine,
+                lambda_use=lam,
+                scaled_ratio=actual_ratio,
+                target_ratio=target_ratio,
+            )
 
             if show_progress and hasattr(iterator, "set_postfix"):
                 iterator.set_postfix(
@@ -504,27 +573,13 @@ def finetune(
         "final_data_loss": float(final_data),
         "final_physics_loss": float(final_physics if use_physics else 0.0),
         "final_lambda_use": float(final_lambda if use_physics else 0.0),
-        "gradient_conflict_fraction": (
-            float(conflicts / logged_physics) if logged_physics else float("nan")
-        ),
-        "mean_lambda_use": (
-            float(np.mean(lambda_values)) if lambda_values else 0.0
-        ),
-        "median_lambda_use": (
-            float(np.median(lambda_values)) if lambda_values else 0.0
-        ),
-        "mean_scaled_physics_to_data_ratio": (
-            float(np.mean(scaled_ratio_values)) if scaled_ratio_values else 0.0
-        ),
-        "median_scaled_physics_to_data_ratio": (
-            float(np.median(scaled_ratio_values)) if scaled_ratio_values else 0.0
-        ),
-        "mean_target_scaled_physics_to_data_ratio": (
-            float(np.mean(target_ratio_values)) if target_ratio_values else 0.0
-        ),
-        "mean_absolute_balance_error": (
-            float(np.mean(balance_error_values)) if balance_error_values else 0.0
-        ),
+        "gradient_conflict_fraction": stats.conflict_fraction(),
+        "mean_lambda_use": stats.mean(stats.lambda_use),
+        "median_lambda_use": stats.median(stats.lambda_use),
+        "mean_scaled_physics_to_data_ratio": stats.mean(stats.scaled_ratio),
+        "median_scaled_physics_to_data_ratio": stats.median(stats.scaled_ratio),
+        "mean_target_scaled_physics_to_data_ratio": stats.mean(stats.target_ratio),
+        "mean_absolute_balance_error": stats.mean(stats.balance_error),
         "projection_enabled": bool(use_physics),
         # Reconstruction backup only.  Saving the final network state does not
         # alter the optimization; it lets a disposable server be retired after

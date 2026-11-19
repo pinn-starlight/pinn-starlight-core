@@ -1,4 +1,4 @@
-"""Stage11 camera-base split protocols.
+"""Stage2 camera-base split protocols.
 
 The five camera-acquired reference bases are the independent grouping units.
 All semi-synthetic variants derived from one base must remain in the same split.
@@ -9,6 +9,7 @@ Two protocols are supported:
   exactly once.  Fold 0 deliberately matches the standard 3/1/1 split so the
   ordinary protocol is also one well-defined fold of the rotation.
 """
+
 from __future__ import annotations
 
 import os
@@ -55,7 +56,7 @@ CV5_SEQUENCE: tuple[str, ...] = (
 #   remaining three              -> train
 #
 # The sequence is fixed before formal evaluation.  It preserves the original
-# standard Stage11-A split as fold 0, then alternates single-frame and stacked
+# standard Stage2-A split as fold 0, then alternates single-frame and stacked
 # reference fields as far as possible.  No performance result is used to choose
 # any validation/test pairing.
 CV5_FOLDS: tuple[dict[str, str], ...] = tuple(
@@ -72,6 +73,7 @@ CV5_FOLDS: tuple[dict[str, str], ...] = tuple(
     for fold in range(len(CV5_SEQUENCE))
 )
 
+
 def validate_protocols() -> None:
     if set(STANDARD_BASE_SPLIT) != set(BASE_IDS):
         raise AssertionError("standard split does not cover exactly the five base IDs")
@@ -83,7 +85,10 @@ def validate_protocols() -> None:
     for fold_index, split in enumerate(CV5_FOLDS):
         if set(split) != set(BASE_IDS):
             raise AssertionError(f"cv5 fold {fold_index} has the wrong base-ID set")
-        counts = {name: sum(value == name for value in split.values()) for name in ("train", "validation", "test")}
+        counts = {
+            name: sum(value == name for value in split.values())
+            for name in ("train", "validation", "test")
+        }
         if counts != {"train": 3, "validation": 1, "test": 1}:
             raise AssertionError(f"cv5 fold {fold_index} is not a 3/1/1 split: {counts}")
         for base_id, value in split.items():

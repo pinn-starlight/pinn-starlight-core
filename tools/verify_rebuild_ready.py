@@ -1,9 +1,11 @@
-"""Verify that a restored Stage11 tree is ready for offline paper analysis."""
+"""Verify that a restored Stage2 tree is ready for offline paper analysis."""
+
 from __future__ import annotations
 
 import argparse
 import csv
 from pathlib import Path
+
 import numpy as np
 import tifffile as tif
 
@@ -44,7 +46,13 @@ def main():
         except Exception:
             bad_tiffs.append(str(bg))
         if args.require_derived:
-            for name in ("observed.tif", "residual_pred.tif", "observed.png", "background_pred.png", "residual_pred.png"):
+            for name in (
+                "observed.tif",
+                "residual_pred.tif",
+                "observed.png",
+                "background_pred.png",
+                "residual_pred.png",
+            ):
                 if not (bg.parent / name).is_file():
                     missing_derived.append(str(bg.parent / name))
 
@@ -74,7 +82,7 @@ def main():
 
     if missing or bad_tiffs or (args.require_derived and missing_derived):
         raise SystemExit(2)
-    print("Stage11 offline reconstruction readiness: PASS")
+    print("Stage2 offline reconstruction readiness: PASS")
 
 
 if __name__ == "__main__":

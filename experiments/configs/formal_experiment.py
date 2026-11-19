@@ -1,4 +1,4 @@
-"""Single source of truth for the Stage11 formal experiment configuration.
+"""Single source of truth for the Stage2 formal experiment configuration.
 
 Stage 10 changes the *benchmark semantics* and the physics-matched forcing model.  The camera-acquired reference is first
 flattened with a fixed method-independent low-frequency background estimator;
@@ -11,8 +11,8 @@ optimization problems.
 
 from __future__ import annotations
 
-from copy import deepcopy
 import math
+from copy import deepcopy
 
 FORMAL_CONFIG_SCHEMA_VERSION = 5
 FORMAL_SEEDS = (20260728, 20260729, 20260730)
@@ -157,13 +157,9 @@ FOURIER_LS_CONFIG = {
         "alpha": 0.5,
         "max_components": 3,
         "center_initialization": {
-            "rule": (
-                "observed-only P99.5 winsorization + Gaussian low-pass + greedy NMS"
-            ),
+            "rule": ("observed-only P99.5 winsorization + Gaussian low-pass + greedy NMS"),
             "winsor_percentile": _FORCING_COMMON["forcing_winsor_percentile"],
-            "low_pass_sigma_fraction": _FORCING_COMMON[
-                "forcing_low_pass_sigma_fraction"
-            ],
+            "low_pass_sigma_fraction": _FORCING_COMMON["forcing_low_pass_sigma_fraction"],
             "min_center_distance": _FORCING_COMMON["forcing_min_center_distance"],
             "center_refinement": _FORCING_COMMON["forcing_center_refinement"],
             "coordinate_rule": "observed_pixels_mapped_to_normalized_pixel_centers",
@@ -174,9 +170,7 @@ FOURIER_LS_CONFIG = {
             "rms_grid_size": _FORCING_COMMON["forcing_rms_grid_size"],
             "rms_epsilon": _FORCING_COMMON["forcing_rms_epsilon"],
             "weights_nonnegative": True,
-            "inactive_relative_threshold": _FORCING_COMMON[
-                "inactive_relative_threshold"
-            ],
+            "inactive_relative_threshold": _FORCING_COMMON["inactive_relative_threshold"],
         },
         "geometry": {
             "parameters_per_component": [
@@ -212,16 +206,16 @@ FOURIER_LS_CONFIG = {
 }
 
 
-# Stage11 frozen follow-up method.
+# Stage2 frozen follow-up method.
 #
 # This method is a post-Stage10 mechanism-driven confirmation branch.  Its
-# configuration is fixed before Stage11 test execution and is NOT selected on
+# configuration is fixed before Stage2 test execution and is NOT selected on
 # the current test split.  It is intentionally kept separate from FORMAL_METHODS
 # so the historical four-method benchmark remains auditable as originally
-# defined, while Stage11 adds a paired data-only vs improved-PINN confirmation.
+# defined, while Stage2 adds a paired data-only vs improved-PINN confirmation.
 FINAL_PINN_FOLLOWUP_CONFIG = {
     "paper_name": "decoupled_gradient_coordinated_PINN",
-    "status": "frozen_posthoc_followup_for_stage11_confirmation",
+    "status": "frozen_posthoc_followup_for_stage2_confirmation",
     "development_scope": "designed_from_prior_training-field_mechanism_diagnostics",
     "test_truth_usage": False,
     "stage1": {

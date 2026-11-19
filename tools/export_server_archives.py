@@ -1,4 +1,4 @@
-"""Incrementally export Stage11 server results into priority ZIP parts.
+"""Incrementally export Stage2 server results into priority ZIP parts.
 
 Designed for a disposable one-day GPU server:
 - keeps the generated synthetic_formal and synthetic_stage_b datasets;
@@ -13,20 +13,19 @@ Designed for a disposable one-day GPU server:
 Each ZIP is self-describing and contains an internal manifest.  The default
 part target is 4 GiB; change with --part-gib.
 """
+
 from __future__ import annotations
 
 import argparse
 import csv
 import hashlib
 import json
-import os
 import platform
 import subprocess
 import sys
 import time
 from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
-
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -43,9 +42,24 @@ PHASES = (
 PHASE_ORDER = {name: i for i, (name, _) in enumerate(PHASES)}
 
 TEXT_EXTS = {
-    ".py", ".pyi", ".ps1", ".sh", ".bat",
-    ".toml", ".lock", ".md", ".rst", ".txt", ".log",
-    ".json", ".csv", ".tsv", ".yaml", ".yml", ".ini", ".cfg",
+    ".py",
+    ".pyi",
+    ".ps1",
+    ".sh",
+    ".bat",
+    ".toml",
+    ".lock",
+    ".md",
+    ".rst",
+    ".txt",
+    ".log",
+    ".json",
+    ".csv",
+    ".tsv",
+    ".yaml",
+    ".yml",
+    ".ini",
+    ".cfg",
 }
 MODEL_EXTS = {".pt", ".pth", ".ckpt"}
 IMAGE_PREVIEW_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
@@ -68,12 +82,8 @@ def _norm_rel(path: Path) -> str:
 
 
 def _is_under_cv5_formal(rel: str) -> bool:
-    return (
-        "/experiments/outputs/cv5/fold_" in rel
-        and (
-            "/e2_benchmark/" in rel
-            or "/final_pinn_validation/" in rel
-        )
+    return "/experiments/outputs/cv5/fold_" in rel and (
+        "/e2_benchmark/" in rel or "/final_pinn_validation/" in rel
     )
 
 
@@ -82,9 +92,8 @@ def _is_under_cv5_selection(rel: str) -> bool:
 
 
 def _is_synthetic(rel: str) -> bool:
-    return (
-        rel.startswith("/collections/synthetic_formal/")
-        or rel.startswith("/collections/synthetic_stage_b/")
+    return rel.startswith("/collections/synthetic_formal/") or rel.startswith(
+        "/collections/synthetic_stage_b/"
     )
 
 
@@ -96,24 +105,28 @@ def _is_excluded_raw(rel: str) -> bool:
         return False
     if _is_synthetic(rel):
         return False
-    return (
-        rel.startswith("/collections/")
-        or rel.startswith("/test/")
-        or rel.startswith("/data/")
-    )
+    return rel.startswith("/collections/") or rel.startswith("/test/") or rel.startswith("/data/")
 
 
 def _is_cache_or_admin(rel: str, archive_dir: Path) -> bool:
     parts = Path(rel.lstrip("/")).parts
     ignored = (
-        ".git", ".pixi", ".venv", ".idea", ".agents",
-        "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache",
-        "build", "dist",
+        ".git",
+        ".pixi",
+        ".venv",
+        ".idea",
+        ".agents",
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+        "build",
+        "dist",
     )
     if any(x in parts for x in ignored):
         return True
     # Local, already-packed archives must never be re-archived.
-    if parts and parts[0] == "artifacts":
+    if parts and parts[0] == "archived":
         return True
     try:
         archive_rel = "/" + archive_dir.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
@@ -157,8 +170,10 @@ def classify(path: Path, archive_dir: Path) -> str | None:
     # All source/config/provenance/result tables/histories are tiny and crucial.
     if (
         suffix in TEXT_EXTS
-        or "/experiments/outputs/" in rel and suffix in TEXT_EXTS
-        or "/research_diagnostics/" in rel and suffix in TEXT_EXTS
+        or "/experiments/outputs/" in rel
+        and suffix in TEXT_EXTS
+        or "/research_diagnostics/" in rel
+        and suffix in TEXT_EXTS
     ):
         return "P00_core"
 
@@ -187,7 +202,7 @@ def classify(path: Path, archive_dir: Path) -> str | None:
         return "P07_remaining"
 
     # The rest of the project source snapshot is core unless it is a binary
-    # artifact.  This keeps exact Stage11 code/docs/pixi files.
+    # artifact.  This keeps exact Stage2 code/docs/pixi files.
     if not suffix or suffix in TEXT_EXTS:
         return "P00_core"
 
@@ -235,16 +250,20 @@ def _environment_snapshot(label: str) -> dict:
     }
     try:
         import torch
+
         info.update(
             {
                 "torch": torch.__version__,
                 "torch_cuda": torch.version.cuda,
                 "cuda_available": bool(torch.cuda.is_available()),
-                "cuda_device_count": int(torch.cuda.device_count()) if torch.cuda.is_available() else 0,
+                "cuda_device_count": int(torch.cuda.device_count())
+                if torch.cuda.is_available()
+                else 0,
                 "cuda_devices": [
-                    torch.cuda.get_device_name(i)
-                    for i in range(torch.cuda.device_count())
-                ] if torch.cuda.is_available() else [],
+                    torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())
+                ]
+                if torch.cuda.is_available()
+                else [],
             }
         )
     except Exception as exc:
@@ -269,8 +288,14 @@ def _write_json(path: Path, value):
 
 def _write_inventory(path: Path, rows: list[dict]):
     fields = [
-        "batch", "label", "phase", "part", "relative_path",
-        "size_bytes", "mtime_ns", "archive_name",
+        "batch",
+        "label",
+        "phase",
+        "part",
+        "relative_path",
+        "size_bytes",
+        "mtime_ns",
+        "archive_name",
     ]
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
@@ -320,7 +345,9 @@ def _zip_part(
         kwargs = {"compresslevel": int(compresslevel)}
 
     manifest_files = []
-    with ZipFile(zip_path, "w", compression=mode, allowZip64=True, strict_timestamps=False, **kwargs) as zf:
+    with ZipFile(
+        zip_path, "w", compression=mode, allowZip64=True, strict_timestamps=False, **kwargs
+    ) as zf:
         for path in files:
             rel = path.relative_to(PROJECT_ROOT).as_posix()
             sig = _signature(path)
@@ -424,12 +451,12 @@ def main():
 
     all_files.sort(key=lambda x: (PHASE_ORDER[x[0]], x[2]))
     by_phase = {name: [] for name, _ in PHASES}
-    for phase, path, rel, sig in all_files:
+    for phase, path, _rel, _sig in all_files:
         by_phase[phase].append(path)
 
     total_files = len(all_files)
     total_bytes = sum(path.stat().st_size for _, path, _, _ in all_files)
-    print(f"Stage11 archive batch B{batch:03d} label={args.label!r}")
+    print(f"Stage2 archive batch B{batch:03d} label={args.label!r}")
     print(f"new/changed files: {total_files}")
     print(f"uncompressed: {total_bytes / (1024**3):.3f} GiB")
     for phase, _ in PHASES:
@@ -516,17 +543,19 @@ def main():
     _write_json(state_path, state)
 
     order_lines = [
-        "Stage11 transfer order (higher priority first within each batch)",
+        "Stage2 transfer order (higher priority first within each batch)",
         "===============================================================",
         "",
         "Always transfer archive_index.json and archive_inventory.csv as tiny metadata.",
         "If time is limited, prioritize P00 -> P01 -> P02 -> P03 -> P04 -> P05 -> P06 -> P07.",
         "",
     ]
-    for rec in sorted(index["archives"], key=lambda x: (x["batch"], PHASE_ORDER[x["phase"]], x["part"])):
+    for rec in sorted(
+        index["archives"], key=lambda x: (x["batch"], PHASE_ORDER[x["phase"]], x["part"])
+    ):
         order_lines.append(
             f"{rec['archive_name']}  "
-            f"{rec['archive_bytes']/(1024**3):.3f} GiB  "
+            f"{rec['archive_bytes'] / (1024**3):.3f} GiB  "
             f"sha256={rec['sha256']}"
         )
     (archive_dir / "TRANSFER_ORDER.txt").write_text("\n".join(order_lines) + "\n", encoding="utf-8")
@@ -536,13 +565,15 @@ def main():
         f"label={args.label}",
         f"created_archives={len(created)}",
         f"new_files={total_files}",
-        f"new_uncompressed_gib={total_bytes/(1024**3):.3f}",
+        f"new_uncompressed_gib={total_bytes / (1024**3):.3f}",
         "",
         "You may transfer and then delete the Bxxx_*.zip files from the server.",
         "Do NOT delete archive_state.json/index/inventory until the very end.",
         "The incremental state prevents already-exported source files from being repacked.",
     ]
-    (archive_dir / f"B{batch:03d}_SUMMARY.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
+    (archive_dir / f"B{batch:03d}_SUMMARY.txt").write_text(
+        "\n".join(summary) + "\n", encoding="utf-8"
+    )
     print("index:", index_path)
     print("order:", archive_dir / "TRANSFER_ORDER.txt")
 

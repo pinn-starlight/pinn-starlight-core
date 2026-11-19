@@ -1,4 +1,5 @@
-"""Restore Stage11 incremental archive ZIPs into a local project tree."""
+"""Restore Stage2 incremental archive ZIPs into a local project tree."""
+
 from __future__ import annotations
 
 import argparse
@@ -6,7 +7,6 @@ import hashlib
 import json
 from pathlib import Path
 from zipfile import ZipFile
-
 
 INTERNAL_MANIFEST = "__stage11_archive__/manifest.json"
 
@@ -22,7 +22,7 @@ def sha256(path: Path) -> str:
 def read_internal_manifest(path: Path) -> dict:
     with ZipFile(path, "r") as zf:
         if INTERNAL_MANIFEST not in zf.namelist():
-            raise ValueError(f"not a Stage11 archive: {path}")
+            raise ValueError(f"not a Stage2 archive: {path}")
         return json.loads(zf.read(INTERNAL_MANIFEST).decode("utf-8"))
 
 
@@ -64,7 +64,7 @@ def main():
     archives.sort(key=lambda x: (x[0], x[1], x[2]))
 
     if not archives:
-        raise FileNotFoundError("no Stage11 archive ZIPs found")
+        raise FileNotFoundError("no Stage2 archive ZIPs found")
 
     index_path = archive_dir / "archive_index.json"
     expected_sha = {}
@@ -78,12 +78,12 @@ def main():
         if path.name in expected_sha:
             actual = sha256(path)
             if actual != expected_sha[path.name]:
-                raise IOError(f"archive SHA256 mismatch: {path.name}")
+                raise OSError(f"archive SHA256 mismatch: {path.name}")
 
         with ZipFile(path, "r") as zf:
             bad = zf.testzip()
             if bad:
-                raise IOError(f"ZIP CRC failure in {path.name}: {bad}")
+                raise OSError(f"ZIP CRC failure in {path.name}: {bad}")
             if args.verify_only:
                 file_count += len(manifest["files"])
                 continue

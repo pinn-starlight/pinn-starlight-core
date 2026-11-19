@@ -43,14 +43,12 @@ def build_variant_config(name: str, locked_pinn_config: dict) -> dict:
     return dict(pinn.normalized_config(config))
 
 
-
 def _formal_device():
     """Resolve the frozen single-GPU Stage10-A benchmark device."""
     device = torch.device(str(FORMAL_EXECUTION_CONFIG["benchmark_device"]))
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError(
-            "Formal Stage10-A requires CUDA for the frozen benchmark policy; "
-            "CUDA is not available."
+            "Formal Stage10-A requires CUDA for the frozen benchmark policy; CUDA is not available."
         )
     return device
 

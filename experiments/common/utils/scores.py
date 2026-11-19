@@ -1,4 +1,3 @@
-
 """Scientific image metrics. Inputs are never clipped here."""
 
 import numpy as np

@@ -8,17 +8,18 @@ It verifies:
 - low/high pairing on train + validation;
 - Stage10-A method/config compatibility relevant to Stage-B.
 """
+
 from __future__ import annotations
 
-from collections import Counter, defaultdict
 import json
+from collections import Counter, defaultdict
+
 import numpy as np
 
 from experiments.common.data.generate_stage_b import STAGE_B_MANIFEST
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils.stage_b_anchor import load_stage_a_anchor
 from experiments.configs.stage_b_experiment import STAGE_B_CONFIG
-
 
 EXPECTED_COUNTS = {"train": 24, "validation": 8, "test": 8}
 
@@ -61,8 +62,7 @@ def main():
         expected_split = STAGE_B_CONFIG["base_split"].get(base_id)
         if expected_split is None or row.get("split") != expected_split:
             raise ValueError(
-                f"Stage-B row split mismatch for {base_id}: "
-                f"{row.get('split')} != {expected_split}"
+                f"Stage-B row split mismatch for {base_id}: {row.get('split')} != {expected_split}"
             )
 
     # File existence for ALL splits is safe; do not decode test image arrays here.
@@ -124,9 +124,7 @@ def main():
         denom = np.maximum(np.abs(low["background"]), 1e-8)
         valid = np.abs(low["background"]) > 1e-6
         if np.any(valid):
-            ratio_err = np.median(
-                np.abs(high["background"][valid] / denom[valid] - expected_ratio)
-            )
+            ratio_err = np.median(np.abs(high["background"][valid] / denom[valid] - expected_ratio))
             if float(ratio_err) > 2e-3:
                 raise ValueError(f"{key}: high/low pollution scaling is inconsistent")
 

@@ -1,5 +1,7 @@
 """Create the Stage10-B Global Lock after all B selectors finish."""
+
 from __future__ import annotations
+
 import argparse
 from datetime import datetime
 
@@ -13,8 +15,8 @@ from experiments.configs.stage_b_experiment import (
     stage_b_selection_config,
 )
 from experiments.scripts.stage_b import (
-    select_gaussian,
     select_fourier_ls,
+    select_gaussian,
     select_pinn,
 )
 
@@ -41,12 +43,13 @@ FORMAL_SOURCE_FILES = (
     "src/pinn_starlight_core/nn/pinn_loss.py",
     "experiments/scripts/stage_b/formal_run.py",
     "experiments/scripts/final_pinn/common.py",
+    "experiments/scripts/final_pinn/followup.py",
     "experiments/scripts/final_pinn/stage_b.py",
 )
 
 
 def main(*, force=False):
-    output_root = utils.prepare_output_root(OUTPUT_ROOT, force=force)
+    utils.prepare_output_root(OUTPUT_ROOT, force=force)
 
     # Relevant A/B scientific compatibility only.  Do not run the whole A formal-config verifier.
     a_lock = load_stage_a_anchor()
@@ -141,8 +144,7 @@ def main(*, force=False):
             "global_lock_sha256": utils.file_sha256(utils.GLOBAL_CONFIGURATION_LOCK),
             "lock_state": a_lock["lock_state"],
             "formal_test_ready": bool(a_lock["formal_test_ready"]),
-            "compatibility_rule":
-                "method-specific selection/training configs and core method source matched Stage10-A",
+            "compatibility_rule": "method-specific selection/training configs and core method source matched Stage10-A",
         },
     }
     utils.write_json(LOCK_PATH, lock)

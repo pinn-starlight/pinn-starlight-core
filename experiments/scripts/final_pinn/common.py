@@ -1,12 +1,13 @@
-"""Shared Stage11 final-PINN evaluation helpers."""
+"""Shared Stage2 final-PINN evaluation helpers."""
+
 from __future__ import annotations
 
 import csv
 from pathlib import Path
+
 import numpy as np
 
 from experiments.common.utils import metrics
-
 
 PRIMARY_METRICS = (
     "bg_mae",
@@ -100,7 +101,7 @@ def paired_comparisons(rows, candidate="pinn_decoupled_gradient", baseline="data
                 tol = max(1e-12, 1e-8 * max(abs(av), abs(bv), 1.0))
                 if abs(delta) <= tol:
                     ties += 1
-                elif (delta < 0 if lower_better[metric] else delta > 0):
+                elif delta < 0 if lower_better[metric] else delta > 0:
                     wins += 1
                 else:
                     losses += 1

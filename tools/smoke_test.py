@@ -22,6 +22,7 @@ Usage
 
 Exit code is 0 only if every selected test passes.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,9 +44,7 @@ DEFAULT_STAGE_B = "clean_single_002_protected_overlap_high"
 # helpers
 # --------------------------------------------------------------------------
 def _stage_a_row(sample_id: str = DEFAULT_STAGE_A) -> dict:
-    rows = utils.load_manifest(
-        utils.SYNTHETIC_DATA_ROOT / "manifest.csv", split="validation"
-    )
+    rows = utils.load_manifest(utils.SYNTHETIC_DATA_ROOT / "manifest.csv", split="validation")
     for row in rows:
         if row["sample_id"] == sample_id:
             return row
@@ -98,9 +97,7 @@ def _stage_a(ctx: dict, downsample: int | None = None) -> dict:
 
 def _stage_b(ctx: dict, downsample: int | None = None) -> dict:
     ds = ctx["downsample"] if downsample is None else downsample
-    return _cached(
-        ctx, f"stage_b@{ds}", lambda: _load_sample(_stage_b_row(), ds, stage_b=True)
-    )
+    return _cached(ctx, f"stage_b@{ds}", lambda: _load_sample(_stage_b_row(), ds, stage_b=True))
 
 
 def _assert_finite(name: str, array) -> None:
@@ -204,9 +201,9 @@ def test_analytic_laplacian(ctx):
     )
     analytic_b, analytic_lap = pinn._background_and_laplacian(model, xy)
     direct = torch.sigmoid(model(xy).squeeze(-1))
-    grad = torch.autograd.grad(
-        direct, xy, grad_outputs=torch.ones_like(direct), create_graph=True
-    )[0]
+    grad = torch.autograd.grad(direct, xy, grad_outputs=torch.ones_like(direct), create_graph=True)[
+        0
+    ]
     parts = []
     for axis in (0, 1):
         second = torch.autograd.grad(
@@ -223,6 +220,43 @@ def test_analytic_laplacian(ctx):
     if b_err > 2e-6 or lap_err > 2e-5:
         raise AssertionError(f"b_err={b_err:.3e} lap_err={lap_err:.3e}")
     return f"background err {b_err:.2e}, laplacian err {lap_err:.2e}"
+
+
+def test_forcing_construction(ctx):
+    """Both EffectiveForcingMixture entry points must agree.
+
+    The demo builds the mixture from an ``ImageLoader`` while the formal
+    experiments pass a raw array, so a break in one path stays invisible to
+    the other.  Assert they produce the same geometry and the same output.
+    """
+    from pinn_starlight_core.data.image_loader import ImageLoader, rgb_to_gray
+    from pinn_starlight_core.nn.physics_model import EffectiveForcingMixture
+
+    device = ctx["device"]
+    path = utils.NATIVE_TEST_IMAGE
+    if not path.is_file():
+        return "skipped (native test image missing)"
+
+    loader = ImageLoader(path, device, downsample=ctx["downsample"])
+    from_loader = EffectiveForcingMixture(device, loader=loader, max_components=2)
+    from_array = EffectiveForcingMixture(
+        device, gray_img=rgb_to_gray(loader.rgb_data), max_components=2
+    )
+
+    same_centers = torch.equal(from_loader.initial_centers, from_array.initial_centers)
+    if not same_centers:
+        raise AssertionError("initial centers differ between loader and array construction")
+
+    alpha = torch.tensor(0.5, device=device)
+    coords = torch.tensor([[-0.5, 0.2], [0.1, -0.4], [0.7, 0.7]], device=device)
+    with torch.no_grad():
+        out_loader = from_loader(coords, alpha)
+        out_array = from_array(coords, alpha)
+    if not torch.equal(out_loader, out_array):
+        raise AssertionError("forcing output differs between loader and array construction")
+    if not torch.isfinite(out_loader).all():
+        raise AssertionError("forcing output is not finite")
+    return f"{from_loader.max_components} components, max |S| {float(out_loader.abs().max()):.3e}"
 
 
 def test_data_loading(ctx):
@@ -310,16 +344,11 @@ def test_pinn(ctx):
     # experiment layer reconstructs the residual from the observation.
     prediction = {
         "background_pred": result["background_pred"],
-        "residual_pred": utils.reconstruct_residual(
-            sample["observed"], result["background_pred"]
-        ),
+        "residual_pred": utils.reconstruct_residual(sample["observed"], result["background_pred"]),
     }
     _check_prediction("pinn", prediction, sample["observed"].shape)
     hist = result.get("history") or []
-    return (
-        f"{len(hist)} logged steps, bg mean "
-        f"{float(np.mean(result['background_pred'])):.4f}"
-    )
+    return f"{len(hist)} logged steps, bg mean {float(np.mean(result['background_pred'])):.4f}"
 
 
 def test_final_pinn(ctx):
@@ -375,9 +404,7 @@ def test_final_pinn(ctx):
     )
     prediction = {
         "background_pred": refined["background_pred"],
-        "residual_pred": utils.reconstruct_residual(
-            observed, refined["background_pred"]
-        ),
+        "residual_pred": utils.reconstruct_residual(observed, refined["background_pred"]),
     }
     _check_prediction("final_pinn", prediction, observed.shape)
     return (
@@ -385,6 +412,222 @@ def test_final_pinn(ctx):
         f"conflict frac {refined.get('gradient_conflict_fraction', float('nan')):.3f}, "
         f"bg mean {float(np.mean(refined['background_pred'])):.4f}"
     )
+
+
+def test_alpha_sweep(ctx):
+    """Alpha probe: chunked trajectory, loss decomposition, Cosine-LS guard restore."""
+    from experiments.common.baselines import cosine_ls
+    from experiments.scripts.diagnostics import alpha_sweep as probe
+
+    # The Cosine-LS profile search dominates runtime; a coarser grid keeps the
+    # smoke check fast without changing the code path.
+    sample = _stage_a(ctx, ctx["downsample"] * 2)
+    steps = max(4, int(ctx["steps"]))
+    run = probe._run_pinn(
+        sample,
+        suite="smoke",
+        alpha=1.0,
+        forcing_alpha="coupled",
+        steps=steps,
+        chunk=max(2, steps // 2),
+        device=ctx["device"],
+        seed=20260728,
+    )
+    _assert_finite("alpha.background", run["background_pred"])
+    if not run["curve_rows"]:
+        raise AssertionError("alpha sweep produced no curve rows")
+    for row in run["curve_rows"]:
+        scale = max(1.0, abs(float(row["eval_physics_loss"])))
+        if abs(float(row["terms_error"])) > 1e-9 * scale:
+            raise AssertionError(
+                f"physics decomposition does not close: {row['terms_error']} vs {scale}"
+            )
+        _assert_finite("alpha.term_sum", row["terms_sum"])
+        if not np.isfinite(float(row["physics_loss"])) or float(row["physics_loss"]) <= 0.0:
+            raise AssertionError("non-positive physics loss in alpha sweep")
+
+    run_ls = probe._run_ls(sample, alpha=1.0)
+    _assert_finite("alpha.ls_background", run_ls["background_pred"])
+    if float(cosine_ls.ALPHA) != 0.5:
+        raise AssertionError("Cosine-LS alpha guard was not restored after the diagnostic call")
+    return (
+        f"{len(run['curve_rows'])} chunk rows, terms closure ok, "
+        f"ls objective {float(run_ls['info']['objective']):.3e}"
+    )
+
+
+def test_init_memory(ctx):
+    """Init-memory probe: two initializations, SGC finetune and attribution."""
+    from experiments.scripts.diagnostics import init_memory as probe
+
+    sample = _stage_b(ctx)
+    sample.update(
+        stride=int(ctx["downsample"]),
+        split="validation",
+        dataset="stage_b",
+        scene_type="protected_overlap",
+    )
+    init_steps = max(4, int(ctx["steps"]) // 2)
+    finetune_steps = max(4, int(ctx["steps"]))
+    rows = []
+    for init in ("data_first", "physics_first"):
+        config, centers, init_result, seconds = probe._train_init(
+            sample,
+            suite="smoke",
+            init=init,
+            device=ctx["device"],
+            seed=20260728,
+            show_progress=False,
+            steps=init_steps,
+        )
+        rows.append(
+            probe._cell_row(
+                sample=sample,
+                suite="smoke",
+                init=init,
+                arm="none",
+                anchor_weight=0.0,
+                steps=0,
+                background=init_result["background_pred"],
+                runtime_s=seconds,
+            )
+        )
+        forcing_state, _ = probe._fit_forcing(
+            sample, init_result, config, centers, suite="smoke", device=ctx["device"], seed=20260728
+        )
+        refined, _ = probe._run_finetune(
+            sample,
+            init_result,
+            config,
+            centers,
+            forcing_state,
+            arm="sgc",
+            suite="smoke",
+            anchor_weight=0.0,
+            steps=finetune_steps,
+            device=ctx["device"],
+            seed=20260728,
+            show_progress=False,
+        )
+        rows.append(
+            probe._cell_row(
+                sample=sample,
+                suite="smoke",
+                init=init,
+                arm="sgc",
+                anchor_weight=0.0,
+                steps=finetune_steps,
+                background=refined["background_pred"],
+                runtime_s=0.0,
+            )
+        )
+
+    attribution = probe.attribution_rows(rows)
+    if len(attribution) != 1:
+        raise AssertionError(f"expected one attribution row, got {len(attribution)}")
+    if not np.isfinite(float(attribution[0]["init_effect"])):
+        raise AssertionError("init_effect is not finite")
+    projections = [float(row["projection_ratio"]) for row in rows]
+    _assert_finite("init_memory.projection", projections)
+    return (
+        f"init projection {projections[0]:+.3f} -> {projections[2]:+.3f}, "
+        f"init effect {attribution[0]['init_effect']:+.3f}"
+    )
+
+
+def test_modes(ctx):
+    """Mode switch: star equals the frozen SGC path, nebula/balanced stay finite."""
+    from experiments.common.baselines import mode_switch
+    from experiments.common.baselines import sgc_pinn as final_pinn
+
+    sample = _stage_a(ctx)
+    observed = sample["observed"]
+    config = mode_switch.build_config(suite="smoke", init_steps=6, finetune_steps=6, pinn_steps=6)
+    star = mode_switch.run_mode(
+        observed, mode="star", config=config, device=ctx["device"], seed=20260728
+    )
+    paired = final_pinn.run_paired(
+        observed,
+        config={
+            "stage1": config["stage1_data"],
+            "stage2": config["stage2"],
+            "stage3": config["stage3"],
+            "test_seeds": [20260728],
+        },
+        device=ctx["device"],
+        seed=20260728,
+        show_progress=False,
+    )
+    reference = paired["pinn_decoupled_gradient"]["background_pred"]
+    difference = float(np.max(np.abs(star["background_pred"] - reference)))
+    if difference > 1e-6:
+        raise AssertionError(
+            f"star mode drifted from the frozen SGC path: max|diff|={difference:.3e}"
+        )
+
+    for mode in ("nebula", "balanced"):
+        run = mode_switch.run_mode(
+            observed, mode=mode, config=config, device=ctx["device"], seed=20260728
+        )
+        _assert_finite(f"mode.{mode}", run["background_pred"])
+        if run["background_pred"].shape != observed.shape:
+            raise AssertionError(f"{mode} background shape mismatch")
+    return f"star matches SGC (max|diff|={difference:.1e}); nebula/balanced finite"
+
+
+def test_cli(ctx):
+    """Release CLI: version/doctor/estimate produce a valid summary JSON."""
+    import io
+    import json
+    import tempfile
+    from contextlib import redirect_stdout
+
+    from PIL import Image
+
+    from experiments.cli import main
+
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        if main(["version"]) != 0:
+            raise AssertionError("CLI version returned non-zero")
+        if main(["doctor", "--json"]) != 0:
+            raise AssertionError("CLI doctor returned non-zero")
+
+    with tempfile.TemporaryDirectory() as directory:
+        image_path = Path(directory) / "img.png"
+        rng = np.random.default_rng(7)
+        image = (rng.random((48, 56)) * 0.2 + 0.05).astype(np.float32)
+        Image.fromarray((np.clip(image, 0.0, 1.0) * 255).astype(np.uint8)).save(image_path)
+        out = Path(directory) / "out"
+        with redirect_stdout(buffer):
+            code = main(
+                [
+                    "estimate",
+                    "--image",
+                    str(image_path),
+                    "--methods",
+                    "fft_gaussian",
+                    "--steps",
+                    "3",
+                    "--max-side",
+                    "32",
+                    "--no-figure",
+                    "--json",
+                    "--out",
+                    str(out),
+                ]
+            )
+        if code != 0:
+            raise AssertionError(f"CLI estimate returned {code}")
+        summary_path = out / "img" / "summary.json"
+        if not summary_path.is_file():
+            raise AssertionError(f"CLI did not write {summary_path}")
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if "fft_gaussian" not in summary.get("methods", {}):
+            raise AssertionError("CLI summary is missing the fft_gaussian method")
+        if summary.get("input", {}).get("has_truth") is not False:
+            raise AssertionError("CLI should report has_truth=False for a photograph")
+    return "version/doctor/estimate ok; summary schema present"
 
 
 def test_metrics_stage_a(ctx):
@@ -402,8 +645,14 @@ def test_metrics_stage_a(ctx):
     }
     result = metrics.evaluate_synthetic(sample, prediction)
     core = (
-        "bg_mae", "bg_rmse", "bg_psnr", "bg_ssim",
-        "residual_mae", "residual_rmse", "residual_psnr", "residual_ssim",
+        "bg_mae",
+        "bg_rmse",
+        "bg_psnr",
+        "bg_ssim",
+        "residual_mae",
+        "residual_rmse",
+        "residual_psnr",
+        "residual_ssim",
         "star_f1",
     )
     for key in core:
@@ -413,7 +662,8 @@ def test_metrics_stage_a(ctx):
             raise AssertionError(f"metric {key} is not finite: {result[key]}")
     # Match-dependent metrics are legitimately NaN when nothing matches.
     undefined = sorted(
-        k for k, v in result.items()
+        k
+        for k, v in result.items()
         if isinstance(v, (int, float)) and v is not None and not np.isfinite(v)
     )
     note = f", undefined={undefined}" if undefined else ""
@@ -485,9 +735,7 @@ def test_generators(ctx):
         produced.append(background_type)
 
     for scene_type in stage_b_backgrounds.SCENE_TYPES:
-        scene = stage_b_backgrounds.generate_stage_b_scene(
-            64, 96, scene_type, "high", 20260728
-        )
+        scene = stage_b_backgrounds.generate_stage_b_scene(64, 96, scene_type, "high", 20260728)
         if not isinstance(scene, (tuple, list)) or len(scene) < 2:
             raise AssertionError(f"{scene_type} scene has unexpected structure")
         for item in scene:
@@ -503,9 +751,7 @@ def test_data_inventory(ctx):
     required = {
         "collections manifest": utils.COLLECTION_MANIFEST,
         "Stage-A manifest": utils.SYNTHETIC_DATA_ROOT / "manifest.csv",
-        "Stage-B manifest": utils.SYNTHETIC_DATA_ROOT.parent
-        / "synthetic_stage_b"
-        / "manifest.csv",
+        "Stage-B manifest": utils.SYNTHETIC_DATA_ROOT.parent / "synthetic_stage_b" / "manifest.csv",
         "E0 native test image": utils.NATIVE_TEST_IMAGE,
         "Global configuration lock": utils.GLOBAL_CONFIGURATION_LOCK,
         "Stage-B configuration lock": utils.BASE_OUTPUT_ROOT
@@ -535,8 +781,13 @@ TESTS = [
     ("data", test_data_loading),
     ("fft_gaussian", test_fft_gaussian),
     ("fourier_ls", test_fourier_ls),
+    ("forcing", test_forcing_construction),
     ("pinn", test_pinn),
     ("final_pinn", test_final_pinn),
+    ("alpha_sweep", test_alpha_sweep),
+    ("init_memory", test_init_memory),
+    ("modes", test_modes),
+    ("cli", test_cli),
     ("metrics_a", test_metrics_stage_a),
     ("metrics_b", test_metrics_stage_b),
     ("metrics_real", test_metrics_real),
@@ -561,8 +812,7 @@ def _preflight_data() -> None:
         "Stage-B manifest": STAGE_B_MANIFEST,
         "Global configuration lock": utils.GLOBAL_CONFIGURATION_LOCK,
     }
-    missing = [f"  {label}: {path}" for label, path in required.items()
-               if not Path(path).is_file()]
+    missing = [f"  {label}: {path}" for label, path in required.items() if not Path(path).is_file()]
     if not missing:
         return
 
@@ -573,7 +823,7 @@ def _preflight_data() -> None:
     print("\n".join(missing))
     print()
     print("This dataset is NOT tracked by git; it is extracted from the server")
-    print("transfer archives in artifacts/transfers/stage11_transfer_archives/.")
+    print("transfer archives in archived/transfers/stage11_transfer_archives/.")
     print()
     print("Fix with:")
     print("    bash tools/fetch_smoke_data.sh")

@@ -8,6 +8,7 @@ This command is deliberately post-processing only:
 - the top-row "background estimate" is the true ``background_pred.tif`` rendered
   in the source photograph's own NEF/camera-preview display style.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -183,8 +184,7 @@ def _source_map(real_root: Path) -> dict[str, Path]:
     for path in images:
         if path.stem in mapping:
             raise ValueError(
-                f"Duplicate source stem {path.stem!r}: "
-                f"{mapping[path.stem]} and {path}"
+                f"Duplicate source stem {path.stem!r}: {mapping[path.stem]} and {path}"
             )
         mapping[path.stem] = path
 
@@ -206,8 +206,7 @@ def _ensure_writable(paths, force: bool) -> None:
     if existing and not force:
         raise FileExistsError(
             "Display output already exists; use --force to replace "
-            "display-only files: "
-            + ", ".join(str(path) for path in existing[:3])
+            "display-only files: " + ", ".join(str(path) for path in existing[:3])
         )
 
 
@@ -287,16 +286,10 @@ def _save_full_comparison(
         axis.axis("off")
 
     for column, method in enumerate(METHODS, start=1):
-        axes[0, column].imshow(
-            rendered[method]["background_estimate_rgb"]
-        )
-        axes[0, column].set_title(
-            f"{METHOD_TITLES[method]} background estimate"
-        )
+        axes[0, column].imshow(rendered[method]["background_estimate_rgb"])
+        axes[0, column].set_title(f"{METHOD_TITLES[method]} background estimate")
         axes[1, column].imshow(rendered[method]["corrected_rgb"])
-        axes[1, column].set_title(
-            f"{METHOD_TITLES[method]} corrected"
-        )
+        axes[1, column].set_title(f"{METHOD_TITLES[method]} corrected")
         axes[0, column].axis("off")
         axes[1, column].axis("off")
 

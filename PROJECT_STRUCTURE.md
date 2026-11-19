@@ -18,11 +18,11 @@
 `pinn-starlight-core` 是 PINN-Starlight 的 Stage-11 研究仓库：
 
 - `src/pinn_starlight_core/` 提供可复用的核心 PINN 组件与一个独立小 demo；
-- `experiments/` 实现五种方法、Stage-A/B 数据与全部正式实验；
-- `run_stage11.py` 是正式实验的唯一调度入口；
+- `experiments/` 实现四种论文方法、三种运行模式、Stage-A/B 数据与全部正式实验；
+- `run_stage2.py` 是正式实验的唯一调度入口；
 - `scripts/` 放论文图流水线和一次性运维脚本；
 - `tools/` 负责服务器结果搬运、离线重建与指标回填；
-- `collections/`、`test/` 是数据根，`experiments/outputs/`、`paper_figures/`、`artifacts/` 是输出/归档。
+- `collections/`、`test/` 是数据根，`experiments/outputs/`、`paper_figures/`、`archived` 是输出/归档。
 
 ---
 
@@ -37,9 +37,8 @@ pinn-starlight-core/
 ├── .python-version               # Python 3.11
 ├── .gitignore / .gitattributes
 │
-├── run_stage11.py                # 正式实验调度器（GPU 隔离、数据准备、阶段编排）
-├── run_stage11.sh                # Linux 启动器（GPU/驱动/Pixi 环境检查）
-├── run_stage11.ps1               # Windows PowerShell 启动器
+├── run_stage2.py                # 正式实验调度器（GPU 隔离、数据准备、阶段编排）
+├── run_stage2.sh                # Linux 启动器（GPU/驱动/Pixi 环境检查）
 │
 ├── src/pinn_starlight_core/      # 可安装的核心包
 ├── experiments/                  # Stage-A/B、E1-E4、CV5 的实验代码
@@ -47,6 +46,7 @@ pinn-starlight-core/
 ├── tools/                        # 服务器归档/恢复/重建/回填工具
 ├── research_diagnostics/         # 冻结的探索性诊断
 │
+├── build/                        # 所有生成物（已忽略）：dist / tmp / lib / .ruff_cache
 ├── collections/                  # 数据清单与（运行后生成的）数据集
 ├── test/                         # 原始测试图像（native_test.tif）
 ├── paper_figures/                # 已生成的论文图 3/4/6
@@ -54,6 +54,30 @@ pinn-starlight-core/
 ├── logs/                         # 调度/训练日志（运行时生成，已忽略）
 └── artifacts/                    # 本地大文件归档（已忽略）
 ```
+
+### 生成物统一放在 `build/` 下
+
+根目录只放源码与配置。`dist/`、`tmp/`、`*.whl`、scratch 目录一律进 `build/`，
+不要再在根目录新建同名的生成目录：
+
+```text
+build/
+├── dist/            # uv build / python -m build 的产物
+├── tmp/             # 临时脚本输出、解压出来的归档
+├── lib/ bdist.*/    # setuptools 自己的构建工作区
+└── .ruff_cache/     # 由 pyproject [tool.ruff] cache-dir 指定
+```
+
+打包时显式指定输出目录：
+
+```bash
+uv build --out-dir build/dist
+python -m build --outdir build/dist
+python tools/build_release.py          # 打包并在干净 venv 里自检 CLI
+```
+
+注意 `build/` 是可整体删除的目录（`rm -rf build` 会连 `build/tmp/` 里的临时结果一起删掉）；
+需要长期保留的东西放 `experiments/outputs/` 或 `archived`。
 
 ---
 
@@ -110,9 +134,15 @@ test/*.tif
 ```text
 experiments/
 ├── configs/                     # 配置唯一来源
+├── cli/                         # pinn-starlight CLI（演示/发布，非正式入口）
+│   ├── commands/                # 每个子命令一个模块
+│   ├── context.py               # 常量、退出码、JSON 输出（纯标准库）
+│   ├── parser.py                # argparse 定义
+│   └── render.py                # 可选 preview.png（延迟 import matplotlib）
 ├── common/
-│   ├── baselines/               # 五种方法实现
+│   ├── baselines/               # 四种方法实现 + 模式封装
 │   ├── data/                    # 数据生成与背景建模
+│   ├── pipeline.py              # CLI/演示共用的单图方法链
 │   └── utils/                   # IO、指标、选择产物、Stage-B 专用工具
 └── scripts/
     ├── preflight/               # 只读预检
@@ -121,16 +151,17 @@ experiments/
     ├── config_lock/             # Global Configuration Lock
     ├── e2/                      # E2：冻结 benchmark
     ├── e3/                      # E3：PINN 消融
-    ├── e4/                      # E4：真实图像五方法对比
+    ├── e4/                      # E4：真实图像四方法对比
     ├── stage_b/                 # Stage-B：选择、lock、formal run
     ├── final_pinn/              # 最终 PINN 的配对评估与 CV5 聚合
     ├── protocol/                # Stage-A/B/CV5 的编排、准备与聚合
+    ├── diagnostics/             # 非正式机制探针（validation only）
     └── verify_cosine_ls/        # DCT-II LS 实现的数值自检
 ```
 
 `experiments/` 使用命名空间包组织（子目录没有 `__init__.py`），所有命令从仓库根目录运行。
 
-### 4.1 `common/baselines/`：五种方法
+### 4.1 `common/baselines/`：四种方法 + 运行模式
 
 | 文件 | 方法 | 角色 |
 | --- | --- | --- |
@@ -138,6 +169,8 @@ experiments/
 | `sgc_pinn.py` | SGC-PINN（最终方法） | Stage-11 最终方法：数据-only `B0` → 固定几何 forcing 拟合 → 解耦梯度微调 |
 | `fft_gaussian.py` | FFT-Gaussian | 频域高斯低通基线 |
 | `cosine_ls.py` | Cosine-LS（DCT-II 解析解） | 在 DCT-II 域解析求解 screened-Poisson；对 K 个 forcing 活跃集枚举 |
+| `mode_switch.py` | star / nebula / balanced | 三种工作点封装；balanced 用 physics-first 初始化 + 锚定微调，仅诊断/CLI 使用 |
+| `anchored_finetune.py` | 锚定微调 | 复制 SGC 投影逻辑并加初始化锚；anchor_weight=0 时委托正式 `finetune` |
 
 所有方法都遵守同一个边界：**只用观测值和 train/validation 做选择或训练，test 只在冻结之后打开**。
 
@@ -150,8 +183,6 @@ experiments/
 | `generate_synthetic.py` | 生成 Stage-A 半合成数据集 → `collections/synthetic_formal/` |
 | `stage_b_backgrounds.py` | Stage-B 的频谱重叠压力测试场景（含保护结构） |
 | `generate_stage_b.py` | 生成 Stage-B 数据集 → `collections/synthetic_stage_b/` |
-| `elliptical_background.py` | 旧椭圆背景工具的兼容包装与可视化示例 |
-| `exponential_background.py` | 旧指数背景工具的兼容包装与可视化示例 |
 
 ### 4.3 `common/utils/`：实验基础设施
 
@@ -202,6 +233,9 @@ experiments/
 | `protocol/run.py` | 编排 | 用同一个代码路径跑 standard / cv5 的 A/B 阶段 |
 | `protocol/prepare_cv5.py` | CV5 准备 | 生成五折 split view（只改 manifest，不复制 TIFF） |
 | `protocol/aggregate_cv5.py` | CV5 汇总 | 按 fold × method 聚合并输出均值/标准差 |
+| `diagnostics/init_memory.py` | 机制探针 | 初始化优势在微调后的保留量与锚定强度；只读 validation |
+| `diagnostics/alpha_sweep.py` | 机制探针 | alpha 对物理损失下降速度/窗口的影响；只读 validation |
+| `diagnostics/mode_eval.py` | 模式评估 | star / nebula / balanced 的背景、星点与投影权衡；只读 validation |
 | `verify_cosine_ls/run.py` | 自检 | 验证 DCT-II Neumann 实现 |
 
 ---
@@ -214,7 +248,7 @@ scripts/
     ├── collect_assets.py         # 自动匹配并收集冻结数组（推荐）
     ├── pack_figure_assets.py     # 按固定样本打包三张图的 ZIP
     ├── render_figures.py         # 参数化 --root 的渲染器
-    └── render_figures_server_exact.py  # 固定 /workspace/stage11 的精确渲染器
+    └── render_figures_server_exact.py  # 固定 /workspace/stage2 的精确渲染器
 ```
 
 这些脚本只读冻结结果，不训练模型、不修改原始输出。
@@ -230,6 +264,7 @@ scripts/
 | `rebuild_derived_outputs.py` | 从冻结的 `background_pred.tif` 重建 observed/residual TIFF 与 PNG |
 | `verify_rebuild_ready.py` | 校验恢复后的 manifest、TIFF 与派生文件完整性 |
 | `backfill_forced_reference_metrics.py` | 仅评估：对冻结预测回填 forced-reference 指标 |
+| `run_diagnostics.sh` | 一键跑 `alpha_sweep` / `init_memory`：预检解释器、CUDA 与 validation 数据，双卡并行，日志落 `build/diag_logs/` |
 
 典型链路：
 
@@ -242,7 +277,7 @@ scripts/
   -> verify_rebuild_ready.py     -> 完整性检查
 ```
 
-`export_server_archives.py` 会跳过 `artifacts/`、`.venv/`、`.idea/`、`.agents/`、缓存和原始 `collections/`/`test/` 数据，避免把本地归档再次打包。
+`export_server_archives.py` 会跳过 `archived`、`.venv/`、`.idea/`、`.agents/`、缓存和原始 `collections/`/`test/` 数据，避免把本地归档再次打包。
 
 ---
 
@@ -291,7 +326,7 @@ experiments/outputs/
 ├── e2_benchmark/                     # 三方法冻结 benchmark
 ├── e3_ablation/                      # Original-PINN 消融
 ├── final_pinn_validation/            # 最终 PINN 配对评估
-├── e4_real/                          # 真实图像五方法对比
+├── e4_real/                          # 真实图像四方法对比
 ├── stage_b/
 │   ├── selection/                    # 四个 Stage-B 选择器
 │   ├── configuration_lock/           # Stage-B Global Lock
@@ -299,6 +334,9 @@ experiments/outputs/
 │   └── final_pinn_validation/        # Stage-B 最终 PINN 评估
 ├── cv5/
 │   └── fold_0 … fold_4/              # 每折独立的 selection/benchmark/final 输出
+├── diagnostics/                      # 非正式机制探针输出（已忽略）
+│   ├── init_memory/
+│   └── alpha_sweep/
 └── cv5_summary/
     ├── stage_a/                      # baseline 五折汇总
     ├── stage_b/
@@ -309,13 +347,13 @@ experiments/outputs/
 
 - `paper_figures/`：论文图 3/4/6（PNG + PDF）；
 - `logs/`：调度器与 CV5 fold 日志；
-- `artifacts/`：本地大文件归档（默认被 git 忽略）。
+- `archived`：本地大文件归档（默认被 git 忽略）。
 
 ---
 
 ## 9. 运行主线
 
-正式入口统一是 `run_stage11.py`（由 `.sh`/`.ps1` 包装）。
+正式入口统一是 `run_stage2.py`（由 `run_stage2.sh` 包装）。
 
 ### 9.1 Stage-A（`a`）
 
@@ -359,7 +397,7 @@ protocol.prepare_cv5
 
 ```text
 experiments.scripts.real_images.run
-  -> 五种方法在 collections/real_high_pollution/ 上逐图推理
+  -> 四种方法在 collections/real_high_pollution/ 上逐图推理
   -> experiments/outputs/e4_real/
 ```
 
@@ -379,7 +417,7 @@ experiments.scripts.real_images.run
 下图是主要依赖方向（`experiments/configs` 也会引用 `experiments/common` 中的场景定义）：
 
 ```text
-run_stage11.py
+run_stage2.py
   └── experiments/scripts/*            # 阶段编排、入口
         ├── experiments/configs/*      # 配置与协议
         ├── experiments/common/*       # 方法、数据、指标
@@ -390,7 +428,9 @@ run_stage11.py
 
 - 新方法：放 `experiments/common/baselines/`，并在 `experiments/configs/formal_experiment.py` 登记；
 - 新指标：放 `experiments/common/utils/metrics.py` 或 `scores.py`；
-- 新实验阶段：放 `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage11.py` 编排；
+- 新实验阶段：放 `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage2.py` 编排；
+- 机制探针：放 `experiments/scripts/diagnostics/`，只读 validation、只写 `experiments/outputs/diagnostics/`，不得改动正式 config/lock；
+- CLI 与演示：`experiments/cli.py` + `experiments/common/pipeline.py`；CLI 只做单图估计/环境检查，不进入 `run_stage2.py`；
 - 一次性脚本：放 `scripts/figures/`，不要堆回根目录；
 - 服务器数据工具：放 `tools/`；
 - 不要手改 `experiments/outputs/`、`paper_figures/` 里的结果；重新生成请走脚本。
@@ -401,11 +441,11 @@ run_stage11.py
 
 ```bash
 # 正式实验
-./run_stage11.sh a
-./run_stage11.sh b
-./run_stage11.sh cv5
-./run_stage11.sh e4
-./run_stage11.sh all
+./run_stage2.sh a
+./run_stage2.sh b
+./run_stage2.sh cv5
+./run_stage2.sh e4
+./run_stage2.sh all
 
 # 单阶段（示例）
 pixi run -e remote python -m experiments.scripts.protocol.run \
@@ -414,13 +454,22 @@ pixi run -e remote python -m experiments.scripts.protocol.run \
 # 数据预检
 pixi run -e remote python -m experiments.scripts.preflight.run
 
+# 机制探针（非正式，validation only）
+python -m experiments.scripts.diagnostics.init_memory --suite smoke
+python -m experiments.scripts.diagnostics.alpha_sweep --suite smoke
+python -m experiments.scripts.diagnostics.mode_eval --suite smoke
+
+# CLI（演示/发布）
+python -m experiments.cli version
+python -m experiments.cli estimate --image photo.jpg --mode star
+
 # 论文图
-pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage11 --dry-run
-pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage11 --zip
+pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage2 --dry-run
+pixi run -e remote python scripts/figures/collect_assets.py --root /workspace/stage2 --zip
 pixi run -e remote python scripts/figures/render_figures_server_exact.py --out paper_figures --dpi 600
 
 # 归档恢复/重建
-pixi run -e remote python tools/restore_server_archives.py artifacts/transfers/stage11_transfer_archives .
+pixi run -e remote python tools/restore_server_archives.py archived/transfers/stage11_transfer_archives .
 pixi run -e remote python tools/rebuild_derived_outputs.py
 pixi run -e remote python tools/verify_rebuild_ready.py --require-derived
 
@@ -431,14 +480,14 @@ pixi run -e remote python tools/verify_rebuild_ready.py --require-derived
 
 ## 12. 历史与归档
 
-- `scripts/figures/legacy/`：旧版图脚本（`collect_figure_assets.py`、`collect_stage11_figure_assets.py`、`render_figures_exact_v1.py`），仅作历史参考。
-- `artifacts/`：
+- `scripts/figures/legacy/`：旧版图脚本（`collect_figure_assets.py`、`collect_stage2_figure_assets.py`、`render_figures_exact_v1.py`），仅作历史参考。
+- `archived`：
   - `transfers/stage11_transfer_archives/`：服务器搬运 ZIP（约 9.6 GB）；
   - `transfers/transfer_forced_reference_20260912_225540/`：forced-reference 回填批次；
   - `review/e4_review_for_paper.zip`：E4 审阅图；
   - `logs/`：已结束的 backfill 日志/PID/退出码；
   - `patches/PATCH_MANIFEST.json`：历史补丁清单。
-- `artifacts/` 除 `README.md` 外均被 `.gitignore` 忽略；确认备份后可释放空间。
+- `archived` 除 `README.md` 外均被 `.gitignore` 忽略；确认备份后可释放空间。
 
 ---
 
@@ -455,7 +504,7 @@ python -m compileall -q src experiments tools scripts
 PYTHONPATH=src python -c "import pinn_starlight_core; import experiments.scripts.protocol.run"
 
 # 入口帮助
-python run_stage11.py --help
+python run_stage2.py --help
 python tools/restore_server_archives.py --help
 python scripts/figures/collect_assets.py --help
 ```

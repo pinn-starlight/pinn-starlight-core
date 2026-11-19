@@ -14,7 +14,7 @@ set -euo pipefail
 PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-ARCHIVES="${ARCHIVES:-$PROJECT_ROOT/artifacts/transfers/stage11_transfer_archives}"
+ARCHIVES="${ARCHIVES:-$PROJECT_ROOT/archived/transfers/stage11_transfer_archives}"
 STAGE_A_SAMPLE="${STAGE_A_SAMPLE:-clean_single_002_multi_source_high}"
 STAGE_B_SAMPLE="${STAGE_B_SAMPLE:-clean_single_002_protected_overlap_high}"
 

@@ -1,6 +1,6 @@
 [project]
 name = "pinn-starlight-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Physics-inspired night-sky background estimation experiments"
 requires-python = ">=3.11,<3.12"
 dependencies = [
@@ -19,25 +19,50 @@ dependencies = [
     "scikit-image>=0.26.0",
     "astropy",
     "photutils",
-
+    # torch/torchvision 故意不放在这里：它们是 CUDA profile 相关依赖，由下面的
+    # [tool.pixi.feature.*] 按机器 GPU 选择 cu126 / cu130 版本。若放回 [project]
+    # 并配 [tool.uv.sources]，cu126 的索引映射会对所有环境生效，与 blackwell
+    # 特征的 cu130 索引冲突（Pixi 报 "conflicting indexes for package torch"）。
 ]
 
 [project.scripts]
 pinn-starlight-core = "pinn_starlight_core.main:main"
+pinn-starlight = "experiments.cli:main"
+
+# Optional extras keep the base install tiny: without them the release CLI can
+# still run `version`, `doctor` and `samples` (they only need the standard
+# library).  `estimate` needs the scientific stack.
+[project.optional-dependencies]
+# Everything `pinn-starlight estimate` needs except torch / torchvision, which
+# must come from the CUDA-matched index (see [tool.pixi.feature.*] below) or
+# from the `cpu-torch` extra for a CPU-only install.
+estimator = [
+    "numpy>=2.4.4",
+    "scipy",
+    "scikit-image>=0.26.0",
+    "photutils",
+    "tifffile>=2026.3.3",
+    "matplotlib>=3.10.9",
+    "pillow>=12.2.0",
+    "tqdm==4.66.5",
+    "lightning>=2.6.5",
+    "segmentation-models-pytorch>=0.5.0",
+    "astropy",
+]
+# CPU-only PyTorch pair, for portable bundles and machines without CUDA.
+cpu-torch = [
+    "torch>=2.6",
+    "torchvision>=0.21",
+]
+# RAW camera decoding; only needed for .nef / .cr2 / .dng inputs.
+photo = [
+    "rawpy==0.27.0",
+]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
 ]
-
-[tool.uv.sources]
-torch = { index = "pytorch-cu126" }
-torchvision = { index = "pytorch-cu126" }
-
-[[tool.uv.index]]
-name = "pytorch-cu126"
-url = "https://download.pytorch.org/whl/cu126"
-explicit = true
 
 [[tool.uv.index]]
 name = "pypi-mirror"
@@ -67,26 +92,26 @@ pinn-starlight-core = { path = ".", editable = true }
 platforms = ["win-64"]
 
 [tool.pixi.feature.local.pypi-dependencies]
-torch = { version = "==2.14.0", index = "https://download.pytorch.org/whl/cu126" }
-torchvision = { version = "==0.29.0", index = "https://download.pytorch.org/whl/cu126" }
+torch = { version = "==2.14.0+cu126", index = "https://download.pytorch.org/whl/cu126" }
+torchvision = { version = "==0.29.0+cu126", index = "https://download.pytorch.org/whl/cu126" }
 
 [tool.pixi.feature.local.activation.env]
-STAGE11_MACHINE_ROLE = "local"
-STAGE11_CUDA_PROFILE = "cu126"
-STAGE11_PIXI_ENVIRONMENT = "default"
+STAGE2_MACHINE_ROLE = "local"
+STAGE2_CUDA_PROFILE = "cu126"
+STAGE2_PIXI_ENVIRONMENT = "default"
 
 # General rental/remote profile: non-Blackwell NVIDIA GPUs, Win/Linux, cu126.
 [tool.pixi.feature.remote]
 platforms = ["win-64", "linux-64"]
 
 [tool.pixi.feature.remote.pypi-dependencies]
-torch = { version = "==2.14.0", index = "https://download.pytorch.org/whl/cu126" }
-torchvision = { version = "==0.29.0", index = "https://download.pytorch.org/whl/cu126" }
+torch = { version = "==2.14.0+cu126", index = "https://download.pytorch.org/whl/cu126" }
+torchvision = { version = "==0.29.0+cu126", index = "https://download.pytorch.org/whl/cu126" }
 
 [tool.pixi.feature.remote.activation.env]
-STAGE11_MACHINE_ROLE = "remote"
-STAGE11_CUDA_PROFILE = "cu126"
-STAGE11_PIXI_ENVIRONMENT = "remote"
+STAGE2_MACHINE_ROLE = "remote"
+STAGE2_CUDA_PROFILE = "cu126"
+STAGE2_PIXI_ENVIRONMENT = "remote"
 
 # Blackwell rental/remote profile: RTX 50-series / Blackwell, Win/Linux, cu130.
 # It is separate because one Pixi environment cannot dynamically change the
@@ -95,13 +120,13 @@ STAGE11_PIXI_ENVIRONMENT = "remote"
 platforms = ["win-64", "linux-64"]
 
 [tool.pixi.feature.blackwell.pypi-dependencies]
-torch = { version = "==2.14.0", index = "https://download.pytorch.org/whl/cu130" }
-torchvision = { version = "==0.29.0", index = "https://download.pytorch.org/whl/cu130" }
+torch = { version = "==2.14.0+cu130", index = "https://download.pytorch.org/whl/cu130" }
+torchvision = { version = "==0.29.0+cu130", index = "https://download.pytorch.org/whl/cu130" }
 
 [tool.pixi.feature.blackwell.activation.env]
-STAGE11_MACHINE_ROLE = "remote"
-STAGE11_CUDA_PROFILE = "cu130"
-STAGE11_PIXI_ENVIRONMENT = "remote-blackwell"
+STAGE2_MACHINE_ROLE = "remote"
+STAGE2_CUDA_PROFILE = "cu130"
+STAGE2_PIXI_ENVIRONMENT = "remote-blackwell"
 
 [tool.pixi.environments]
 default = { features = ["local"], solve-group = "local-cu126" }
@@ -120,9 +145,43 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+# Two roots: the installable core lives in src/, the research package (methods,
+# configs, CLI) lives at the repository root.  The wheel ships both so the
+# `pinn-starlight` entry point works outside the checkout.
+package-dir = {"" = "src", "experiments" = "experiments"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["pinn_starlight_core*", "experiments*"]
+exclude = ["experiments.outputs*"]
+namespaces = true
 
 [tool.pixi.tasks]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# Generated files live under build/ so the repository root stays source-only.
+cache-dir = "build/.ruff_cache"
+extend-exclude = ["experiments/outputs", "artifacts", "collections"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+ignore = [
+    # Adding strict= to every zip() would change failure behavior; do it
+    # deliberately, one call site at a time.
+    "B905",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# These scripts prepend the repo to sys.path before importing project modules.
+"tools/*.py" = ["E402"]
+# Re-export surfaces.
+"src/pinn_starlight_core/physics/__init__.py" = ["F401"]
+# objective_one/callback close over loop variables but are consumed by
+# minimize() inside the same iteration, so they never escape the loop.
+"experiments/common/baselines/cosine_ls.py" = ["B023"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

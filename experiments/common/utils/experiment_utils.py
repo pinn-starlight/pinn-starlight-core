@@ -1,5 +1,5 @@
 """正式实验共用的数据、随机种子和结果保存工具。"""
-import argparse
+
 import csv
 import json
 import os
@@ -12,80 +12,82 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-import torch
 import tifffile as tif
+import torch
 from PIL import Image
 
-from pinn_starlight_core.data.image_loader import ImageLoader
+from experiments.common.utils.paths import (
+    BASE_OUTPUT_ROOT,
+    COLLECTION_MANIFEST,
+    COLLECTION_ROOT,
+    CV_FOLD,
+    DATA_ROOT,
+    FOURIER_LS_SELECTION_ARTIFACT,
+    FOURIER_LS_SELECTION_ROOT,
+    GAUSSIAN_SELECTION_ARTIFACT,
+    GAUSSIAN_SELECTION_ROOT,
+    GLOBAL_CONFIGURATION_LOCK,
+    LEGACY_SYNTHETIC_ROOT,
+    NATIVE_TEST_IMAGE,
+    OUTPUT_NAMESPACE,
+    OUTPUT_ROOT,
+    PINN_SELECTION_ARTIFACT,
+    PINN_SELECTION_ROOT,
+    PROJECT_ROOT,
+    REAL_HIGH_POLLUTION_ROOT,
+    SEEDS,
+    SELECTION_ROOT,
+    SPLIT_MODE,
+    SYNTHETIC_DATA_ROOT,
+    SYNTHETIC_MANIFEST,
+    SYNTHETIC_ROOT,
+    TEST_ROOT,
+    load_manifest,
+    project_relative,
+    resolve_collection_path,
+    supported_image_files,
+    to_absolute_path,
+)
 from experiments.configs.formal_experiment import (
     FORMAL_SEEDS,
     FOURIER_LS_CONFIG,
     formal_config_snapshot,
 )
-from experiments.configs.split_protocols import active_protocol_from_env
+from pinn_starlight_core.data.image_loader import ImageLoader
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-BASE_OUTPUT_ROOT = PROJECT_ROOT / "experiments/outputs"
-SPLIT_MODE, CV_FOLD = active_protocol_from_env()
-if SPLIT_MODE == "standard":
-    OUTPUT_ROOT = BASE_OUTPUT_ROOT
-    OUTPUT_NAMESPACE = "standard"
-else:
-    OUTPUT_ROOT = BASE_OUTPUT_ROOT / "cv5" / f"fold_{CV_FOLD}"
-    OUTPUT_NAMESPACE = f"cv5/fold_{CV_FOLD}"
-
-
-def _resolve_data_root() -> Path:
-    """Resolve the external data root without changing the experiment protocol.
-
-    Supported layouts, in priority order:
-    1. ``PINN_STARLIGHT_DATA_ROOT`` points to a directory containing
-       ``collections/`` and ``test/``;
-    2. root-level ``collections/`` / ``test/`` beside the project files;
-    3. legacy ``data/collections`` / ``data/test``.
-    """
-    configured = os.environ.get("PINN_STARLIGHT_DATA_ROOT")
-    if configured:
-        return Path(configured).expanduser().resolve()
-
-    root_layout = PROJECT_ROOT
-    legacy_layout = PROJECT_ROOT / "data"
-    if (root_layout / "collections").exists() or (root_layout / "test").exists():
-        return root_layout
-    if (legacy_layout / "collections").exists() or (legacy_layout / "test").exists():
-        return legacy_layout
-
-    # The user's current formal layout is root-level. Returning PROJECT_ROOT when
-    # no data are mounted also keeps imports side-effect free; preflight gives a
-    # precise error before any formal run if the data are elsewhere.
-    return root_layout
-
-
-DATA_ROOT = _resolve_data_root()
-COLLECTION_ROOT = DATA_ROOT / "collections"
-COLLECTION_MANIFEST = COLLECTION_ROOT / "manifest.csv"
-TEST_ROOT = DATA_ROOT / "test"
-NATIVE_TEST_IMAGE = TEST_ROOT / "native_test.tif"
-REAL_HIGH_POLLUTION_ROOT = COLLECTION_ROOT / "real_high_pollution"
-
-# ``collections/synthetic`` is the legacy 10-sample set in the user's current
-# data tree. Formal Stage-7+ data are isolated in a new directory.
-LEGACY_SYNTHETIC_ROOT = COLLECTION_ROOT / "synthetic"
-SYNTHETIC_DATA_ROOT = COLLECTION_ROOT / "synthetic_formal"
-if SPLIT_MODE == "standard":
-    SYNTHETIC_ROOT = SYNTHETIC_DATA_ROOT
-else:
-    SYNTHETIC_ROOT = SYNTHETIC_DATA_ROOT / "cv5" / f"fold_{CV_FOLD}"
-SYNTHETIC_MANIFEST = SYNTHETIC_ROOT / "manifest.csv"
-SELECTION_ROOT = OUTPUT_ROOT / "selection"
-PINN_SELECTION_ROOT = SELECTION_ROOT / "pinn"
-GAUSSIAN_SELECTION_ROOT = SELECTION_ROOT / "fft_gaussian"
-FOURIER_LS_SELECTION_ROOT = SELECTION_ROOT / "fourier_ls"
-PINN_SELECTION_ARTIFACT = PINN_SELECTION_ROOT / "pinn_selected.json"
-GAUSSIAN_SELECTION_ARTIFACT = GAUSSIAN_SELECTION_ROOT / "gaussian_selected.json"
-FOURIER_LS_SELECTION_ARTIFACT = FOURIER_LS_SELECTION_ROOT / "fourier_ls_selected.json"
-GLOBAL_CONFIGURATION_LOCK = OUTPUT_ROOT / "configuration_lock/global_configuration_lock.json"
-SEEDS = tuple(FORMAL_SEEDS)
+__all__ = [
+    "BASE_OUTPUT_ROOT",
+    "COLLECTION_MANIFEST",
+    "COLLECTION_ROOT",
+    "CV_FOLD",
+    "DATA_ROOT",
+    "FORMAL_SEEDS",
+    "FOURIER_LS_SELECTION_ARTIFACT",
+    "FOURIER_LS_SELECTION_ROOT",
+    "GAUSSIAN_SELECTION_ARTIFACT",
+    "GAUSSIAN_SELECTION_ROOT",
+    "GLOBAL_CONFIGURATION_LOCK",
+    "LEGACY_SYNTHETIC_ROOT",
+    "NATIVE_TEST_IMAGE",
+    "OUTPUT_NAMESPACE",
+    "OUTPUT_ROOT",
+    "PINN_SELECTION_ARTIFACT",
+    "PINN_SELECTION_ROOT",
+    "PROJECT_ROOT",
+    "REAL_HIGH_POLLUTION_ROOT",
+    "SELECTION_ROOT",
+    "SEEDS",
+    "SPLIT_MODE",
+    "SYNTHETIC_DATA_ROOT",
+    "SYNTHETIC_MANIFEST",
+    "SYNTHETIC_ROOT",
+    "TEST_ROOT",
+    "load_manifest",
+    "project_relative",
+    "resolve_collection_path",
+    "supported_image_files",
+    "to_absolute_path",
+]
 
 
 def set_seed(seed: int):
@@ -97,53 +99,10 @@ def set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
 
 
-def to_absolute_path(path):
-    """把 manifest 中的项目相对路径转换为绝对路径。"""
-    path = Path(path)
-    return path if path.is_absolute() else PROJECT_ROOT / path
-
-
-def resolve_collection_path(path) -> Path:
-    """Resolve one ``collections/manifest.csv`` path in all supported layouts."""
-    path = Path(path)
-    if path.is_absolute():
-        return path
-    parts = path.parts
-    if len(parts) >= 2 and parts[:2] == ("data", "collections"):
-        return DATA_ROOT / Path(*parts[1:])
-    if parts and parts[0] == "collections":
-        return DATA_ROOT / path
-    return COLLECTION_ROOT / path
-
-
-def supported_image_files(directory: Path):
-    """Return deterministic real-image candidates from one directory."""
-    directory = Path(directory)
-    extensions = {
-        ".nef", ".cr2", ".cr3", ".arw", ".dng",
-        ".tif", ".tiff", ".png", ".jpg", ".jpeg",
-    }
-    if not directory.is_dir():
-        return []
-    return sorted(
-        path for path in directory.iterdir()
-        if path.is_file() and path.suffix.lower() in extensions
-    )
-
-
-def project_relative(path):
-    """返回便于移动项目的相对路径。"""
-    path = Path(path).resolve()
-    try:
-        return path.relative_to(PROJECT_ROOT.resolve()).as_posix()
-    except ValueError:
-        return str(path)
-
-
-def prepare_output_root(path, force = False) -> Path:
+def prepare_output_root(path, force=False) -> Path:
     """
-        创建输出根目录，并且可以用参数强制覆盖
-        return Path
+    创建输出根目录，并且可以用参数强制覆盖
+    return Path
     """
     path = Path(path)
     if not path.exists():
@@ -162,7 +121,7 @@ def prepare_output_root(path, force = False) -> Path:
     return path
 
 
-def load_gray_image(path, downsample = 1) -> np.ndarray:
+def load_gray_image(path, downsample=1) -> np.ndarray:
     """读取一张线性灰度图，返回范围为 [0, 1] 的 float32 数组。"""
     path = to_absolute_path(path)
 
@@ -173,24 +132,6 @@ def load_gray_image(path, downsample = 1) -> np.ndarray:
     gray = gray.reshape(H, W)
 
     return np.clip(gray, 0.0, 1.0).astype(np.float32)
-
-
-def load_manifest(path=SYNTHETIC_MANIFEST, split: str | None = None):
-    """读取正式合成数据 manifest，可按 split 过滤。"""
-    path = to_absolute_path(path)
-    filtered_rows = []
-    if not path.is_file():
-        raise FileNotFoundError(f"合成数据 manifest 不存在：{path}")
-
-    with path.open("r", encoding="utf-8-sig", newline="") as file:
-        rows = list(csv.DictReader(file))
-    if split is not None:
-        for row in rows:
-            if row["split"] == split:
-                filtered_rows.append(row)
-        rows = filtered_rows
-
-    return rows
 
 
 def load_float_tiff(path) -> np.ndarray:
@@ -366,7 +307,7 @@ def load_global_configuration_lock(
         if file_sha256(protocol_path) != expected_protocol_sha:
             raise ValueError("Synthetic dataset protocol changed after Global Lock")
 
-        for method, info in lock.get("selection_artifacts", {}).items():
+        for _method, info in lock.get("selection_artifacts", {}).items():
             artifact_path = to_absolute_path(info["path"])
             if not artifact_path.is_file():
                 raise FileNotFoundError(f"Frozen selection artifact missing: {artifact_path}")
@@ -404,7 +345,7 @@ def save_run_metadata(output_dir: Path, config: dict):
     write_json(output_dir / "environment.json", environment)
 
 
-def save_display_png(path, image, clip = True):
+def save_display_png(path, image, clip=True):
     """保存论文展示用的 8 位灰度 PNG。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -513,8 +454,7 @@ def _cuda_device_index(device):
     index = int(index)
     if index < 0 or index >= int(torch.cuda.device_count()):
         raise ValueError(
-            f"CUDA device index {index} is invalid; "
-            f"device_count={torch.cuda.device_count()}"
+            f"CUDA device index {index} is invalid; device_count={torch.cuda.device_count()}"
         )
     return index
 
@@ -554,14 +494,8 @@ def _remove_forced_output(path: Path):
         raise ValueError("--force 不允许清理符号链接输出目录")
     resolved_path = path.resolve()
     resolved_output_root = OUTPUT_ROOT.resolve()
-    if (
-        resolved_path == resolved_output_root
-        or resolved_output_root not in resolved_path.parents
-    ):
-        raise ValueError(
-            "--force 只允许清理 experiments/outputs 下的输出目录："
-            f"{resolved_path}"
-        )
+    if resolved_path == resolved_output_root or resolved_output_root not in resolved_path.parents:
+        raise ValueError(f"--force 只允许清理 experiments/outputs 下的输出目录：{resolved_path}")
     shutil.rmtree(resolved_path)
 
 

@@ -107,7 +107,9 @@ def audit_flattening(reference, clean, background, config: dict) -> dict:
         before = before_stars[before_index]
         after = after_stars[after_index]
         centroid_shifts.append(
-            math.hypot(float(before["x"]) - float(after["x"]), float(before["y"]) - float(after["y"]))
+            math.hypot(
+                float(before["x"]) - float(after["x"]), float(before["y"]) - float(after["y"])
+            )
         )
         before_flux = metrics.measure_raw_aperture_flux(reference, before["x"], before["y"])
         after_flux = metrics.measure_raw_aperture_flux(clean, before["x"], before["y"])
@@ -118,15 +120,13 @@ def audit_flattening(reference, clean, background, config: dict) -> dict:
     median_flux_error = float(np.median(flux_errors)) if flux_errors else float("nan")
     p95_flux_error = float(np.percentile(flux_errors, 95.0)) if flux_errors else float("nan")
     sky_ok = abs(float(clean_sky_median)) < float(config["audit_sky_median_abs_max"])
-    centroid_ok = bool(centroid_shifts) and median_shift < float(config["audit_centroid_shift_median_max"])
-    median_flux_ok = (
-        bool(flux_errors)
-        and median_flux_error < float(config["audit_flux_error_median_max"])
+    centroid_ok = bool(centroid_shifts) and median_shift < float(
+        config["audit_centroid_shift_median_max"]
     )
-    p95_flux_ok = (
-        bool(flux_errors)
-        and p95_flux_error < float(config["audit_flux_error_p95_max"])
+    median_flux_ok = bool(flux_errors) and median_flux_error < float(
+        config["audit_flux_error_median_max"]
     )
+    p95_flux_ok = bool(flux_errors) and p95_flux_error < float(config["audit_flux_error_p95_max"])
     flux_ok = bool(median_flux_ok and p95_flux_ok)
     identity_error = float(np.max(np.abs(reference - background - clean)))
     identity_ok = identity_error < 1e-6
@@ -163,7 +163,9 @@ def _nearest_matches(reference, predicted, max_distance: float):
     candidates = []
     for i, first in enumerate(reference):
         for j, second in enumerate(predicted):
-            distance = math.hypot(float(first["x"]) - float(second["x"]), float(first["y"]) - float(second["y"]))
+            distance = math.hypot(
+                float(first["x"]) - float(second["x"]), float(first["y"]) - float(second["y"])
+            )
             if distance <= float(max_distance):
                 candidates.append((distance, i, j))
     candidates.sort()

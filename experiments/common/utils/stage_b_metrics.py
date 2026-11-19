@@ -1,7 +1,9 @@
 """Stage10-B metrics extending Stage10-A with faint-star and protected-structure checks."""
+
 from __future__ import annotations
 
 import math
+
 import numpy as np
 
 from experiments.common.utils import metrics, scores
@@ -55,7 +57,8 @@ def evaluate_stage_b(sample: dict, prediction: dict) -> dict:
 def _faint_star_metrics(residual_pred, reference_info):
     reference = list(reference_info["stars"])
     finite_positive = [
-        star for star in reference
+        star
+        for star in reference
         if np.isfinite(float(star.get("raw_aperture_flux", np.nan)))
         and float(star.get("raw_aperture_flux", 0.0)) > 0.0
     ]
@@ -91,7 +94,9 @@ def _protected_structure_metrics(base_clean, protected_true, residual_pred):
     if not np.isfinite(peak) or peak <= 0.0:
         raise ValueError("Stage-B protected_true must have positive finite peak")
     mask = protected_true >= (threshold_fraction * peak)
-    recovered_structure = np.asarray(residual_pred, dtype=np.float64) - np.asarray(base_clean, dtype=np.float64)
+    recovered_structure = np.asarray(residual_pred, dtype=np.float64) - np.asarray(
+        base_clean, dtype=np.float64
+    )
     protected = np.asarray(protected_true, dtype=np.float64)
     region_mae = float(np.mean(np.abs(recovered_structure[mask] - protected[mask])))
     denom = float(np.sum(protected * protected))
@@ -108,7 +113,9 @@ def _greedy_matches(reference_stars, predicted_stars, max_distance):
     candidates = []
     for i, first in enumerate(reference_stars):
         for j, second in enumerate(predicted_stars):
-            distance = math.hypot(float(first["x"])-float(second["x"]), float(first["y"])-float(second["y"]))
+            distance = math.hypot(
+                float(first["x"]) - float(second["x"]), float(first["y"]) - float(second["y"])
+            )
             if distance <= float(max_distance):
                 candidates.append((distance, i, j))
     candidates.sort()
@@ -116,5 +123,7 @@ def _greedy_matches(reference_stars, predicted_stars, max_distance):
     for _, i, j in candidates:
         if i in used_i or j in used_j:
             continue
-        used_i.add(i); used_j.add(j); matches.append((i,j))
+        used_i.add(i)
+        used_j.add(j)
+        matches.append((i, j))
     return matches

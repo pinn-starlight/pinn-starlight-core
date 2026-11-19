@@ -12,12 +12,16 @@ The candidate spaces, training budgets, architectures, numerical solvers and
 execution policies are inherited unchanged from Stage10-A. Only the synthetic
 scene distribution changes.
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
 
-from experiments.configs.split_protocols import active_base_split
-
+from experiments.common.data.stage_b_backgrounds import (
+    INTENSITY_LEVELS,
+    PROTECTED_PEAK,
+    SCENE_TYPES,
+)
 from experiments.configs.formal_experiment import (
     FINAL_PINN_FOLLOWUP_CONFIG,
     FORMAL_EXECUTION_CONFIG,
@@ -25,11 +29,7 @@ from experiments.configs.formal_experiment import (
     FORMAL_SEEDS,
     selection_dependency_config,
 )
-from experiments.common.data.stage_b_backgrounds import (
-    INTENSITY_LEVELS,
-    PROTECTED_PEAK,
-    SCENE_TYPES,
-)
+from experiments.configs.split_protocols import active_base_split
 
 STAGE_B_SCHEMA_VERSION = 4
 STAGE_B_PROTOCOL_VERSION = 4

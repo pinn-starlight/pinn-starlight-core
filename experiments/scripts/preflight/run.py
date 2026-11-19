@@ -65,17 +65,13 @@ def _check_generated_synthetic():
     if not utils.SYNTHETIC_ROOT.exists():
         return {"state": "not_generated"}
     if not manifest.is_file():
-        raise FileNotFoundError(
-            f"formal synthetic root exists but manifest is missing: {manifest}"
-        )
+        raise FileNotFoundError(f"formal synthetic root exists but manifest is missing: {manifest}")
 
     protocol_path = utils.SYNTHETIC_ROOT / "dataset_protocol.json"
     if not protocol_path.is_file():
         raise FileNotFoundError(f"Stage-10 dataset protocol missing: {protocol_path}")
     protocol = json.loads(protocol_path.read_text(encoding="utf-8"))
-    if int(protocol.get("protocol_version", 0)) != int(
-        SYNTHETIC_DATA_CONFIG["protocol_version"]
-    ):
+    if int(protocol.get("protocol_version", 0)) != int(SYNTHETIC_DATA_CONFIG["protocol_version"]):
         raise ValueError("synthetic dataset protocol version is not Stage 10")
     protocol_split = protocol.get("base_split", {})
     if protocol_split != generator.FIXED_BASE_SPLIT:
@@ -131,13 +127,7 @@ def _check_generated_synthetic():
 
         sample = utils.load_synthetic_sample(row)
         identity = float(
-            np.max(
-                np.abs(
-                    sample["observed"]
-                    - sample["clean_true"]
-                    - sample["background_true"]
-                )
-            )
+            np.max(np.abs(sample["observed"] - sample["clean_true"] - sample["background_true"]))
         )
         if identity >= 1e-6:
             raise ValueError(f"additive identity failed for {row['sample_id']}: {identity}")
@@ -154,7 +144,10 @@ def _check_generated_synthetic():
             raise ValueError("low/high must be documented as skyglow levels, not noise levels")
 
         star_reference = metadata.get("star_reference", {})
-        if int(star_reference.get("evaluation_schema_version", 0)) != metrics.EVALUATION_SCHEMA_VERSION:
+        if (
+            int(star_reference.get("evaluation_schema_version", 0))
+            != metrics.EVALUATION_SCHEMA_VERSION
+        ):
             raise ValueError("star-reference evaluation schema mismatch")
         if star_reference.get("catalog_source") != "native_background_flattened_camera_reference":
             raise ValueError("star reference must come from the flattened camera reference")

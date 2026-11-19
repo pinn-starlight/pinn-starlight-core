@@ -1,16 +1,17 @@
 """E4: four-method qualitative comparison on real high-pollution images."""
 
-
 import argparse
 import time
 from pathlib import Path
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+
 from experiments.common.baselines import coordinate_pinn as pinn
-from experiments.common.baselines import sgc_pinn as final_pinn
-from experiments.common.baselines import fft_gaussian as fft
 from experiments.common.baselines import cosine_ls as fourier_ls
+from experiments.common.baselines import fft_gaussian as fft
+from experiments.common.baselines import sgc_pinn as final_pinn
 from experiments.common.utils import experiment_utils as utils
 from experiments.common.utils import metrics
 from experiments.common.utils import selection_artifacts as artifacts
@@ -22,7 +23,6 @@ from experiments.configs.formal_experiment import (
 )
 
 METHODS = (*tuple(FORMAL_METHODS), final_pinn.METHOD_NAME)
-
 
 
 REAL_IMAGE_ROOT = utils.REAL_HIGH_POLLUTION_ROOT
@@ -45,14 +45,12 @@ def _default_real_images():
     return tuple(str(path) for path in images)
 
 
-
 def _formal_device():
     """Resolve the frozen single-GPU Stage-A benchmark device."""
     device = torch.device(str(FORMAL_EXECUTION_CONFIG["benchmark_device"]))
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError(
-            "Formal Stage-A requires CUDA for the frozen benchmark policy; "
-            "CUDA is not available."
+            "Formal Stage-A requires CUDA for the frozen benchmark policy; CUDA is not available."
         )
     return device
 
@@ -139,9 +137,7 @@ def main(*, force: bool = False):
             return_info=True,
             backend=FORMAL_EXECUTION_CONFIG["fourier_ls_backend"],
             show_progress=True,
-            progress_desc=(
-                f"E4 Cosine-LS [{image_index}/{len(real_images)}] {image_name}"
-            ),
+            progress_desc=(f"E4 Cosine-LS [{image_index}/{len(real_images)}] {image_name}"),
         )
         predictions["fourier_ls"] = {
             "background_pred": fourier_background,
@@ -161,9 +157,7 @@ def main(*, force: bool = False):
         )
         predictions["pinn"] = {
             "background_pred": pinn_result["background_pred"],
-            "residual_pred": utils.reconstruct_residual(
-                observed, pinn_result["background_pred"]
-            ),
+            "residual_pred": utils.reconstruct_residual(observed, pinn_result["background_pred"]),
             "runtime_s": pinn_result["runtime_s"],
             "peak_vram_mb": pinn_result["peak_vram_mb"],
         }
@@ -216,7 +210,9 @@ def main(*, force: bool = False):
                         "fourier_smooth_objective": prediction["fourier_info"]["smooth_objective"],
                         "fourier_sparse_objective": prediction["fourier_info"]["sparse_objective"],
                         "fourier_profile_nfev": prediction["fourier_info"]["profile_nfev"],
-                        "fourier_effective_component_count": prediction["fourier_info"]["effective_component_count"],
+                        "fourier_effective_component_count": prediction["fourier_info"][
+                            "effective_component_count"
+                        ],
                         "fourier_sigma_x": prediction["fourier_info"]["sigma_x"],
                         "fourier_sigma_y": prediction["fourier_info"]["sigma_y"],
                         "fourier_theta": prediction["fourier_info"]["theta"],
@@ -280,9 +276,7 @@ def main(*, force: bool = False):
                 "stage3_runtime_s": final_method_result["stage3_runtime_s"],
                 "peak_vram_mb": final_method_result["peak_vram_mb"],
                 "parameter_count": final_method_result["parameter_count"],
-                "gradient_conflict_fraction": final_method_result[
-                    "gradient_conflict_fraction"
-                ],
+                "gradient_conflict_fraction": final_method_result["gradient_conflict_fraction"],
                 "mean_lambda_use": final_method_result["mean_lambda_use"],
                 "median_lambda_use": final_method_result["median_lambda_use"],
                 "mean_scaled_physics_to_data_ratio": final_method_result[
@@ -304,7 +298,6 @@ def main(*, force: bool = False):
     utils.write_json(output_root / "summary.json", utils.summarize_rows(rows, "method"))
     print(f"E4 完成：{output_root}")
     print("No ground truth is available for real images; review each inspection_checklist.md")
-
 
 
 def _load_global_lock_for_e4():
@@ -374,15 +367,13 @@ def _verify_legacy_lock_except_e4_runner(lock):
     protocol_path = utils.to_absolute_path(
         lock.get("data_provenance", {}).get("dataset_protocol", "")
     )
-    expected_protocol_sha = lock.get("data_provenance", {}).get(
-        "dataset_protocol_sha256"
-    )
+    expected_protocol_sha = lock.get("data_provenance", {}).get("dataset_protocol_sha256")
     if not protocol_path.is_file() or not expected_protocol_sha:
         raise ValueError("Global Lock is missing dataset-protocol provenance")
     if utils.file_sha256(protocol_path) != expected_protocol_sha:
         raise ValueError("Synthetic dataset protocol changed after Global Lock")
 
-    for method, info in lock.get("selection_artifacts", {}).items():
+    for _method, info in lock.get("selection_artifacts", {}).items():
         artifact_path = utils.to_absolute_path(info["path"])
         if not artifact_path.is_file():
             raise FileNotFoundError(f"Frozen selection artifact missing: {artifact_path}")

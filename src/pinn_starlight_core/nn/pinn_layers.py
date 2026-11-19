@@ -4,13 +4,6 @@ from torch import nn
 from torch.nn import init
 
 
-def skyglow_linear(in_dim, out_dim):
-    layer = nn.Linear(in_dim, out_dim)
-    init.xavier_uniform_(layer.weight)
-    init.zeros_(layer.bias)
-    return layer
-
-
 class SkyglowMLP(nn.Sequential):
     def __init__(self, hidden_dims=(128, 128)):
         """坐标 MLP；默认结构为 2 -> 128 -> 128 -> 1。"""

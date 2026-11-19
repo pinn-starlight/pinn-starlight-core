@@ -1,4 +1,5 @@
-"""Aggregate Stage11-A final-PINN five-fold confirmation by camera-reference fold."""
+"""Aggregate Stage2-A final-PINN five-fold confirmation by camera-reference fold."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,7 +11,6 @@ import numpy as np
 
 from experiments.common.utils import experiment_utils as utils
 from experiments.scripts.final_pinn.common import write_csv
-
 
 METRICS = (
     "bg_mae",
@@ -55,19 +55,13 @@ def main(*, allow_incomplete=False):
         if path.is_file():
             fold_rows[fold] = _read(path)
         elif not allow_incomplete:
-            raise FileNotFoundError(f"missing Stage11 final-PINN fold output: {path}")
+            raise FileNotFoundError(f"missing Stage2 final-PINN fold output: {path}")
 
     output_root = utils.BASE_OUTPUT_ROOT / "cv5_summary" / "stage_a_final_pinn"
     output_root.mkdir(parents=True, exist_ok=True)
 
     fold_means = []
-    methods = sorted(
-        {
-            row["method"]
-            for rows in fold_rows.values()
-            for row in rows
-        }
-    )
+    methods = sorted({row["method"] for rows in fold_rows.values() for row in rows})
     for fold, rows in sorted(fold_rows.items()):
         for method in methods:
             subset = [r for r in rows if r["method"] == method]
@@ -86,12 +80,8 @@ def main(*, allow_incomplete=False):
         rec = {"method": method, "fold_count": len(subset)}
         for metric in METRICS:
             vals = _finite(subset, metric)
-            rec[f"{metric}_mean_across_folds"] = (
-                float(np.mean(vals)) if vals else float("nan")
-            )
-            rec[f"{metric}_std_across_folds"] = (
-                float(np.std(vals)) if vals else float("nan")
-            )
+            rec[f"{metric}_mean_across_folds"] = float(np.mean(vals)) if vals else float("nan")
+            rec[f"{metric}_std_across_folds"] = float(np.std(vals)) if vals else float("nan")
         summary.append(rec)
     write_csv(output_root / "method_summary_across_folds.csv", summary)
 
@@ -106,15 +96,13 @@ def main(*, allow_incomplete=False):
         rec = {"fold": fold}
         for metric in METRICS:
             try:
-                rec[f"{metric}_delta_improved_minus_control"] = (
-                    float(a[metric]) - float(b[metric])
-                )
+                rec[f"{metric}_delta_improved_minus_control"] = float(a[metric]) - float(b[metric])
             except (TypeError, ValueError):
                 rec[f"{metric}_delta_improved_minus_control"] = float("nan")
         deltas.append(rec)
     write_csv(output_root / "paired_fold_deltas.csv", deltas)
 
-    print("Stage11-A final-PINN CV5 summary ->", output_root)
+    print("Stage2-A final-PINN CV5 summary ->", output_root)
 
 
 if __name__ == "__main__":

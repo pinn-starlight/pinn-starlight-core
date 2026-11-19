@@ -8,6 +8,7 @@ observed image only; synthetic truth is never passed across the Method boundary.
 
 from __future__ import annotations
 
+import copy
 import math
 import os
 import time
@@ -118,17 +119,9 @@ def train_background(
     generator = torch.Generator(device=device)
     generator.manual_seed(seed)
 
-    start_step = 0
-    history = []
-    elapsed_before = 0.0
-    if resume_state is not None:
-        model.load_state_dict(resume_state["model_state"])
-        forcing.load_state_dict(resume_state["forcing_state"])
-        optimizer.load_state_dict(resume_state["optimizer_state"])
-        start_step = int(resume_state["step"])
-        history = list(resume_state.get("history", []))
-        elapsed_before = float(resume_state.get("runtime_s", 0.0))
-        generator.set_state(resume_state["generator_state"])
+    start_step, history, elapsed_before = _restore_resume_state(
+        model, forcing, optimizer, generator, resume_state
+    )
 
     alpha = torch.tensor(float(config["alpha"]), dtype=torch.float32, device=device)
     started = time.perf_counter()
@@ -190,19 +183,44 @@ def train_background(
         "laplacian_backend": laplacian_backend,
     }
     if return_state:
-        result["state"] = _to_cpu(
-            {
-                "model_state": model.state_dict(),
-                "forcing_state": forcing.state_dict(),
-                "optimizer_state": optimizer.state_dict(),
-                "generator_state": generator.get_state(),
-                "step": final_step,
-                "history": history,
-                "runtime_s": runtime_s,
-            }
+        result["state"] = _capture_resume_state(
+            model, forcing, optimizer, generator, final_step, history, runtime_s
         )
     return result
 
+
+def _restore_resume_state(model, forcing, optimizer, generator, resume_state):
+    """Reload a checkpoint so a run continues exactly where it stopped."""
+    if resume_state is None:
+        return 0, [], 0.0
+
+    model.load_state_dict(resume_state["model_state"])
+    forcing.load_state_dict(resume_state["forcing_state"])
+    # torch's Optimizer.load_state_dict keeps references to the incoming
+    # momentum buffers and updates them in place, so a plain load would mutate
+    # the caller's checkpoint.  Copy first so a snapshot stays reusable.
+    optimizer.load_state_dict(copy.deepcopy(resume_state["optimizer_state"]))
+    generator.set_state(resume_state["generator_state"])
+    return (
+        int(resume_state["step"]),
+        list(resume_state.get("history", [])),
+        float(resume_state.get("runtime_s", 0.0)),
+    )
+
+
+def _capture_resume_state(model, forcing, optimizer, generator, step, history, runtime_s):
+    """Snapshot everything a later run needs in order to resume."""
+    return _to_cpu(
+        {
+            "model_state": model.state_dict(),
+            "forcing_state": forcing.state_dict(),
+            "optimizer_state": optimizer.state_dict(),
+            "generator_state": generator.get_state(),
+            "step": step,
+            "history": history,
+            "runtime_s": runtime_s,
+        }
+    )
 
 
 def initial_centers_from_observed(observed, config=None):
@@ -215,6 +233,7 @@ def initial_centers_from_observed(observed, config=None):
         low_pass_sigma_fraction=float(config["forcing_low_pass_sigma_fraction"]),
         min_center_distance=float(config["forcing_min_center_distance"]),
     )
+
 
 def _build_forcing(observed, config: PINNConfig, device, *, initial_centers=None):
     sigma_min, sigma_max = (float(value) for value in config["forcing_sigma_bounds"])
@@ -318,11 +337,7 @@ def _train_steps(
         total_loss.backward()
         optimizer.step()
 
-        should_log = (
-            global_step == 1
-            or global_step % log_every == 0
-            or local_step + 1 == steps
-        )
+        should_log = global_step == 1 or global_step % log_every == 0 or local_step + 1 == steps
         if should_log:
             # Converting a CUDA scalar to Python synchronizes the device.  Keep
             # those synchronization points at the already-frozen history cadence
@@ -349,13 +364,16 @@ def _train_steps(
     return history, final_total, final_data, final_physics, final_sparse
 
 
-
 def resolve_laplacian_backend(value=None):
-    requested = str(
-        value
-        if value is not None
-        else os.environ.get("PINN_STARLIGHT_PINN_LAPLACIAN", "autograd")
-    ).strip().lower()
+    requested = (
+        str(
+            value
+            if value is not None
+            else os.environ.get("PINN_STARLIGHT_PINN_LAPLACIAN", "autograd")
+        )
+        .strip()
+        .lower()
+    )
     aliases = {
         "chain_rule": "analytic",
         "analytic_chain_rule": "analytic",
@@ -412,11 +430,9 @@ def _background_and_laplacian(model, coords):
     background = torch.sigmoid(logits)
     first = background * (1.0 - background)
     second = first * (1.0 - 2.0 * background)
-    background_lap = (
-        second * (dlogits_dx.square() + dlogits_dy.square())
-        + first * logits_lap
-    )
+    background_lap = second * (dlogits_dx.square() + dlogits_dy.square()) + first * logits_lap
     return background, background_lap
+
 
 def normalized_config(config) -> PINNConfig:
     result: PINNConfig = dict(DEFAULT_CONFIG)
@@ -451,7 +467,9 @@ def normalized_config(config) -> PINNConfig:
         result[key] = float(result[key])
     result["forcing_sigma_bounds"] = [float(value) for value in result["forcing_sigma_bounds"]]
     result["forcing_theta_bounds"] = [float(value) for value in result["forcing_theta_bounds"]]
-    result["forcing_initial_weights"] = [float(value) for value in result["forcing_initial_weights"]]
+    result["forcing_initial_weights"] = [
+        float(value) for value in result["forcing_initial_weights"]
+    ]
     result["center_refinement_enabled"] = bool(result["center_refinement_enabled"])
 
     if result["steps"] <= 0 or result["batch_size"] <= 0:
@@ -480,6 +498,13 @@ def normalized_config(config) -> PINNConfig:
 
 
 def _to_cpu(value):
+    """Deep-copy a nested state structure onto the CPU.
+
+    ``Tensor.cpu()`` is a no-op for tensors that already live on the CPU, so
+    the clone is what makes the snapshot independent: without it a returned
+    ``state`` aliases the live optimizer/model tensors and reusing it for a
+    second run silently produces different results.
+    """
     if isinstance(value, dict):
         return {key: _to_cpu(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -487,13 +512,15 @@ def _to_cpu(value):
     if isinstance(value, tuple):
         return tuple(_to_cpu(item) for item in value)
     if isinstance(value, torch.Tensor):
-        return value.detach().cpu()
+        return value.detach().cpu().clone()
     return value
 
 
 def _optimizer(model, forcing, config: PINNConfig):
     groups = [{"params": model.parameters(), "lr": float(config["model_lr"])}]
-    forcing_parameters = [parameter for parameter in forcing.parameters() if parameter.requires_grad]
+    forcing_parameters = [
+        parameter for parameter in forcing.parameters() if parameter.requires_grad
+    ]
     if float(config["physics_weight"]) > 0.0 and forcing_parameters:
         groups.append({"params": forcing_parameters, "lr": float(config["forcing_lr"])})
     return torch.optim.Adam(groups)
@@ -522,8 +549,7 @@ def _history_row(step, total, data, physics, sparse, forcing, alpha, config):
         "physics_loss": float(physics),
         "sparse_loss": float(sparse),
         "center_refinement_enabled_at_step": bool(
-            config["center_refinement_enabled"]
-            and int(step) > int(config["center_warmup_steps"])
+            config["center_refinement_enabled"] and int(step) > int(config["center_warmup_steps"])
         ),
         "effective_component_count": int(sum(item["active"] for item in components)),
         "center_x": float(strongest["center_x"]),
