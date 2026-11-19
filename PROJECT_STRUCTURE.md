@@ -73,6 +73,7 @@ build/
 ```bash
 uv build --out-dir build/dist
 python -m build --outdir build/dist
+python tools/build_release.py          # 打包并在干净 venv 里自检 CLI
 ```
 
 注意 `build/` 是可整体删除的目录（`rm -rf build` 会连 `build/tmp/` 里的临时结果一起删掉）；
@@ -133,7 +134,11 @@ test/*.tif
 ```text
 experiments/
 ├── configs/                     # 配置唯一来源
-├── cli.py                       # pinn-starlight CLI（演示/发布，非正式入口）
+├── cli/                         # pinn-starlight CLI（演示/发布，非正式入口）
+│   ├── commands/                # 每个子命令一个模块
+│   ├── context.py               # 常量、退出码、JSON 输出（纯标准库）
+│   ├── parser.py                # argparse 定义
+│   └── render.py                # 可选 preview.png（延迟 import matplotlib）
 ├── common/
 │   ├── baselines/               # 四种方法实现 + 模式封装
 │   ├── data/                    # 数据生成与背景建模

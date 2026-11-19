@@ -29,6 +29,36 @@ dependencies = [
 pinn-starlight-core = "pinn_starlight_core.main:main"
 pinn-starlight = "experiments.cli:main"
 
+# Optional extras keep the base install tiny: without them the release CLI can
+# still run `version`, `doctor` and `samples` (they only need the standard
+# library).  `estimate` needs the scientific stack.
+[project.optional-dependencies]
+# Everything `pinn-starlight estimate` needs except torch / torchvision, which
+# must come from the CUDA-matched index (see [tool.pixi.feature.*] below) or
+# from the `cpu-torch` extra for a CPU-only install.
+estimator = [
+    "numpy>=2.4.4",
+    "scipy",
+    "scikit-image>=0.26.0",
+    "photutils",
+    "tifffile>=2026.3.3",
+    "matplotlib>=3.10.9",
+    "pillow>=12.2.0",
+    "tqdm==4.66.5",
+    "lightning>=2.6.5",
+    "segmentation-models-pytorch>=0.5.0",
+    "astropy",
+]
+# CPU-only PyTorch pair, for portable bundles and machines without CUDA.
+cpu-torch = [
+    "torch>=2.6",
+    "torchvision>=0.21",
+]
+# RAW camera decoding; only needed for .nef / .cr2 / .dng inputs.
+photo = [
+    "rawpy==0.27.0",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",

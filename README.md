@@ -15,7 +15,7 @@
 | `experiments/scripts/protocol/` | Stage-A / Stage-B / CV5 的阶段编排与聚合 |
 | `experiments/scripts/final_pinn/` | 最终 PINN 的配对评估与 CV5 聚合 |
 | `experiments/scripts/diagnostics/` | 非正式机制探针（初始化 / alpha，validation only） |
-| `experiments/cli.py` | `pinn-starlight` CLI：单图估计、doctor、样本列表 |
+| `experiments/cli/` | `pinn-starlight` CLI：单图估计、doctor、样本列表 |
 | `scripts/figures/` | 论文图 3/4/6 的资产收集、渲染与打包 |
 | `tools/` | 服务器归档导出/恢复、派生文件重建、指标回填、完整性检查 |
 | `research_diagnostics/` | 冻结的探索性诊断脚本 |
@@ -56,6 +56,30 @@ python -m experiments.cli estimate --sample clean_single_002_multi_source_high -
 - 输出写到 `--out/<sample>/`：`observed.tif`、每方法 `background.tif`/`residual.tif`、`preview.png`、`summary.json`。
 - 照片没有真值，只输出描述性指标；合成样本用冻结星表，但仍是 CPU/demo 预算，**不是论文数字**。
 - 退出码：0 成功、2 用法、3 环境、4 输入、5 方法失败。
+
+### 依赖分层与分发
+
+基础包装完只有 200 KB，`version` / `doctor` / `samples` 只依赖标准库；`estimate`
+需要科学计算栈：
+
+```bash
+pip install pinn-starlight-core                    # 只有检查工具
+pip install 'pinn-starlight-core[estimator,cpu-torch]'   # 能跑 estimate（CPU）
+pip install 'pinn-starlight-core[photo]'           # 额外支持 RAW（.nef/.cr2/.dng）
+```
+
+`torch` 默认不进 `estimator`：正式实验用 pixi 的 CUDA 档位安装对应的 wheel，
+CPU-only 场景用 `cpu-torch` extra。
+
+一条命令构建并验证可分发产物：
+
+```bash
+python tools/build_release.py              # wheel + sdist 到 build/dist/，并在干净 venv 里自检
+python tools/build_release.py --portable   # 额外产出可解压即用的自包含目录（含 venv 与启动脚本）
+```
+
+`build_release.py` 的验证会确认：无依赖环境下 `version` 正常、`doctor` 退出 3 而不是抛
+traceback、`estimate` 给出安装提示而不是崩溃。
 
 ## 运行正式实验
 

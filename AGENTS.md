@@ -79,7 +79,7 @@
 | `experiments/common/{baselines,data,utils}/` | 四种方法、数据与背景、指标与实验基础设施 |
 | `experiments/scripts/<stage>/` | 各阶段入口，经 `protocol/run.py` 或 `run_stage2.py` 编排 |
 | `experiments/scripts/diagnostics/` | 非正式机制探针；只读 validation，输出到 `experiments/outputs/diagnostics/` |
-| `experiments/cli.py`、`experiments/common/pipeline.py` | `pinn-starlight` 演示/发布 CLI；**不接入正式入口** |
+| `experiments/cli/`、`experiments/common/pipeline.py` | `pinn-starlight` 演示/发布 CLI；**不接入正式入口** |
 | `scripts/figures/` | 论文图 3/4/6 的收集与渲染（只读冻结结果） |
 | `tools/` | smoke test、单图演示、服务器归档恢复/重建/回填 |
 | `research_diagnostics/` | 冻结的探索性诊断，不属于正式主流程 |
@@ -95,7 +95,7 @@
 - 新指标 → `experiments/common/utils/metrics.py` 或 `scores.py`；
 - 新阶段 → `experiments/scripts/<stage>/`，通过 `protocol/run.py` 或 `run_stage2.py` 编排；
 - 机制探针 → `experiments/scripts/diagnostics/`，只读 validation，不得改动正式 config/lock；
-- CLI / 演示 → `experiments/cli.py` + `experiments/common/pipeline.py`，不要塞进 `run_stage2.py`；
+- CLI / 演示 → `experiments/cli/` + `experiments/common/pipeline.py`，不要塞进 `run_stage2.py`；
 - 一次性脚本 / 出图 → `scripts/figures/`；搬运与复现 → `tools/`；别往仓库根目录堆；
 - 临时草稿、解压出来的归档、wheel/sdist → `build/` 下，不要落在根目录；
 - 常量只在 `experiments/configs/`，不要在脚本里复制第二份。
