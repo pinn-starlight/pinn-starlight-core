@@ -255,12 +255,23 @@ def load_dataset_sample(sample_id: str, *, max_side: int = 384, dataset: str = "
         manifest = Path(STAGE_B_MANIFEST)
     else:
         raise ValueError(f"unknown dataset: {dataset!r}")
+    from experiments.common.utils import paths as paths_module
+
+    if not manifest.is_file():
+        raise FileNotFoundError(
+            f"{dataset} manifest not found: {manifest}\n{paths_module.data_root_hint()}"
+        )
     rows = utils.load_manifest(manifest, split="validation")
     row = next((item for item in rows if item["sample_id"] == sample_id), None)
     if row is None:
-        available = ", ".join(sorted(item["sample_id"] for item in rows))
+        import difflib
+
+        ids = sorted(item["sample_id"] for item in rows)
+        close = difflib.get_close_matches(sample_id, ids, n=3, cutoff=0.5)
+        hint = f"did you mean: {', '.join(close)}" if close else f"{len(ids)} samples available"
         raise KeyError(
-            f"{sample_id!r} is not in the {dataset} validation split; available: {available}"
+            f"{sample_id!r} is not in the {dataset} validation split; {hint} "
+            f"(list them with `pinn-starlight samples`; use --dataset for the other stage)"
         )
 
     observed_full = utils.load_float_tiff(row["observed"])

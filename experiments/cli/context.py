@@ -52,6 +52,30 @@ def json_safe(value):
     return value
 
 
+def base_payload(command: str, **fields) -> dict:
+    """Header shared by every ``--json`` payload of every subcommand."""
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "tool": {"name": TOOL_NAME, "version": tool_version()},
+        "command": command,
+        **fields,
+    }
+
+
+def apply_data_root(args) -> None:
+    """Make ``--data-root`` win over every other source (must run before paths import)."""
+    import os
+
+    if getattr(args, "data_root", None):
+        os.environ["PINN_STARLIGHT_DATA_ROOT"] = str(Path(args.data_root).expanduser())
+
+
+DATA_ROOT_HELP = (
+    "directory that contains collections/ (default: $PINN_STARLIGHT_DATA_ROOT, then the "
+    "nearest parent of the current directory with collections/, then the source checkout)"
+)
+
+
 def print_json(payload: dict) -> None:
     print(json.dumps(json_safe(payload), ensure_ascii=False, indent=2, allow_nan=False))
 

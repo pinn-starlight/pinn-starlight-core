@@ -155,13 +155,13 @@ def assemble_portable(wheel: Path, out: Path | None = None) -> Path:
     launcher_sh = target / "pinn-starlight.sh"
     launcher_sh.write_text(
         "#!/usr/bin/env bash\n"
-        'cd "$(dirname "$0")" || exit 1\n'
-        'exec ./venv/bin/pinn-starlight "$@"\n',
+        'here="$(cd "$(dirname "$0")" && pwd)"\n'
+        'exec "$here/venv/bin/pinn-starlight" "$@"\n',
         encoding="utf-8",
     )
     launcher_sh.chmod(0o755)
     (target / "pinn-starlight.bat").write_text(
-        "@echo off\r\ncd /d %~dp0\r\nvenv\\Scripts\\pinn-starlight.exe %*\r\n",
+        '@echo off\r\n"%~dp0venv\\Scripts\\pinn-starlight.exe" %*\r\n',
         encoding="utf-8",
     )
     (target / "README.txt").write_text(

@@ -5,10 +5,10 @@ Standard library only; safe to run before the estimator extras are installed.
 
 from __future__ import annotations
 
-import os
+import sys
 from pathlib import Path
 
-from experiments.cli.context import EXIT_OK, SCHEMA_VERSION, TOOL_NAME, print_json
+from experiments.cli.context import EXIT_OK, apply_data_root, base_payload, print_json
 
 
 def _list_manifest(path) -> list[dict]:
@@ -28,8 +28,7 @@ def _list_manifest(path) -> list[dict]:
 
 
 def cmd_samples(args) -> int:
-    if args.data_root:
-        os.environ["PINN_STARLIGHT_DATA_ROOT"] = str(Path(args.data_root).expanduser())
+    apply_data_root(args)
 
     from experiments.common.utils import paths
 
@@ -40,10 +39,20 @@ def cmd_samples(args) -> int:
         datasets["stage_b"] = _list_manifest(
             paths.DATA_ROOT / "collections/synthetic_stage_b/manifest.csv"
         )
-    payload = {"schema_version": SCHEMA_VERSION, "tool": TOOL_NAME, "datasets": datasets}
+    payload = base_payload(
+        "samples",
+        data_root=str(paths.DATA_ROOT),
+        data_root_source=paths.DATA_ROOT_SOURCE,
+        datasets=datasets,
+        warnings=[],
+    )
+    if not any(datasets.values()):
+        payload["warnings"].append(paths.data_root_hint())
     if args.json:
         print_json(payload)
     else:
+        for warning in payload["warnings"]:
+            print(f"warning: {warning}", file=sys.stderr)
         for name, rows in datasets.items():
             print(f"{name}: {len(rows)} validation rows")
             for row in rows:

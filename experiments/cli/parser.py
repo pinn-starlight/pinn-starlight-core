@@ -13,8 +13,7 @@ from experiments.cli.commands.doctor import cmd_doctor
 from experiments.cli.commands.estimate import cmd_estimate
 from experiments.cli.commands.samples import cmd_samples
 from experiments.cli.commands.version import cmd_version
-from experiments.cli.context import EXIT_OK, TOOL_NAME, tool_version
-from experiments.configs.demo_methods import MODE_TO_METHOD
+from experiments.cli.context import DATA_ROOT_HELP, EXIT_OK, TOOL_NAME, tool_version
 from experiments.configs.formal_experiment import FORMAL_SEEDS
 
 EPILOG = """\
@@ -27,6 +26,7 @@ examples:
   pinn-starlight doctor
   pinn-starlight samples --stage a
   pinn-starlight estimate --image photo.jpg --mode star
+  pinn-starlight estimate --image photo.jpg --mode star,nebula
   pinn-starlight estimate --sample clean_single_002_multi_source_high --methods all
 
 All estimate runs use CPU/demo budgets; they are not the paper numbers.
@@ -49,7 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True, metavar="command")
 
     version = subparsers.add_parser("version", help="print the tool and core versions")
-    version.add_argument("--json", action="store_true", help="machine-readable output")
+    version.add_argument(
+        "--json", action="store_true", help="machine-readable output (default: off)"
+    )
     version.set_defaults(func=cmd_version)
 
     doctor = subparsers.add_parser(
@@ -60,12 +62,14 @@ def build_parser() -> argparse.ArgumentParser:
             "Exit code 3 means something needed by estimate is missing."
         ),
     )
-    doctor.add_argument("--json", action="store_true", help="machine-readable output")
+    doctor.add_argument(
+        "--json", action="store_true", help="machine-readable output (default: off)"
+    )
     doctor.add_argument(
         "--data-root",
         type=Path,
         default=None,
-        help="override the data root (default: $PINN_STARLIGHT_DATA_ROOT or the repo)",
+        help=DATA_ROOT_HELP,
     )
     doctor.set_defaults(func=cmd_doctor)
 
@@ -80,12 +84,14 @@ def build_parser() -> argparse.ArgumentParser:
         default="all",
         help="which dataset to list (default: all)",
     )
-    samples.add_argument("--json", action="store_true", help="machine-readable output")
+    samples.add_argument(
+        "--json", action="store_true", help="machine-readable output (default: off)"
+    )
     samples.add_argument(
         "--data-root",
         type=Path,
         default=None,
-        help="override the data root (default: $PINN_STARLIGHT_DATA_ROOT or the repo)",
+        help=DATA_ROOT_HELP,
     )
     samples.set_defaults(func=cmd_samples)
 
@@ -98,10 +104,12 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     source = estimate.add_mutually_exclusive_group(required=True)
-    source.add_argument("--image", type=Path, help="any supported image file (no ground truth)")
+    source.add_argument(
+        "--image", type=Path, help="any supported image file; needs no data root (no ground truth)"
+    )
     source.add_argument(
         "--sample",
-        help="validation sample_id from the extracted synthetic dataset",
+        help="validation sample_id from the extracted synthetic dataset (see `samples`)",
     )
     estimate.add_argument(
         "--dataset",
@@ -111,17 +119,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     estimate.add_argument(
         "--methods",
-        default="all",
+        default=None,
         help=(
             "all or a comma separated subset of "
-            "fft_gaussian,fourier_ls,pinn,final_pinn,balanced (default: all)"
+            "fft_gaussian,fourier_ls,pinn,final_pinn,balanced; "
+            "mutually exclusive with --mode (default: all four paper methods)"
         ),
     )
     estimate.add_argument(
         "--mode",
-        choices=tuple(MODE_TO_METHOD),
         default=None,
-        help="single operating point: star=final_pinn, nebula=pinn, balanced=anchored",
+        metavar="MODE[,MODE...]",
+        help=(
+            "operating point(s), comma separated: star=final_pinn, nebula=pinn, "
+            "balanced=anchored; each mode writes its own <out>/<name>/<method>/ "
+            "subdirectory; mutually exclusive with --methods (default: not set)"
+        ),
     )
     estimate.add_argument(
         "--max-side",
@@ -144,30 +157,36 @@ def build_parser() -> argparse.ArgumentParser:
     estimate.add_argument(
         "--device",
         default="auto",
-        help="auto, cpu, or cuda:N (default: auto)",
+        help="auto, cpu, or cuda:N; auto picks CUDA when available (default: auto)",
     )
     estimate.add_argument(
         "--out",
         type=Path,
         default=None,
-        help="output root; one subdirectory per input is created (default: ./pinn_starlight_output)",
+        help=(
+            "output root; one subdirectory per input is created. Default "
+            "./pinn_starlight_output (current directory, so results stay visible and are "
+            "not lost with a temp/cache cleanup; rerunning the same input overwrites it)"
+        ),
     )
-    estimate.add_argument("--json", action="store_true", help="print summary.json to stdout")
+    estimate.add_argument(
+        "--json", action="store_true", help="print summary.json to stdout (default: off)"
+    )
     estimate.add_argument(
         "--no-figure",
         action="store_true",
-        help="skip preview.png (useful on headless machines)",
+        help="skip preview.png, useful on headless machines (default: off)",
     )
     estimate.add_argument(
         "--quiet",
         action="store_true",
-        help="suppress the progress bar and the per-method report",
+        help="suppress the progress bar and the per-method report (default: off)",
     )
     estimate.add_argument(
         "--data-root",
         type=Path,
         default=None,
-        help="override the data root (only needed with --sample)",
+        help="only used with --sample; " + DATA_ROOT_HELP,
     )
     estimate.set_defaults(func=cmd_estimate)
 

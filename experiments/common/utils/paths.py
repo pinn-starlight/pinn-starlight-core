@@ -29,33 +29,59 @@ else:
     OUTPUT_NAMESPACE = f"cv5/fold_{CV_FOLD}"
 
 
-def _resolve_data_root() -> Path:
+def _data_layout_under(directory: Path, *, names=("collections",)) -> Path | None:
+    """Return the data root implied by ``directory``, or None.
+
+    Two layouts are recognised: ``directory/<name>`` (current) and
+    ``directory/data/<name>`` (legacy).
+    """
+    for root in (directory, directory / "data"):
+        if any((root / name).is_dir() for name in names):
+            return root
+    return None
+
+
+def _search_upward(start: Path, *, names=("collections",)) -> Path | None:
+    start = Path(start).resolve()
+    for directory in (start, *start.parents):
+        found = _data_layout_under(directory, names=names)
+        if found is not None:
+            return found
+    return None
+
+
+def _resolve_data_root_with_source() -> tuple[Path, str]:
     """Resolve the external data root without changing the experiment protocol.
 
-    Supported layouts, in priority order:
-    1. ``PINN_STARLIGHT_DATA_ROOT`` points to a directory containing
-       ``collections/`` and ``test/``;
-    2. root-level ``collections/`` / ``test/`` beside the project files;
-    3. legacy ``data/collections`` / ``data/test``.
+    Priority (the CLI's ``--data-root`` is applied by exporting variable 1):
+    1. ``PINN_STARLIGHT_DATA_ROOT``;
+    2. nearest ancestor of the current working directory with ``collections/``;
+    3. nearest ancestor of this package with ``collections/`` or ``test/``
+       (the source checkout; an installed wheel finds nothing here);
+    4. ``PROJECT_ROOT`` as a placeholder, so importing stays side-effect free.
+       Callers that need data raise an actionable error via ``data_root_hint``.
+
+    Returns ``(path, source)`` where source is ``env``, ``cwd``, ``package`` or
+    ``default``.
     """
     configured = os.environ.get("PINN_STARLIGHT_DATA_ROOT")
     if configured:
-        return Path(configured).expanduser().resolve()
+        return Path(configured).expanduser().resolve(), "env"
 
-    root_layout = PROJECT_ROOT
-    legacy_layout = PROJECT_ROOT / "data"
-    if (root_layout / "collections").exists() or (root_layout / "test").exists():
-        return root_layout
-    if (legacy_layout / "collections").exists() or (legacy_layout / "test").exists():
-        return legacy_layout
+    try:
+        from_cwd = _search_upward(Path.cwd())
+    except OSError:  # cwd was deleted
+        from_cwd = None
+    if from_cwd is not None:
+        return from_cwd, "cwd"
 
-    # The user's current formal layout is root-level. Returning PROJECT_ROOT when
-    # no data are mounted also keeps imports side-effect free; preflight gives a
-    # precise error before any formal run if the data are elsewhere.
-    return root_layout
+    from_package = _search_upward(Path(__file__).parent, names=("collections", "test"))
+    if from_package is not None:
+        return from_package, "package"
+    return PROJECT_ROOT, "default"
 
 
-DATA_ROOT = _resolve_data_root()
+DATA_ROOT, DATA_ROOT_SOURCE = _resolve_data_root_with_source()
 COLLECTION_ROOT = DATA_ROOT / "collections"
 COLLECTION_MANIFEST = COLLECTION_ROOT / "manifest.csv"
 TEST_ROOT = DATA_ROOT / "test"
@@ -82,10 +108,34 @@ GLOBAL_CONFIGURATION_LOCK = OUTPUT_ROOT / "configuration_lock/global_configurati
 SEEDS = tuple(FORMAL_SEEDS)
 
 
+def data_root_hint() -> str:
+    """Actionable next steps when the synthetic datasets cannot be found."""
+    return (
+        f"data root is {DATA_ROOT} (source: {DATA_ROOT_SOURCE}) and it holds no dataset. "
+        "Point the tool at a directory that contains "
+        "collections/synthetic_formal/manifest.csv:\n"
+        "  pinn-starlight <command> --data-root /path/to/data\n"
+        "  export PINN_STARLIGHT_DATA_ROOT=/path/to/data\n"
+        "  or run from the repository checkout after `bash tools/fetch_smoke_data.sh`\n"
+        "`estimate --image PHOTO` needs no data root."
+    )
+
+
 def to_absolute_path(path):
-    """把 manifest 中的项目相对路径转换为绝对路径。"""
+    """把 manifest 中的项目相对路径转换为绝对路径。
+
+    ``collections/...`` paths follow ``DATA_ROOT`` when it differs from the
+    project root (installed wheel, ``--data-root``); in a checkout the two
+    coincide and the result is unchanged.
+    """
     path = Path(path)
-    return path if path.is_absolute() else PROJECT_ROOT / path
+    if path.is_absolute():
+        return path
+    if DATA_ROOT != PROJECT_ROOT and (
+        path.parts[:1] == ("collections",) or path.parts[:2] == ("data", "collections")
+    ):
+        return resolve_collection_path(path)
+    return PROJECT_ROOT / path
 
 
 def resolve_collection_path(path) -> Path:
@@ -158,6 +208,7 @@ __all__ = [
     "OUTPUT_ROOT",
     "OUTPUT_NAMESPACE",
     "DATA_ROOT",
+    "DATA_ROOT_SOURCE",
     "COLLECTION_ROOT",
     "COLLECTION_MANIFEST",
     "TEST_ROOT",
@@ -176,6 +227,7 @@ __all__ = [
     "FOURIER_LS_SELECTION_ARTIFACT",
     "GLOBAL_CONFIGURATION_LOCK",
     "SEEDS",
+    "data_root_hint",
     "to_absolute_path",
     "resolve_collection_path",
     "supported_image_files",

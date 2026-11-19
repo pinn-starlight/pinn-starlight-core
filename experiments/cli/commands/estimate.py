@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 from experiments.cli.context import (
@@ -13,12 +12,12 @@ from experiments.cli.context import (
     EXIT_OK,
     EXIT_USAGE,
     METHOD_CHOICES,
-    SCHEMA_VERSION,
     TOOL_NAME,
+    apply_data_root,
+    base_payload,
     fail,
     json_safe,
     print_json,
-    tool_version,
 )
 from experiments.cli.render import render_preview
 from experiments.configs.demo_methods import DISPLAY_NAMES, MODE_TO_METHOD, PAPER_METHODS
@@ -27,10 +26,22 @@ from experiments.configs.demo_methods import DISPLAY_NAMES, MODE_TO_METHOD, PAPE
 def resolve_methods(args) -> tuple[list[str], list[str]]:
     warnings = []
     if args.mode:
-        if args.methods != "all":
+        if args.methods is not None:
             raise ValueError("give either --mode or --methods, not both")
-        return [MODE_TO_METHOD[args.mode]], warnings
-    if args.methods == "all":
+        modes = [item.strip() for item in args.mode.split(",") if item.strip()]
+        unknown = [item for item in modes if item not in MODE_TO_METHOD]
+        if unknown or not modes:
+            raise ValueError(
+                f"unknown mode(s): {unknown or args.mode!r}; "
+                f"expected a comma separated subset of {','.join(MODE_TO_METHOD)}"
+            )
+        methods = list(dict.fromkeys(MODE_TO_METHOD[item] for item in modes))
+        if "balanced" in methods:
+            warnings.append(
+                "balanced mode is experimental (physics-first init + anchored finetune)"
+            )
+        return methods, warnings
+    if args.methods in (None, "all"):
         return list(PAPER_METHODS), warnings
     methods = [item.strip() for item in args.methods.split(",") if item.strip()]
     unknown = sorted(set(methods) - set(METHOD_CHOICES))
@@ -125,8 +136,10 @@ def _write_outputs(run_dir: Path, observed, backgrounds, args) -> Path:
 
 
 def cmd_estimate(args) -> int:
-    if args.data_root:
-        os.environ["PINN_STARLIGHT_DATA_ROOT"] = str(Path(args.data_root).expanduser())
+    apply_data_root(args)
+
+    if args.steps < 1 or args.max_side < 8:
+        return fail("--steps must be >= 1 and --max-side >= 8", EXIT_USAGE)
 
     try:
         methods, method_warnings = resolve_methods(args)
@@ -150,7 +163,10 @@ def cmd_estimate(args) -> int:
     elif device_name.startswith("cuda") and not torch.cuda.is_available():
         return fail("CUDA requested but not available; use --device cpu", EXIT_ENV)
     else:
-        device = torch.device(device_name)
+        try:
+            device = torch.device(device_name)
+        except (RuntimeError, ValueError):
+            return fail(f"invalid --device {args.device!r}; use auto, cpu or cuda:N", EXIT_USAGE)
 
     try:
         if args.image:
@@ -161,8 +177,9 @@ def cmd_estimate(args) -> int:
                 max_side=args.max_side,
                 dataset=args.dataset,
             )
-    except (FileNotFoundError, KeyError, ValueError) as exc:
-        return fail(str(exc), EXIT_INPUT)
+    except (FileNotFoundError, KeyError, ValueError, OSError) as exc:
+        message = exc.args[0] if isinstance(exc, KeyError) and exc.args else str(exc)
+        return fail(str(message), EXIT_INPUT)
 
     observed = sample["observed"]
     out_root = Path(args.out) if args.out else Path.cwd() / "pinn_starlight_output"
@@ -175,15 +192,14 @@ def cmd_estimate(args) -> int:
     results, backgrounds, warnings = _run_requested(sample, methods, args, device)
     warnings = method_warnings + warnings
     if not backgrounds:
-        return fail("every requested method failed; see warnings", EXIT_METHOD)
+        detail = "; ".join(warnings)
+        return fail(f"every requested method failed: {detail}", EXIT_METHOD)
 
     _attach_metrics(sample, observed, backgrounds, results, warnings)
     preview = _write_outputs(run_dir, observed, backgrounds, args)
 
     payload = {
-        "schema_version": SCHEMA_VERSION,
-        "tool": {"name": TOOL_NAME, "version": tool_version()},
-        "command": "estimate",
+        **base_payload("estimate"),
         "input": {
             "kind": "image" if args.image else "sample",
             "path": sample.get("source"),

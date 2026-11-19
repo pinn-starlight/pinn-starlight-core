@@ -16,10 +16,10 @@ from pathlib import Path
 from experiments.cli.context import (
     EXIT_ENV,
     EXIT_OK,
-    SCHEMA_VERSION,
     TOOL_NAME,
+    apply_data_root,
+    base_payload,
     print_json,
-    tool_version,
 )
 
 REQUIRED_PACKAGES = (
@@ -70,8 +70,7 @@ def _torch_info() -> dict:
 
 
 def cmd_doctor(args) -> int:
-    if args.data_root:
-        os.environ["PINN_STARLIGHT_DATA_ROOT"] = str(Path(args.data_root).expanduser())
+    apply_data_root(args)
 
     from experiments.common.utils import paths
 
@@ -91,7 +90,8 @@ def cmd_doctor(args) -> int:
         warnings.append("CUDA is not available; formal Stage-A/B/CV5/E4 cannot run here")
 
     data = {
-        "root": paths.project_relative(paths.DATA_ROOT),
+        "root": str(paths.DATA_ROOT),
+        "root_source": paths.DATA_ROOT_SOURCE,
         "collections_manifest": Path(paths.COLLECTION_MANIFEST).is_file(),
         "stage_a_manifest": Path(paths.SYNTHETIC_DATA_ROOT / "manifest.csv").is_file(),
         "stage_b_manifest": Path(
@@ -108,6 +108,8 @@ def cmd_doctor(args) -> int:
     for key in ("stage_a_manifest", "stage_b_manifest"):
         if not data[key]:
             warnings.append(f"{key} is missing; --sample runs need the extracted dataset")
+    if not (data["stage_a_manifest"] or data["stage_b_manifest"]):
+        warnings.append(paths.data_root_hint())
 
     output_root = Path(paths.BASE_OUTPUT_ROOT)
     output_writable = os.access(
@@ -117,9 +119,7 @@ def cmd_doctor(args) -> int:
         warnings.append(f"output root is not writable: {paths.project_relative(output_root)}")
 
     payload = {
-        "schema_version": SCHEMA_VERSION,
-        "tool": TOOL_NAME,
-        "version": tool_version(),
+        **base_payload("doctor"),
         "ok": bool(python_ok and torch_info.get("available")),
         "python": {
             "version": platform.python_version(),
@@ -143,10 +143,10 @@ def cmd_doctor(args) -> int:
         )
         print(f"  torch       : {torch_info.get('version', 'missing')}")
         print(f"  CUDA        : {torch_info.get('cuda_available')}")
-        print(f"  data root   : {data['root']}")
+        print(f"  data root   : {data['root']} ({data['root_source']})")
         print(f"  Stage-A     : {data['stage_a_manifest']}")
         print(f"  Stage-B     : {data['stage_b_manifest']}")
         print(f"  outputs     : {'writable' if output_writable else 'not writable'}")
         for warning in warnings:
-            print(f"  warning     : {warning}")
+            print(f"  warning     : {warning}".replace("\n", "\n                "))
     return EXIT_OK if payload["ok"] else EXIT_ENV
