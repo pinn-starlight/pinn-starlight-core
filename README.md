@@ -45,6 +45,7 @@ pinn-starlight estimate --image photo.jpg --mode star   # pip install -e . 后�
 常用子命令：
 
 ```bash
+python -m experiments.cli help
 python -m experiments.cli version
 python -m experiments.cli doctor --json
 python -m experiments.cli samples --stage a
