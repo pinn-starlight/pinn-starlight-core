@@ -58,29 +58,47 @@ python -m experiments.cli estimate --sample clean_single_002_multi_source_high -
 - 照片没有真值，只输出描述性指标；合成样本用冻结星表，但仍是 CPU/demo 预算，**不是论文数字**。
 - 退出码：0 成功、2 用法、3 环境、4 输入、5 方法失败。
 
-### 依赖分层与分发
+### 分发包（portable bundle）
 
-基础包装完只有 200 KB，`version` / `doctor` / `samples` 只依赖标准库；`estimate`
-需要科学计算栈：
-
-```bash
-pip install pinn-starlight-core                    # 只有检查工具
-pip install 'pinn-starlight-core[estimator,cpu-torch]'   # 能跑 estimate（CPU）
-pip install 'pinn-starlight-core[photo]'           # 额外支持 RAW（.nef/.cr2/.dng）
-```
-
-`torch` 默认不进 `estimator`：正式实验用 pixi 的 CUDA 档位安装对应的 wheel，
-CPU-only 场景用 `cpu-torch` extra。
-
-一条命令构建并验证可分发产物：
+推荐的分发方式是**自包含目录**：内置解释器与依赖，用户解压后直接运行，**不需要安装 Python**。
 
 ```bash
-python tools/build_release.py              # wheel + sdist 到 build/dist/，并在干净 venv 里自检
-python tools/build_release.py --portable   # 额外产出可解压即用的自包含目录（含 venv 与启动脚本）
+python tools/build_release.py --portable
 ```
 
-`build_release.py` 的验证会确认：无依赖环境下 `version` 正常、`doctor` 退出 3 而不是抛
-traceback、`estimate` 给出安装提示而不是崩溃。
+产物：
+
+```text
+build/dist/pinn-starlight-0.2.0-linux-x86_64/
+├── python/              # 内置 CPython（可重定位，拷贝而非符号链接）
+├── site-packages/       # 依赖，CPU torch 来自 download.pytorch.org/whl/cpu
+├── run.py
+├── pinn-starlight.sh    # Linux 启动脚本
+├── pinn-starlight.bat   # Windows 启动脚本
+└── README.txt
+```
+
+要点：
+
+- **不用 venv**。`python -m venv` 会把绝对路径写进控制台脚本的 shebang 和 `pyvenv.cfg`，
+  目录一移动就 `bad interpreter`。这里用内置解释器 + `pip --target`。
+- `build_release.py` 的最后一步会把整个目录**复制到临时目录再运行**，专门用来抓"搬不走"。
+- 每个平台各自构建：同一脚本在 Linux 上产出 linux 目录，在 Windows 上产出 windows 目录
+  （启动器与目录名自动切换）。**macOS 未验证，不提供。**
+- `--skip-deps` 只搭结构、不下载依赖，只验证 `version` / `doctor`。
+
+### wheel（给已有 Python 环境的人）
+
+wheel 本身约 200 KB，`version` / `doctor` / `samples` 只依赖标准库。但
+**`[project].dependencies` 目前仍列着完整研究依赖**（jupyter、lightning、astropy 等），
+`pip install` 会把它们一起装上，而 `torch` 仍需单独安装。这一点在上 PyPI 前必须先改。
+
+```bash
+python tools/build_release.py    # 构建 wheel/sdist，并在干净 venv 里自检降级行为
+```
+
+自检会确认：无依赖环境下 `version` 正常、`doctor` 退出 3 而不是抛 traceback、
+`estimate` 给出安装提示而不是崩溃。
 
 ## 运行正式实验
 

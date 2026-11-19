@@ -52,6 +52,8 @@ collections
 archived
 
 # --- misc -------------------------------------------------------------------
+# Default output directory of `pinn-starlight estimate`.
+pinn_starlight_output/
 .DS_Store
 .dsh-drop
 .dsh
